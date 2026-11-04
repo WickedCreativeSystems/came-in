@@ -17,10 +17,15 @@ export interface Ring {
 export function BellBanner({ ring, onGone }: { ring: Ring | null; onGone: () => void }): JSX.Element | null {
   const [phase, setPhase] = useState<"in" | "out" | "enter">("enter");
   const timer = useRef<ReturnType<typeof setTimeout>>();
+  const showing = useRef(false);
   useEffect(() => {
     if (!ring) return;
-    setPhase("enter");
-    const raf = requestAnimationFrame(() => requestAnimationFrame(() => setPhase("in")));
+    let raf = 0;
+    if (!showing.current) {
+      showing.current = true;
+      setPhase("enter");
+      raf = requestAnimationFrame(() => requestAnimationFrame(() => setPhase("in")));
+    } else setPhase("in");
     clearTimeout(timer.current);
     timer.current = setTimeout(() => fold(), 8000);
     return () => {
@@ -31,7 +36,10 @@ export function BellBanner({ ring, onGone }: { ring: Ring | null; onGone: () => 
   function fold() {
     clearTimeout(timer.current);
     setPhase("out");
-    setTimeout(onGone, reducedMotion() ? 0 : 320);
+    setTimeout(() => {
+      showing.current = false;
+      onGone();
+    }, reducedMotion() ? 0 : 320);
   }
   if (!ring) return null;
   const body = (
@@ -45,7 +53,7 @@ export function BellBanner({ ring, onGone }: { ring: Ring | null; onGone: () => 
     </>
   );
   return (
-    <div class={`ring ${phase}`} role="status" key={ring.key}>
+    <div class={`ring ${phase}`} role="status">
       {ring.href ? (
         <a class="ring-body" href={ring.href}>
           {body}

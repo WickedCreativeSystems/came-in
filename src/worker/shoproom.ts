@@ -162,6 +162,12 @@ export class ShopRoom extends DurableObject<Env> {
       }
     } catch (e) {
       state.failures += 1;
+      console.error("first sync page failed", state.shopId, state.failures, (e as Error)?.message);
+      if (state.failures >= 20) {
+        // "We'll keep trying; your wall will fill in on its own": the hourly poll takes over.
+        await this.finishSync(state, "failed");
+        return;
+      }
       await this.ctx.storage.put("sync", state);
       const retryIn = e instanceof BufferError && e.retryAfterSeconds ? e.retryAfterSeconds * 1000 : Math.min(60000, 2000 * 2 ** state.failures);
       // "We'll keep trying; your wall will fill in on its own." (plan 1.8)

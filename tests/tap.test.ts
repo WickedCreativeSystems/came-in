@@ -271,3 +271,31 @@ describe("look check on c82e7ef (LookieBot)", () => {
     expect(html).toContain("weekday:'short',day:'numeric',month:'short'");
   });
 });
+
+describe("check fixes on dca6da0 (NerdCider)", () => {
+  it("the retry strip floats above the thanks screen, which is a labelled dialog", async () => {
+    const id = await makeShop();
+    const html = await (await call(`/t/${id}`)).text();
+    expect(html).toMatch(/\.strip\{position:fixed;z-index:7;/);
+    expect(html).toContain('<section class="th" id="th" hidden role="dialog" aria-modal="true" aria-label="Thanks">');
+    expect(html).toContain("pg.inert=true");
+    expect(html).toContain("ev.key==='Escape'");
+  });
+  it("only a recorded tap marks the device, and the try device keeps its own mark", async () => {
+    const id = await makeShop();
+    const html = await (await call(`/t/${id}`)).text();
+    expect(html).toContain("if(C.mode!=='sample'&&j.ok)ls(tk,day())");
+    expect(html).toContain("var tk='ci_t:'+C.dk+':'+C.shop;");
+    const tryHtml = await (await call(`/t/${id}?try=1`)).text();
+    expect(tryHtml).toContain('"dk":"ci_device_try"');
+  });
+});
+
+describe("the retry strip is outside the inert page", () => {
+  it("sits after the thanks dialog, not inside #pg", async () => {
+    const id = await makeShop();
+    const html = await (await call(`/t/${id}`)).text();
+    const pgEnd = html.indexOf('<section class="th"');
+    expect(html.indexOf('id="err"')).toBeGreaterThan(pgEnd);
+  });
+});

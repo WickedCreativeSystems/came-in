@@ -53,6 +53,7 @@ export async function pollDue(env: Env, deps: PollDeps, now = new Date()): Promi
       await pollShop(env, shop, deps, now);
       polled.push(shop.id);
     } catch (e) {
+      console.error("poll failed", shop.id, (e as Error)?.message);
       // Buffer down during a poll: nothing shown; retry next tick (plan 1.8). A 429 stops the round.
       if (e instanceof BufferError && (e.kind === "rate_limited" || e.kind === "blocked")) break;
     }

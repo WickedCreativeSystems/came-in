@@ -484,6 +484,7 @@ async function scheduled(controller: ScheduledController, env: Env): Promise<voi
         const token = await deps.token(shop.id);
         if (token) await syncChannels(env, shop, token);
       } catch (e) {
+        console.error("daily channel refresh failed", shop.id, (e as Error)?.message);
         if (e instanceof BufferError && (e.kind === "rate_limited" || e.kind === "blocked")) break;
       }
     }

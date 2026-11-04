@@ -25,7 +25,7 @@ export function WhichShop(): JSX.Element {
   useEffect(() => {
     api<{ orgs: { id: string; name: string }[] }>("/api/orgs")
       .then((r) => setOrgs(r.orgs))
-      .catch(() => (location.href = "/?error=exchange"));
+      .catch(() => (location.href = "/"));
   }, []);
   async function pick(id: string) {
     setBusy(id);

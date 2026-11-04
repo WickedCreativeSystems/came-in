@@ -59,7 +59,7 @@ html,.th{scrollbar-width:none}html::-webkit-scrollbar,.th::-webkit-scrollbar{dis
 .th h2{margin:0;font-family:var(--fd);font-weight:700;font-size:30px;line-height:1;letter-spacing:-.005em}
 .th p{margin:0;font-size:14px;color:var(--ink-2);line-height:1.4}
 .plain .bo{justify-content:center}
-.tk{margin-top:auto;background:var(--label);color:var(--label-ink);border-radius:4px;padding:12px 18px;box-shadow:0 0 0 1px rgba(35,31,27,.12);-webkit-mask:radial-gradient(circle at 0 50%,transparent 7px,#000 7.5px),radial-gradient(circle at 100% 50%,transparent 7px,#000 7.5px);-webkit-mask-composite:source-in;mask:radial-gradient(circle at 0 50%,transparent 7px,#000 7.5px),radial-gradient(circle at 100% 50%,transparent 7px,#000 7.5px);mask-composite:intersect;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
+.tk{margin-top:auto;background:var(--label);color:var(--label-ink);border-radius:4px;padding:12px 14px;box-shadow:0 0 0 1px rgba(35,31,27,.12);-webkit-mask:radial-gradient(circle at 0 50%,transparent 7px,#000 7.5px),radial-gradient(circle at 100% 50%,transparent 7px,#000 7.5px);-webkit-mask-composite:source-in;mask:radial-gradient(circle at 0 50%,transparent 7px,#000 7.5px),radial-gradient(circle at 100% 50%,transparent 7px,#000 7.5px);mask-composite:intersect;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
 .tk .eyebrow{color:#6E665D;margin-bottom:4px}
 .tk .w{font-family:var(--fd);font-weight:700;font-size:22px;line-height:1}
 .tk .c{font-size:13px;color:#6E665D;margin-top:4px;line-height:1.3}
@@ -71,7 +71,7 @@ html,.th{scrollbar-width:none}html::-webkit-scrollbar,.th::-webkit-scrollbar{dis
 .rv{text-align:left}
 .rv .who{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .rv h2{font-size:28px}
-.strip{margin:0 10px 8px;border:1px solid var(--stamp);background:var(--stamp-tint);color:var(--stamp);border-radius:4px;padding:10px 12px;font-size:14px;display:flex;gap:10px;align-items:center;justify-content:space-between}
+.strip{position:fixed;z-index:7;left:10px;right:10px;top:10px;border:1px solid var(--stamp);background:var(--stamp-tint);color:var(--stamp);border-radius:4px;padding:10px 12px;font-size:14px;display:flex;gap:10px;align-items:center;justify-content:space-between}
 .strip[hidden]{display:none}
 .strip .btn{height:32px;padding:0 12px;font-size:14px;color:var(--stamp);border-color:var(--stamp)}
 .gone{padding:32px 16px}
@@ -95,11 +95,11 @@ export function renderTapPage(d: TapPageData): string {
   const body = `<div id="pg">${head}
 <div class="ask"><h1>Saw us online?</h1><p>Tap the post that brought you in.</p></div>
 <div class="grid" id="g">${tiles}</div>
-<div class="strip" id="err" hidden role="alert"><span>We couldn't reach the shop. Try again?</span><button class="btn" id="retry">Try again</button></div>
 <div class="none"><button class="btn" id="none">I didn't see a post</button></div>
 <footer class="ft"><span>Anonymous. A post, a time, nothing else.</span><span class="ci">${BELL_MONO_SVG}CAME IN</span></footer>
 </div>
-<section class="th" id="th" hidden aria-live="polite"></section>
+<section class="th" id="th" hidden role="dialog" aria-modal="true" aria-label="Thanks"></section>
+<div class="strip" id="err" hidden role="alert"><span>We couldn't reach the shop. Try again?</span><button class="btn" id="retry">Try again</button></div>
 <script type="application/json" id="cfg">${jsonForScript({
     shop: d.shop.id,
     name: d.shop.name,
@@ -141,13 +141,14 @@ function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorag
 function rid(){var a=new Uint8Array(16);crypto.getRandomValues(a);return Array.from(a,function(b){return('0'+b.toString(16)).slice(-2)}).join('')}
 var dev=ls(C.dk);if(!dev){dev=rid();ls(C.dk,dev)}
 function day(){try{return new Intl.DateTimeFormat('en-CA',{timeZone:C.tz,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}catch(e){return new Date().toISOString().slice(0,10)}}
-var tk='ci_t:'+C.shop;
+var tk='ci_t:'+C.dk+':'+C.shop;
 function already(){return C.mode!=='sample'&&ls(tk)===day()}
 function e(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
-function ticket(){if(!C.ty)return'';var d=new Date(),dd,tt;try{dd=d.toLocaleDateString('en-GB',{timeZone:C.tz,weekday:'short',day:'numeric',month:'short'}).replace(/,/g,'');tt=d.toLocaleTimeString('en-US',{timeZone:C.tz,hour:'numeric',minute:'2-digit'}).replace(/\s?([AP]M)$/i,function(m,a){return' '+a.toLowerCase()})}catch(x){dd=d.toDateString();tt=d.toTimeString().slice(0,5)}
+function ticket(){if(!C.ty)return'';var d=new Date(),dd,tt;try{dd=d.toLocaleDateString('en-GB',{timeZone:C.tz,weekday:'short',day:'numeric',month:'short'}).replace(/,/g,'');tt=d.toLocaleTimeString('en-US',{timeZone:C.tz,hour:'numeric',minute:'2-digit'}).toLowerCase()}catch(x){dd=d.toDateString();tt=d.toTimeString().slice(0,5)}
 return'<div class="tk"><div><div class="eyebrow">Today\\'s thank-you</div><div class="w">'+e(C.ty)+'</div><div class="c">Show this at the till.</div></div><div class="d">'+e(dd)+'<b>'+e(tt)+'</b></div></div>'}
-function show(html,plain){th.className='th'+(plain?' plain':'');th.innerHTML=html;th.hidden=false;if(rm){th.classList.add('in')}else{requestAnimationFrame(function(){requestAnimationFrame(function(){th.classList.add('in')})})}}
-function close(){th.classList.remove('in');setTimeout(function(){th.hidden=true;th.innerHTML=''},rm?0:320);g.classList.remove('picked');var o=g.querySelector('.on');if(o)o.classList.remove('on');busy=false;
+var pg=$('pg'),last=null;
+function show(html,plain){th.className='th'+(plain?' plain':'');th.innerHTML=html;th.hidden=false;pg.inert=true;setTimeout(function(){var f=th.querySelector('.btn');if(f)f.focus({preventScroll:true})},rm?0:330);if(rm){th.classList.add('in')}else{requestAnimationFrame(function(){requestAnimationFrame(function(){th.classList.add('in')})})}}
+function close(){th.classList.remove('in');pg.inert=false;setTimeout(function(){th.hidden=true;th.innerHTML=''},rm?0:320);g.classList.remove('picked');var o=g.querySelector('.on');if(o)o.classList.remove('on');busy=false;if(last&&last.focus)last.focus({preventScroll:true});
 if(window.parent!==window){try{window.parent.postMessage({ci:'closed'},location.origin)}catch(x){}}}
 function done(){if(C.rv){review()}else close()}
 function review(){show('<div class="bo rv"><div class="who">'+(C.avatar?'<img class="av" src="'+e(C.avatar)+'" alt="" width="40" height="40" style="width:40px;height:40px">':'<span class="av av-f" aria-hidden="true" style="width:40px;height:40px;font-size:18px">'+e(C.ini)+'</span>')+'<span class="nm">'+e(C.name)+'</span></div><div><h2>Would you leave us a review?</h2><p>A line from you helps more than you\\'d think.</p></div><div class="bs"><a class="btn primary" id="lv" href="'+e(C.rv)+'" target="_blank" rel="noopener">Leave us a review</a><button class="btn" id="nn">Not now</button></div></div>',true);
@@ -162,14 +163,15 @@ var tries=0;
 function send(body){tries=0;pending=body;attempt()}
 function attempt(){var b=pending;if(!b)return;fetch(C.ep,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b),credentials:'same-origin',keepalive:true}).then(function(r){
 if(r.status===410){location.reload();return}
-if(r.status>=500)throw new Error('s'+r.status);return r.json()}).then(function(j){if(!j)return;pending=null;err.hidden=true;if(C.mode!=='sample')ls(tk,day());
+if(r.status>=500)throw new Error('s'+r.status);return r.json()}).then(function(j){if(!j)return;pending=null;err.hidden=true;if(C.mode!=='sample'&&j.ok)ls(tk,day());
 if(j.again){var h=th.querySelector('h2');if(h)h.textContent='Thanks again!';var k=th.querySelector('.tk');if(k)k.remove()}}).catch(function(){
 tries++;if(tries<=5){setTimeout(attempt,tries*2000)}else{err.hidden=false}})}
 $('retry').onclick=function(){err.hidden=true;tries=0;attempt()};
+document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&!th.hidden)close()});
 g.addEventListener('click',function(ev){var b=ev.target.closest('.t');if(!b||busy)return;busy=true;
-var t={id:b.dataset.i,name:b.dataset.n,img:b.dataset.img||null,text:(b.querySelector('.tx')||{}).textContent||''};
+last=b;var t={id:b.dataset.i,name:b.dataset.n,img:b.dataset.img||null,text:(b.querySelector('.tx')||{}).textContent||''};
 var again=already();g.classList.add('picked');b.classList.add('on');
 setTimeout(function(){thanks(t,again)},rm?0:320);
 if(!again)send({shop:C.shop,tile:t.id,answer:'post',source:C.src,device:dev})});
-$('none').onclick=function(){if(busy)return;busy=true;var again=already();thanks(null,again);if(!again)send({shop:C.shop,tile:null,answer:'walked_past',source:C.src,device:dev})};
+$('none').onclick=function(){if(busy)return;busy=true;last=$('none');var again=already();thanks(null,again);if(!again)send({shop:C.shop,tile:null,answer:'walked_past',source:C.src,device:dev})};
 })();`;

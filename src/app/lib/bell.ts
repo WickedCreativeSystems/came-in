@@ -14,7 +14,7 @@ export function setSound(on: boolean): void {
   storage("ci_sound", on ? "on" : "off");
 }
 
-function unlock() {
+export function unlock(): void {
   unlocked = true;
   try {
     ctx = ctx ?? new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
@@ -23,14 +23,14 @@ function unlock() {
 }
 
 /** Any press on the page counts as the first interaction (plan section 2). */
-export function listenForFirstInteraction(): void {
+export function listenForFirstInteraction(target: Window = window): void {
   const once = () => {
     unlock();
-    window.removeEventListener("pointerdown", once, true);
-    window.removeEventListener("keydown", once, true);
+    target.removeEventListener("pointerdown", once, true);
+    target.removeEventListener("keydown", once, true);
   };
-  window.addEventListener("pointerdown", once, true);
-  window.addEventListener("keydown", once, true);
+  target.addEventListener("pointerdown", once, true);
+  target.addEventListener("keydown", once, true);
 }
 
 export function ringSound(): void {

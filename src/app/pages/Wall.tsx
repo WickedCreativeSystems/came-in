@@ -192,6 +192,12 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
             </a>
           </div>
         )}
+        <footer class="app-foot privacy">
+          <span>Anonymous. A post, a time, nothing else.</span>
+          <a href="/privacy">Privacy</a>
+          <span>Built for Buffer Commit 2026</span>
+          {sample && <a href="/credits">Photo credits</a>}
+        </footer>
       </main>
       {sample && <PhoneFrame open={sheet} onOpen={() => setSheet(true)} onClose={() => setSheet(false)} src="/sample/t" />}
     </div>
