@@ -25,6 +25,9 @@ export interface ShopRow {
   revoked_at: string | null;
   deleted_at: string | null;
   card_printed_at: string | null;
+  tag_id: string | null;
+  tag_state: "unknown" | "ok" | "off";
+  monday_push_week: string | null;
 }
 
 export interface TileRow {

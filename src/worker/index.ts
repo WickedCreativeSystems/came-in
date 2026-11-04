@@ -33,6 +33,12 @@ import { renderCounterPage, renderCounterClosed } from "./render/counter";
 import { renderCard, cardSize, type CardSize } from "./render/card";
 import { parsePatch, shopSettings, saveShopSettings, sampleSettings, saveSampleSettings, setSample, deleteShop } from "./settings";
 import { clearOwnerCookie } from "./lib/cookies";
+import { shopWeek, parseRange } from "./week";
+import { shopPostPage } from "./post";
+import { postAgain, postShare, moreLikeThis, queueWinnerJobs, runJobs, type PostTarget, type ChannelResult } from "./writes";
+import { sampleWeek, samplePostPage, SAMPLE_CHANNELS } from "./sample";
+import { mondayBody, summarize } from "../shared/week";
+import { zonedParts, shopWeekKey } from "../shared/time";
 
 export { ShopRoom };
 
@@ -383,7 +389,8 @@ app.post("/api/tap", async (c) => {
     // The bell rings for every open owner screen except the tapping device, then every phone (plan 1.4).
     const shop = await liveShop(c.env, input.shop);
     c.executionCtx.waitUntil(r.ring(out.ring.message, out.ring.exceptDevice));
-    if (shop) c.executionCtx.waitUntil(pushShop(c.env, shop.id, ringNote(shop.name, shop.avatar_key ? `/i/${shop.id}/avatar` : null, out.ring.message.sentence, "/wall", out.ring.message.tileId), out.ring.exceptDevice));
+    if (shop) c.executionCtx.waitUntil(pushShop(c.env, shop.id, ringNote(shop.name, shop.avatar_key ? `/i/${shop.id}/avatar` : null, out.ring.message.sentence, `/post/${out.ring.message.tileId}`, out.ring.message.tileId), out.ring.exceptDevice));
+    if (shop && out.ring.message.tileId && (await queueWinnerJobs(c.env, shop, out.ring.message.tileId, out.ring.message.count))) c.executionCtx.waitUntil(r.kickJobs(shop.id));
   }
   return c.json(out.body, out.status);
 });
@@ -433,11 +440,11 @@ app.post("/api/sample/tap", async (c) => {
   const tile = answer === "post" ? (b.tile ?? null) : null;
   if (answer === "post" && !isSampleTile(tile)) return c.json({ ok: false, error: "no such post" }, 400);
   const now = new Date();
-  const r = await recordSampleTap(c.env, session, tile, answer, now);
+  const r = await recordSampleTap(c.env, session, tile, answer, now, "counter");
   const settings = await sampleSettings(c.env, session);
   if (answer === "post" && r.name) {
     // Sample taps ring only this browser: its room is sample:<session>, and only phones this browser rang up (plan 1.5).
-    c.executionCtx.waitUntil(pushSample(c.env, session, ringNote(SAMPLE_SHOP.name, null, bellSentence(r.name), "/sample", tile), null));
+    c.executionCtx.waitUntil(pushSample(c.env, session, ringNote(SAMPLE_SHOP.name, null, bellSentence(r.name), `/sample/post/${tile}`, tile), null));
     c.executionCtx.waitUntil(
       room(c.env, `sample:${session}`).ring({
         type: "ring",
@@ -608,7 +615,8 @@ app.post("/api/counter/tap", async (c) => {
   if (out.status === 200 && out.ring) {
     const { message, exceptDevice, shop } = out.ring;
     c.executionCtx.waitUntil(room(c.env, shop.id).ring(message, exceptDevice));
-    c.executionCtx.waitUntil(pushShop(c.env, shop.id, ringNote(shop.name, shop.avatar_key ? `/i/${shop.id}/avatar` : null, message.sentence, "/wall", message.tileId), exceptDevice));
+    c.executionCtx.waitUntil(pushShop(c.env, shop.id, ringNote(shop.name, shop.avatar_key ? `/i/${shop.id}/avatar` : null, message.sentence, `/post/${message.tileId}`, message.tileId), exceptDevice));
+    if (message.tileId && (await queueWinnerJobs(c.env, shop, message.tileId, message.count))) c.executionCtx.waitUntil(room(c.env, shop.id).kickJobs(shop.id));
   }
   return c.json(out.body, out.status);
 });
@@ -640,11 +648,11 @@ app.post("/api/sample/counter/tap", async (c) => {
   const tile = answer === "post" ? (b.tile ?? null) : null;
   if (answer === "post" && !isSampleTile(tile)) return c.json({ ok: false, error: "no such post" }, 400);
   const now = new Date();
-  const r = await recordSampleTap(c.env, session, tile, answer, now);
+  const r = await recordSampleTap(c.env, session, tile, answer, now, "counter");
   if (answer === "post" && r.name) {
     const message = { type: "ring" as const, tileId: tile, sentence: bellSentence(r.name), where: whereLine("counter"), count: r.count, countToday: r.countToday, imageUrl: r.imageUrl, at: now.toISOString() };
     c.executionCtx.waitUntil(room(c.env, `sample:${session}`).ring(message));
-    c.executionCtx.waitUntil(pushSample(c.env, session, ringNote(SAMPLE_SHOP.name, null, message.sentence, "/sample", tile), null));
+    c.executionCtx.waitUntil(pushSample(c.env, session, ringNote(SAMPLE_SHOP.name, null, message.sentence, `/sample/post/${tile}`, tile), null));
   }
   return c.json({ ok: true, counted: true, name: r.name });
 });
@@ -682,6 +690,178 @@ app.post("/api/shop/delete", async (c) => {
   return c.json({ ok: true, next: "/" });
 });
 
+// ---------- Phase 3: This week, a post's page, the write-backs, the share image ----------
+
+app.get("/api/week", async (c) => {
+  noStore(c);
+  const shop = await ownerShop(c);
+  if (!shop) return c.json({ error: "signed out" }, 401);
+  const data = await shopWeek(c.env, shop, parseRange(c.req.query("range")));
+  return c.json({ ...data, channels: await targetChannels(c.env, shop.id), drafts: c.env.BUFFER_DRAFTS === "1" });
+});
+
+app.get("/api/sample/week", async (c) => {
+  noStore(c);
+  const session = sampleSession(c, () => randomToken(32));
+  const data = await sampleWeek(c.env, session, parseRange(c.req.query("range")));
+  return c.json({ ...data, channels: SAMPLE_CHANNELS, drafts: false });
+});
+
+async function targetChannels(env: Env, shopId: string): Promise<{ id: string; name: string; service: string }[]> {
+  const { results } = await env.DB.prepare(`SELECT id, name, display_name, service FROM channels WHERE shop_id = ?1 AND enabled = 1 ORDER BY rowid`).bind(shopId).all<{ id: string; name: string; display_name: string | null; service: string }>();
+  return results.map((r) => ({ id: r.id, name: r.display_name || r.name, service: r.service }));
+}
+
+async function chosenTargets(env: Env, shopId: string, ids: unknown): Promise<PostTarget[]> {
+  const all = await targetChannels(env, shopId);
+  const want = new Set(Array.isArray(ids) ? ids.filter((x): x is string => typeof x === "string") : []);
+  return all.filter((ch) => want.has(ch.id)).map((ch) => ({ channelId: ch.id, service: ch.service }));
+}
+
+/** One answer for the sheet (plan 3.7, 3.9, 1.8). */
+function sheetAnswer(results: ChannelResult[], drafts: boolean): { outcome: "queued" | "approval" | "draft" | "failed"; results: ChannelResult[] } {
+  const ok = results.filter((r) => r.status === "queued" || r.status === "retrying" || r.status === "approval" || r.status === "draft");
+  if (!ok.length) return { outcome: "failed", results };
+  if (drafts && ok.some((r) => r.status === "draft")) return { outcome: "draft", results };
+  if (ok.some((r) => r.status === "approval")) return { outcome: "approval", results };
+  return { outcome: "queued", results };
+}
+
+app.get("/api/post/:tile", async (c) => {
+  noStore(c);
+  const shop = await ownerShop(c);
+  if (!shop) return c.json({ error: "signed out" }, 401);
+  const page = await shopPostPage(c.env, shop, c.req.param("tile"));
+  if (!page) return c.json({ error: "no such post" }, 404);
+  return c.json({ ...page, drafts: c.env.BUFFER_DRAFTS === "1" });
+});
+
+function parsePostPatch(b: Record<string, unknown>): { nickname?: string | null; hidden?: boolean } | string {
+  const out: { nickname?: string | null; hidden?: boolean } = {};
+  if ("nickname" in b) {
+    const n = typeof b.nickname === "string" ? b.nickname.replace(/\s+/g, " ").trim() : "";
+    if ([...n].length > 24) return "Keep it to 24 characters.";
+    out.nickname = n || null;
+  }
+  if ("hidden" in b) out.hidden = !!b.hidden;
+  return out;
+}
+
+app.post("/api/post/:tile", async (c) => {
+  const shop = await ownerShop(c);
+  if (!shop) return c.json({ error: "signed out" }, 401);
+  const p = parsePostPatch((await c.req.json().catch(() => ({}))) as Record<string, unknown>);
+  if (typeof p === "string") return c.json({ error: p, field: "nickname" }, 400);
+  const tileId = c.req.param("tile");
+  const t = await c.env.DB.prepare(`SELECT id FROM tiles WHERE id = ?1 AND shop_id = ?2`).bind(tileId, shop.id).first();
+  if (!t) return c.json({ error: "no such post" }, 404);
+  if ("nickname" in p) await c.env.DB.prepare(`UPDATE tiles SET nickname = ?2 WHERE id = ?1`).bind(tileId, p.nickname).run();
+  if ("hidden" in p) await c.env.DB.prepare(`UPDATE tiles SET hidden = ?2 WHERE id = ?1`).bind(tileId, p.hidden ? 1 : 0).run();
+  return c.json({ ok: true });
+});
+
+app.post("/api/post/:tile/again", async (c) => {
+  const shop = await ownerShop(c);
+  if (!shop) return c.json({ error: "signed out" }, 401);
+  const b = (await c.req.json().catch(() => ({}))) as { channels?: unknown; text?: unknown };
+  const targets = await chosenTargets(c.env, shop.id, b.channels);
+  if (!targets.length) return c.json({ error: "Pick at least one channel." }, 400);
+  const text = typeof b.text === "string" && b.text.trim() ? b.text.trim() : null;
+  const results = await postAgain(c.env, shop, c.req.param("tile"), targets, text, publicOrigin(c));
+  return c.json(sheetAnswer(results, c.env.BUFFER_DRAFTS === "1"));
+});
+
+app.post("/api/post/:tile/idea", async (c) => {
+  const shop = await ownerShop(c);
+  if (!shop) return c.json({ error: "signed out" }, 401);
+  const page = await shopPostPage(c.env, shop, c.req.param("tile"));
+  if (!page) return c.json({ error: "no such post" }, 404);
+  const outcome = await moreLikeThis(c.env, shop, page.tile.id, page.tile.services, publicOrigin(c), `More like ${page.tile.name}`);
+  return c.json({ outcome: outcome === "failed" ? "failed" : "saved" });
+});
+
+// The share image: drawn in the owner's browser, uploaded here, served for Buffer to fetch (plan 3.7, P14).
+const SHARE_MAX = 5 * 1024 * 1024;
+async function storeShare(c: C, owner: string, kind: string, range: string, tz: string): Promise<Response> {
+  if (kind !== "story" && kind !== "square") return c.json({ error: "bad kind" }, 400);
+  if (c.req.header("content-type") !== "image/png") return c.json({ error: "PNG only" }, 415);
+  const buf = await c.req.arrayBuffer();
+  if (buf.byteLength > SHARE_MAX || buf.byteLength < 8) return c.json({ error: "too big" }, 413);
+  const sig = new Uint8Array(buf.slice(0, 8));
+  if (![0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((b, i) => sig[i] === b)) return c.json({ error: "not a PNG" }, 415);
+  const name = `${shopWeekKey(new Date(), tz)}-${parseRange(range)}-${kind}-${randomToken(8)}.png`;
+  await c.env.MEDIA.put(`share/${owner}/${name}`, buf, { httpMetadata: { contentType: "image/png", cacheControl: "public, max-age=31536000, immutable" } });
+  return c.json({ ok: true, url: `${publicOrigin(c)}/s/${owner}/${name}` });
+}
+
+app.post("/api/share/:kind", async (c) => {
+  const shop = await ownerShop(c);
+  if (!shop) return c.json({ error: "signed out" }, 401);
+  return storeShare(c, shop.id, c.req.param("kind"), c.req.query("range") ?? "this", shop.timezone);
+});
+
+app.post("/api/sample/share/:kind", async (c) => {
+  const session = sampleSession(c, () => randomToken(32));
+  return storeShare(c, `sample-${session.slice(0, 12)}`, c.req.param("kind"), c.req.query("range") ?? "this", SAMPLE_SHOP.timezone);
+});
+
+app.get("/s/:owner/:file", async (c) => {
+  const owner = c.req.param("owner");
+  const file = c.req.param("file");
+  if (!/^[a-z0-9-]{4,40}$/i.test(owner) || !/^[A-Za-z0-9-]+\.png$/.test(file)) return c.notFound();
+  return serveR2(c, `share/${owner}/${file}`, "public, max-age=31536000, immutable");
+});
+
+app.post("/api/week/post", async (c) => {
+  const shop = await ownerShop(c);
+  if (!shop) return c.json({ error: "signed out" }, 401);
+  const b = (await c.req.json().catch(() => ({}))) as { channels?: unknown; text?: unknown; image?: unknown };
+  const targets = await chosenTargets(c.env, shop.id, b.channels);
+  if (!targets.length) return c.json({ error: "Pick at least one channel." }, 400);
+  const text = typeof b.text === "string" ? b.text.trim().slice(0, 2000) : "";
+  const image = typeof b.image === "string" ? b.image : "";
+  if (!image.startsWith(`${publicOrigin(c)}/s/${shop.id}/`)) return c.json({ error: "share image first" }, 400);
+  const results = await postShare(c.env, shop, targets, text, image);
+  return c.json(sheetAnswer(results, c.env.BUFFER_DRAFTS === "1"));
+});
+
+// The sample: write-backs show as done without calling Buffer (plan 3.10).
+app.get("/api/sample/post/:tile", async (c) => {
+  noStore(c);
+  const session = sampleSession(c, () => randomToken(32));
+  const page = await samplePostPage(c.env, session, c.req.param("tile"));
+  if (!page) return c.json({ error: "no such post" }, 404);
+  return c.json({ ...page, drafts: false });
+});
+
+app.post("/api/sample/post/:tile", async (c) => {
+  const session = sampleSession(c, () => randomToken(32));
+  const tile = c.req.param("tile");
+  if (!isSampleTile(tile)) return c.json({ error: "no such post" }, 404);
+  const p = parsePostPatch((await c.req.json().catch(() => ({}))) as Record<string, unknown>);
+  if (typeof p === "string") return c.json({ error: p, field: "nickname" }, 400);
+  if ("nickname" in p) await setSample(c.env, session, `nick:${tile}`, p.nickname ?? null);
+  if ("hidden" in p) await setSample(c.env, session, `hide:${tile}`, p.hidden ? "1" : null);
+  return c.json({ ok: true });
+});
+
+app.post("/api/sample/post/:tile/again", async (c) => {
+  sampleSession(c, () => randomToken(32));
+  const b = (await c.req.json().catch(() => ({}))) as { channels?: string[] };
+  const ids = (b.channels ?? []).filter((id) => SAMPLE_CHANNELS.some((s) => s.id === id));
+  if (!ids.length) return c.json({ error: "Pick at least one channel." }, 400);
+  return c.json({ outcome: "queued", results: ids.map((id) => ({ channelId: id, status: "queued" })) });
+});
+
+app.post("/api/sample/post/:tile/idea", (c) => c.json({ outcome: "saved" }));
+
+app.post("/api/sample/week/post", async (c) => {
+  const b = (await c.req.json().catch(() => ({}))) as { channels?: string[] };
+  const ids = (b.channels ?? []).filter((id) => SAMPLE_CHANNELS.some((s) => s.id === id));
+  if (!ids.length) return c.json({ error: "Pick at least one channel." }, 400);
+  return c.json({ outcome: "queued", results: ids.map((id) => ({ channelId: id, status: "queued" })) });
+});
+
 // ---------- The owner app (Vite + Preact, static assets) ----------
 
 const APP_ROUTES = ["/wall", "/week", "/setup", "/setup/org", "/setup/channels", "/setup/reading", "/sample", "/sample/week", "/sample/setup"];
@@ -701,6 +881,7 @@ async function serveApp(c: C) {
 
 for (const r of APP_ROUTES) app.get(r, serveApp);
 app.get("/post/:tile", serveApp);
+app.get("/sample/post/:tile", serveApp);
 
 // Everything else is a static asset (fonts, the app's bundles, the sample photos).
 app.all("*", async (c) => {
@@ -710,6 +891,28 @@ app.all("*", async (c) => {
 });
 
 // ---------- Crons (plan 1.6) ----------
+
+/** Monday at 08:00 shop time: "Your week: …", opening last week (plan 3.7; P11). Once a week per shop. */
+export async function mondayPushes(env: Env, now = new Date()): Promise<string[]> {
+  const { results } = await env.DB.prepare(
+    `SELECT s.* FROM shops s WHERE s.deleted_at IS NULL AND EXISTS (SELECT 1 FROM push_subs p WHERE p.shop_id = s.id AND p.failed_at IS NULL)`,
+  ).all<ShopRow>();
+  const sent: string[] = [];
+  for (const shop of results) {
+    const p = zonedParts(now, shop.timezone);
+    if (p.weekday !== 1 || p.hour !== 8 || p.minute >= 15) continue;
+    const week = shopWeekKey(now, shop.timezone);
+    if (shop.monday_push_week === week) continue;
+    await env.DB.prepare(`UPDATE shops SET monday_push_week = ?2 WHERE id = ?1`).bind(shop.id, week).run();
+    const last = await shopWeek(env, shop, "last", now);
+    const body = mondayBody(last.summary);
+    if (!body) continue;
+    await pushShop(env, shop.id, { title: "Came In", body, icon: "/icons/icon-192.png", url: "/week?range=last", tag: `week-${week}` }, null);
+    sent.push(shop.id);
+  }
+  return sent;
+}
+void summarize;
 
 /** The 04:00 cron (plan 1.6): channel names and avatars, missing images, old sample rows. */
 export async function daily(env: Env, token: (shopId: string) => Promise<string | null>, now = new Date()): Promise<void> {
@@ -747,9 +950,12 @@ async function scheduled(controller: ScheduledController, env: Env): Promise<voi
   const now = new Date(controller.scheduledTime || Date.now());
   if (controller.cron === "0 4 * * *") {
     await daily(env, deps.token, now);
+    await runJobs(env, null, now);
     return;
   }
   await pollDue(env, deps, now);
+  await runJobs(env, null, now);
+  await mondayPushes(env, now);
 }
 
 export default {

@@ -3,8 +3,9 @@ import "@shared/tokens.css";
 import "./app.css";
 import { Wall } from "./pages/Wall";
 import { WhichShop, Channels, Reading } from "./pages/FirstRun";
-import { Later } from "./pages/Later";
 import { Setup } from "./pages/Setup";
+import { Week } from "./pages/Week";
+import { Post } from "./pages/Post";
 import { registerServiceWorker } from "./lib/push";
 import { injectMarkSprite } from "./ui/marks";
 import { listenForFirstInteraction } from "./lib/bell";
@@ -27,15 +28,16 @@ function route() {
     case "/setup/reading":
       return <Reading />;
     case "/week":
-      return <Later tab="week" sample={false} title="This week" phase={3} />;
+      return <Week sample={false} />;
     case "/sample/week":
-      return <Later tab="week" sample title="This week" phase={3} />;
+      return <Week sample />;
     case "/setup":
       return <Setup sample={false} />;
     case "/sample/setup":
       return <Setup sample />;
     default:
-      if (p.startsWith("/post/")) return <Later tab="wall" sample={false} title="A post" phase={3} />;
+      if (p.startsWith("/post/")) return <Post sample={false} tileId={decodeURIComponent(p.slice(6))} />;
+      if (p.startsWith("/sample/post/")) return <Post sample tileId={decodeURIComponent(p.slice(13))} />;
       location.href = "/";
       return null;
   }

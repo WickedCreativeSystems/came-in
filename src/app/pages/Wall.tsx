@@ -53,7 +53,7 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
   function onRing(m: RingMessage) {
     ringSound();
     ringKey.current += 1;
-    setRing({ key: ringKey.current, sentence: m.sentence, where: m.where, imageUrl: m.imageUrl, href: null });
+    setRing({ key: ringKey.current, sentence: m.sentence, where: m.where, imageUrl: m.imageUrl, href: m.tileId ? `${sample ? "/sample" : ""}/post/${m.tileId}` : null });
     setTimeout(() => {
       setData((d) => {
         if (!d) return d;
@@ -178,7 +178,7 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
         {shown.length ? (
           <div class="wall">
             {shown.map((t, i) => (
-              <Tile key={t.id} tile={t} index={i} now={now} tz={tz} flash={flash === t.id} />
+              <Tile key={t.id} tile={t} index={i} now={now} tz={tz} flash={flash === t.id} href={`${base}/post/${t.id}`} />
             ))}
           </div>
         ) : data.sync.status === "running" ? (

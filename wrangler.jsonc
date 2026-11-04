@@ -43,7 +43,9 @@
       "routes": [],
       "vars": {
         "APP_ENV": "staging",
-        "PUBLIC_ORIGIN": "https://came-in-staging.walkertbrown.workers.dev"
+        "PUBLIC_ORIGIN": "https://came-in-staging.walkertbrown.workers.dev",
+        // Staging saves posts as Buffer drafts, so a check never queues on a real channel.
+        "BUFFER_DRAFTS": "1"
       },
       "d1_databases": [
         {

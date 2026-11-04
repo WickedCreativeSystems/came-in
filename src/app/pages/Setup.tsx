@@ -357,6 +357,9 @@ function RingMyPhone({ sample, pushKey, onDone }: { sample: boolean; pushKey: st
       {state === "refused" && (
         <div class="note">
           <p class="small">Came In couldn't turn on the bell in this browser. The bell still rings wherever Came In is open.</p>
+          <button class="btn" onClick={go}>
+            Try again
+          </button>
         </div>
       )}
     </div>
