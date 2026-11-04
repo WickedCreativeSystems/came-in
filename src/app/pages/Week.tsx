@@ -147,11 +147,14 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
                 <div class="week-tile" key={t.id}>
                   <Tile tile={{ ...t, count: t.weekPeople }} index={i} now={now} tz={wall.shop.timezone} flash={false} href={`${base}/post/${t.id}`} />
                   <div class="tile-actions">
-                    <button class="btn sm" onClick={() => setAgain(t.id)}>
-                      Post it again
+                    <button class="tile-action" aria-label="Post it again" onClick={() => setAgain(t.id)}>
+                      <span class="long">Post it again</span>
+                      <span class="short" aria-hidden="true">Again</span>
                     </button>
+                    <span class="tile-divider" aria-hidden="true" />
                     <button
-                      class="btn sm"
+                      class="tile-action"
+                      aria-label="More like this"
                       onClick={async () => {
                         try {
                           const r = await api<{ outcome: Outcome }>(`${sample ? "/api/sample/post" : "/api/post"}/${t.id}/idea`, { method: "POST" });
@@ -161,7 +164,8 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
                         }
                       }}
                     >
-                      More like this
+                      <span class="long">More like this</span>
+                      <span class="short" aria-hidden="true">More like it</span>
                     </button>
                   </div>
                   {lines[t.id] && <p class="small outcome">{lines[t.id]}</p>}
