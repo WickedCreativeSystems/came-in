@@ -292,3 +292,4 @@ nav.bottombar { display: none; }
 @media (max-width: 389px) { .week-actions { flex-direction: column; align-items: stretch; gap: 8px; } .week-actions .btn { width: 100%; white-space: normal; } }
 .setup-hold { min-height: 60vh; background: var(--paper-2); border-radius: var(--r-tile); }
 .sound-hint { margin: 4px 0 0; font-size: 13px; color: var(--ink-2); }
+p.small.has-hint { margin-bottom: 0; }
