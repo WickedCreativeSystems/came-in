@@ -262,8 +262,8 @@ export async function queueWinnerJobs(env: Env, shop: ShopRow, tileId: string, p
   const tile = await env.DB.prepare(`SELECT tagged_at, note_count FROM tiles WHERE id = ?1 AND shop_id = ?2`).bind(tileId, shop.id).first<{ tagged_at: string | null; note_count: number }>();
   if (!tile) return false;
   const pending = await env.DB.prepare(
-    `SELECT kind, MAX(CAST(json_extract(payload, '$.people') AS INTEGER)) AS people FROM buffer_jobs WHERE shop_id = ?1 AND done_at IS NULL AND kind IN ('tag','note') AND json_extract(payload, '$.tileId') = ?2 GROUP BY kind`,
-  ).bind(shop.id, tileId).all<{ kind: string; people: number | null }>();
+    `SELECT kind, MAX(CAST(json_extract(payload, '$.people') AS INTEGER)) AS people FROM buffer_jobs WHERE shop_id = ?1 AND done_at IS NULL AND tries < ?3 AND kind IN ('tag','note') AND json_extract(payload, '$.tileId') = ?2 GROUP BY kind`,
+  ).bind(shop.id, tileId, MAX_TRIES).all<{ kind: string; people: number | null }>();
   const pendingTag = pending.results.some((r) => r.kind === "tag");
   const pendingNote = pending.results.find((r) => r.kind === "note")?.people ?? 0;
   let queued = false;

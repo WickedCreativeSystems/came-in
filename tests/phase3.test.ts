@@ -516,3 +516,17 @@ describe("the sample's hidden post (NerdCider, LookieBot on f9d6a5f)", () => {
     expect(await (await call("/sample/t", { cookie })).text()).toContain('data-i="hours"');
   });
 });
+
+describe("dead jobs (NerdCider, phase-3-tag)", () => {
+  it("a note job that failed five times is dead: the next tap past the threshold queues a fresh one", async () => {
+    const { enqueue, queueWinnerJobs } = await import("../src/worker/writes");
+    const id = await shopWithPosts();
+    fakeBuffer();
+    const dead = await enqueue(env, id, "note", { tileId: `sour-${id}`, people: 3 });
+    await env.DB.prepare(`UPDATE buffer_jobs SET tries = 5 WHERE id = ?1`).bind(dead).run();
+    const shop = (await getShop(env, id))!;
+    expect(await queueWinnerJobs(env, shop, `sour-${id}`, 3)).toBe(true);
+    const live = await env.DB.prepare(`SELECT COUNT(*) AS n FROM buffer_jobs WHERE shop_id = ?1 AND kind = 'note' AND done_at IS NULL AND tries < 5`).bind(id).first<{ n: number }>();
+    expect(live!.n).toBe(1);
+  });
+});
