@@ -577,4 +577,15 @@ describe("the stranger fixes (EaseBot, Nov 4)", () => {
     expect(html).toContain("beforeprint");
   });
 
+  it("in print the card is exactly its page: its own size, no screen scale, no break after", async () => {
+    const id = await shopWithPosts();
+    for (const [size, w, h] of [["a6", "105mm", "148mm"], ["a5", "148mm", "210mm"], ["4x6", "101.6mm", "152.4mm"]] as const) {
+      const html = await (await call(`/card?size=${size}`, { cookie: await ownerCookie(id) })).text();
+      const print = html.slice(html.indexOf("@media print"));
+      expect(print).toContain(`width:${w}!important;height:${h}!important`);
+      expect(print).toContain("zoom:1!important");
+      expect(print).toContain("break-after:avoid");
+      expect(print).toContain("overflow:hidden!important");
+    }
+  });
 });
