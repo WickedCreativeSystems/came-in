@@ -30,10 +30,31 @@ export interface SubscriptionInput {
   keys: { p256dh: string; auth: string };
 }
 
-export function parseSubscription(v: unknown): SubscriptionInput | null {
+/**
+ * The browsers' push services. Came In only ever POSTs to these, so a
+ * subscription can't turn the Worker into a relay to any other host.
+ */
+const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /^[a-z0-9-]+\.googleapis\.com$/, /^updates\.push\.services\.mozilla\.com$/, /^web\.push\.apple\.com$/, /^[a-z0-9-]+\.push\.apple\.com$/, /^[a-z0-9-]+\.notify\.windows\.com$/];
+
+export function pushHostAllowed(endpoint: string, extra: string | undefined): boolean {
+  let host: string;
+  try {
+    const u = new URL(endpoint);
+    if (u.protocol !== "https:") return false;
+    host = u.hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  if (PUSH_HOSTS.some((r) => r.test(host))) return true;
+  return !!extra && extra.split(",").map((h) => h.trim()).includes(host);
+}
+
+export const SAMPLE_PHONES_MAX = 5;
+
+export function parseSubscription(v: unknown, extraHosts?: string): SubscriptionInput | null {
   if (!v || typeof v !== "object") return null;
   const s = v as { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown } };
-  if (typeof s.endpoint !== "string" || !/^https:\/\//.test(s.endpoint) || s.endpoint.length > 2048) return null;
+  if (typeof s.endpoint !== "string" || s.endpoint.length > 2048 || !pushHostAllowed(s.endpoint, extraHosts)) return null;
   if (typeof s.keys?.p256dh !== "string" || typeof s.keys?.auth !== "string") return null;
   if (s.keys.p256dh.length > 200 || s.keys.auth.length > 100) return null;
   return { endpoint: s.endpoint, keys: { p256dh: s.keys.p256dh, auth: s.keys.auth } };
@@ -98,6 +119,10 @@ export async function saveShopSub(env: Env, shopId: string, device: string, sub:
 
 export async function saveSampleSub(env: Env, session: string, device: string, sub: SubscriptionInput): Promise<void> {
   await env.DB.prepare(`DELETE FROM sample_push_subs WHERE endpoint = ?1`).bind(sub.endpoint).run();
+  // At most five phones per sample browser; the oldest gives way.
+  await env.DB.prepare(
+    `DELETE FROM sample_push_subs WHERE session_id = ?1 AND id NOT IN (SELECT id FROM sample_push_subs WHERE session_id = ?1 ORDER BY created_at DESC LIMIT ?2)`,
+  ).bind(session, SAMPLE_PHONES_MAX - 1).run();
   await env.DB.prepare(
     `INSERT INTO sample_push_subs (id, session_id, device_id, endpoint, p256dh, auth, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`,
   ).bind(uuid(), session, device, sub.endpoint, sub.keys.p256dh, sub.keys.auth, new Date().toISOString()).run();

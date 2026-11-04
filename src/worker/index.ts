@@ -49,6 +49,11 @@ function origin(c: C): string {
   return new URL(c.req.url).origin;
 }
 
+/** The address printed on cards and pasted on receipts: this Worker's public origin (plan section 2). */
+function publicOrigin(c: C): string {
+  return (c.env.PUBLIC_ORIGIN || origin(c)).replace(/\/+$/, "");
+}
+
 async function ownerShop(c: C): Promise<ShopRow | null> {
   const id = await ownerShopId(c);
   return id ? liveShop(c.env, id) : null;
@@ -245,7 +250,7 @@ app.get("/api/wall", async (c) => {
       theme: shop.theme,
       isSample: false,
       markWinners: !!shop.mark_winners,
-      tapUrl: `${origin(c)}/t/${shop.id}`,
+      tapUrl: `${publicOrigin(c)}/t/${shop.id}`,
       createdAt: shop.created_at,
     },
     tiles,
@@ -303,7 +308,7 @@ async function qrSvg(text: string): Promise<string> {
 app.get("/qr/sample.svg", async (c) => {
   c.header("Content-Type", "image/svg+xml");
   c.header("Cache-Control", "public, max-age=3600");
-  return c.body(await qrSvg(`${origin(c)}/sample/t`));
+  return c.body(await qrSvg(`${publicOrigin(c)}/sample/t`));
 });
 
 app.get("/qr/:file", async (c) => {
@@ -313,7 +318,7 @@ app.get("/qr/:file", async (c) => {
   if (!shop) return c.notFound();
   c.header("Content-Type", "image/svg+xml");
   c.header("Cache-Control", "public, max-age=3600");
-  return c.body(await qrSvg(`${origin(c)}/t/${shop.id}`));
+  return c.body(await qrSvg(`${publicOrigin(c)}/t/${shop.id}`));
 });
 
 // ---------- Images from R2, served through the Worker (no public bucket, plan 1.6) ----------
@@ -468,8 +473,8 @@ app.get("/api/setup", async (c) => {
   const subs = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM push_subs WHERE shop_id = ?1 AND failed_at IS NULL`).bind(shop.id).first<{ n: number }>();
   return c.json({
     settings: shopSettings(shop),
-    tapUrl: `${origin(c)}/t/${shop.id}`,
-    embed: `<script src="${origin(c)}/embed.js" data-shop="${shop.id}"></script>`,
+    tapUrl: `${publicOrigin(c)}/t/${shop.id}`,
+    embed: `<script src="${publicOrigin(c)}/embed.js" data-shop="${shop.id}"></script>`,
     phones: subs?.n ?? 0,
     channels: await channelRows(c.env, shop),
     pushKey: pushConfigured(c.env) ? c.env.VAPID_PUBLIC : null,
@@ -492,8 +497,8 @@ app.get("/api/sample/setup", async (c) => {
   const { counterOpened, ...settings } = await sampleSettings(c.env, session);
   return c.json({
     settings,
-    tapUrl: `${origin(c)}/sample/t`,
-    embed: `<script src="${origin(c)}/embed.js" data-shop="sample"></script>`,
+    tapUrl: `${publicOrigin(c)}/sample/t`,
+    embed: `<script src="${publicOrigin(c)}/embed.js" data-shop="sample"></script>`,
     phones: subs?.n ?? 0,
     channels: [],
     pushKey: pushConfigured(c.env) ? c.env.VAPID_PUBLIC : null,
@@ -519,7 +524,7 @@ app.get("/card", async (c) => {
   return c.html(
     renderCard({
       shop: { name: shop.name, handle: shop.handle, avatarUrl: shop.avatar_key ? `/i/${shop.id}/avatar` : null },
-      qrSvg: await qrSvg(`${origin(c)}/t/${shop.id}`),
+      qrSvg: await qrSvg(`${publicOrigin(c)}/t/${shop.id}`),
       size,
       printedEndpoint: "/api/card/printed",
       backUrl: "/setup#card",
@@ -534,7 +539,7 @@ app.get("/sample/card", async (c) => {
   return c.html(
     renderCard({
       shop: { name: SAMPLE_SHOP.name, handle: SAMPLE_SHOP.handle, avatarUrl: null },
-      qrSvg: await qrSvg(`${origin(c)}/sample/t`),
+      qrSvg: await qrSvg(`${publicOrigin(c)}/sample/t`),
       size,
       printedEndpoint: "/api/sample/card/printed",
       backUrl: "/sample/setup#card",
@@ -651,7 +656,7 @@ app.post("/api/push/subscribe", async (c) => {
   const shop = await ownerShop(c);
   if (!shop) return c.json({ error: "signed out" }, 401);
   const b = (await c.req.json().catch(() => ({}))) as { device?: string; subscription?: unknown };
-  const sub = parseSubscription(b.subscription);
+  const sub = parseSubscription(b.subscription, c.env.PUSH_TEST_HOSTS);
   const device = typeof b.device === "string" ? b.device.slice(0, 64) : "";
   if (!sub || !device) return c.json({ error: "bad subscription" }, 400);
   await saveShopSub(c.env, shop.id, device, sub, c.req.header("user-agent") ?? null);
@@ -661,7 +666,7 @@ app.post("/api/push/subscribe", async (c) => {
 app.post("/api/sample/push/subscribe", async (c) => {
   const session = sampleSession(c, () => randomToken(32));
   const b = (await c.req.json().catch(() => ({}))) as { device?: string; subscription?: unknown };
-  const sub = parseSubscription(b.subscription);
+  const sub = parseSubscription(b.subscription, c.env.PUSH_TEST_HOSTS);
   const device = typeof b.device === "string" ? b.device.slice(0, 64) : "";
   if (!sub || !device) return c.json({ error: "bad subscription" }, 400);
   await saveSampleSub(c.env, session, device, sub);
@@ -706,6 +711,31 @@ app.all("*", async (c) => {
 
 // ---------- Crons (plan 1.6) ----------
 
+/** The 04:00 cron (plan 1.6): channel names and avatars, missing images, old sample rows. */
+export async function daily(env: Env, token: (shopId: string) => Promise<string | null>, now = new Date()): Promise<void> {
+  await deleteOldSampleTaps(env, now);
+  await pruneSample(env, now);
+  await retryMissingImages(env, token);
+  const { results } = await env.DB.prepare(`SELECT s.* FROM shops s JOIN buffer_tokens b ON b.shop_id = s.id WHERE s.deleted_at IS NULL AND s.revoked_at IS NULL`).all<ShopRow>();
+  for (const shop of results) {
+    try {
+      const t = await token(shop.id);
+      if (t) await syncChannels(env, shop, t);
+    } catch (e) {
+      console.error("daily channel refresh failed", shop.id, (e as Error)?.message);
+      if (e instanceof BufferError && (e.kind === "rate_limited" || e.kind === "blocked")) break;
+    }
+  }
+}
+
+async function pruneSample(env: Env, now: Date): Promise<void> {
+  const old = new Date(now.getTime() - 7 * 86400000).toISOString();
+  await env.DB.batch([
+    env.DB.prepare(`DELETE FROM sample_settings WHERE updated_at < ?1`).bind(old),
+    env.DB.prepare(`DELETE FROM sample_push_subs WHERE created_at < ?1`).bind(old),
+  ]);
+}
+
 async function scheduled(controller: ScheduledController, env: Env): Promise<void> {
   const deps = {
     token: (id: string) => room(env, id).getToken(id),
@@ -714,23 +744,12 @@ async function scheduled(controller: ScheduledController, env: Env): Promise<voi
     },
     syncRunning: async (id: string) => (await room(env, id).syncStatus()).running,
   };
+  const now = new Date(controller.scheduledTime || Date.now());
   if (controller.cron === "0 4 * * *") {
-    await deleteOldSampleTaps(env);
-    await retryMissingImages(env, deps.token);
-    // Refresh channel names and avatars.
-    const { results } = await env.DB.prepare(`SELECT s.* FROM shops s JOIN buffer_tokens b ON b.shop_id = s.id WHERE s.deleted_at IS NULL AND s.revoked_at IS NULL`).all<ShopRow>();
-    for (const shop of results) {
-      try {
-        const token = await deps.token(shop.id);
-        if (token) await syncChannels(env, shop, token);
-      } catch (e) {
-        console.error("daily channel refresh failed", shop.id, (e as Error)?.message);
-        if (e instanceof BufferError && (e.kind === "rate_limited" || e.kind === "blocked")) break;
-      }
-    }
+    await daily(env, deps.token, now);
     return;
   }
-  await pollDue(env, deps);
+  await pollDue(env, deps, now);
 }
 
 export default {

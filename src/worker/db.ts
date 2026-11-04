@@ -128,6 +128,15 @@ export async function tileById(env: Env, shopId: string, tileId: string): Promis
   return env.DB.prepare(`SELECT * FROM tiles WHERE id = ?1 AND shop_id = ?2`).bind(tileId, shopId).first<TileRow>();
 }
 
+/** A tile a tap may count: the shop's, not hidden, on an enabled channel, inside the 60 days (plan 3.5, 3.6). */
+export async function tileOnGrid(env: Env, shopId: string, tileId: string, now = new Date()): Promise<TileRow | null> {
+  const since = new Date(now.getTime() - 60 * 86400000).toISOString();
+  return env.DB.prepare(
+    `SELECT t.* FROM tiles t WHERE t.id = ?1 AND t.shop_id = ?2 AND t.hidden = 0 AND t.first_sent_at >= ?3
+       AND EXISTS (SELECT 1 FROM posts p JOIN channels c ON c.id = p.channel_id WHERE p.tile_id = t.id AND c.enabled = 1)`,
+  ).bind(tileId, shopId, since).first<TileRow>();
+}
+
 export async function tileText(env: Env, tileId: string): Promise<{ text: string; hasImage: boolean; thumbPost: string | null }> {
   const r = await env.DB.prepare(
     `SELECT (SELECT text FROM posts WHERE tile_id = ?1 ORDER BY length(text) DESC LIMIT 1) AS text,

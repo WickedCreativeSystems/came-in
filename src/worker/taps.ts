@@ -1,6 +1,6 @@
 // A tap (plan 1.3, 1.4, 3.5). A tap never calls Buffer.
 import type { Env } from "./env";
-import { liveShop, tileById, tileText, tileCount, tappedToday, postCounts, type ShopRow } from "./db";
+import { liveShop, tileOnGrid, tileText, tileCount, tappedToday, postCounts, type ShopRow } from "./db";
 import { deviceHash, uuid } from "./lib/crypto";
 import { postName, bellSentence, whereLine } from "../shared/names";
 import type { TapAnswer, TapResponse, RingMessage } from "../shared/types";
@@ -38,7 +38,7 @@ export async function recordTap(env: Env, input: TapInput, now = new Date()): Pr
   let name: string | null = null;
   let imageUrl: string | null = null;
   if (input.tile) {
-    const tile = await tileById(env, shop.id, input.tile);
+    const tile = await tileOnGrid(env, shop.id, input.tile, now);
     if (!tile) return { status: 404, body: { ...EMPTY, error: "no such post" } };
     const t = await tileText(env, tile.id);
     name = postName({ firstSentAt: tile.first_sent_at, nickname: tile.nickname, subject: tile.subject, text: t.text, hasImage: t.hasImage }, now, shop.timezone);

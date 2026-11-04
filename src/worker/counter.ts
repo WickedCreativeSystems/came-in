@@ -1,7 +1,7 @@
 // The counter (plan 1.5, 3.6; P7): the shop's own phone or tablet, staff tap
 // what brought the customer in. No cookie; the token in the URL is the key.
 import type { Env } from "./env";
-import { liveShop, tileById, tileText, type ShopRow } from "./db";
+import { liveShop, tileOnGrid, tileText, type ShopRow } from "./db";
 import { deviceHash, randomToken, uuid } from "./lib/crypto";
 import { postName } from "../shared/names";
 import { ringMessage } from "./taps";
@@ -66,18 +66,21 @@ export async function recordCounterTap(env: Env, input: CounterTapInput, now = n
   let name: string | null = null;
   let imageUrl: string | null = null;
   if (input.tile) {
-    const tile = await tileById(env, shop.id, input.tile);
+    const tile = await tileOnGrid(env, shop.id, input.tile, now);
     if (!tile) return { status: 404, body: { ok: false, error: "no such post" } };
     const t = await tileText(env, tile.id);
     name = postName({ firstSentAt: tile.first_sent_at, nickname: tile.nickname, subject: tile.subject, text: t.text, hasImage: t.hasImage }, now, shop.timezone);
     imageUrl = t.thumbPost ? `/i/${shop.id}/${encodeURIComponent(t.thumbPost)}` : null;
   }
   const device = await deviceHash(`counter:${counter.token}`, shop.id);
-  const last = await env.DB.prepare(`SELECT created_at FROM taps WHERE shop_id = ?1 AND device_hash = ?2 ORDER BY created_at DESC LIMIT 1`).bind(shop.id, device).first<{ created_at: string }>();
-  if (last && now.getTime() - new Date(last.created_at).getTime() < 3000) return { status: 200, body: { ok: true, counted: false, name } };
-  await env.DB.prepare(`INSERT INTO taps (id, shop_id, tile_id, answer, source, device_hash, rewarded, created_at) VALUES (?1, ?2, ?3, ?4, 'counter', ?5, 0, ?6)`)
-    .bind(uuid(), shop.id, input.tile, input.answer, device, now.toISOString())
-    .run();
+  // One statement, so two taps at the same instant can't both pass the 3-second rule.
+  const since = new Date(now.getTime() - 3000).toISOString();
+  const ins = await env.DB.prepare(
+    `INSERT INTO taps (id, shop_id, tile_id, answer, source, device_hash, rewarded, created_at)
+     SELECT ?1, ?2, ?3, ?4, 'counter', ?5, 0, ?6
+      WHERE NOT EXISTS (SELECT 1 FROM taps WHERE shop_id = ?2 AND device_hash = ?5 AND created_at > ?7)`,
+  ).bind(uuid(), shop.id, input.tile, input.answer, device, now.toISOString(), since).run();
+  if (!ins.meta.changes) return { status: 200, body: { ok: true, counted: false, name } };
   if (input.answer !== "post" || !input.tile || !name) return { status: 200, body: { ok: true, counted: true, name } };
   const message = await ringMessage(env, shop, input.tile, name, imageUrl, "counter", now);
   return { status: 200, body: { ok: true, counted: true, name }, ring: { message, exceptDevice: input.device, shop } };

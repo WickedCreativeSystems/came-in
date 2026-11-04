@@ -17,6 +17,8 @@ export interface Env {
   ANTHROPIC_API_KEY?: string;
   /** The landing's Contact line (plan 3.1). Set at deploy, never typed into the repo. */
   CONTACT_EMAIL?: string;
+  /** Tests only: extra push hosts to accept, comma-separated. */
+  PUSH_TEST_HOSTS?: string;
   /** Tests only: a base URL that stands in for Buffer. */
   BUFFER_API_URL?: string;
   BUFFER_AUTH_URL?: string;

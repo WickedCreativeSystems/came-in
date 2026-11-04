@@ -25,6 +25,17 @@ export function initialPhoneState(): PhoneState {
   return "idle";
 }
 
+/** Is this phone already set to ring? */
+export async function thisPhoneRings(): Promise<boolean> {
+  if (!canPush() || Notification.permission !== "granted") return false;
+  try {
+    const reg = await navigator.serviceWorker.getRegistration("/");
+    return !!(reg && (await reg.pushManager.getSubscription()));
+  } catch {
+    return false;
+  }
+}
+
 export function registerServiceWorker(): void {
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => undefined);
 }

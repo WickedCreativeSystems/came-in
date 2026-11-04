@@ -25,7 +25,7 @@ export function validReviewUrl(v: string): boolean {
   }
   if (u.protocol !== "https:") return false;
   const h = u.hostname.toLowerCase();
-  return h === "google.com" || h.endsWith(".google.com") || h === "g.page" || h === "maps.app.goo.gl" || /^(www\.)?google\.[a-z.]{2,6}$/.test(h);
+  return h === "google.com" || h.endsWith(".google.com") || h === "g.page" || h === "maps.app.goo.gl";
 }
 
 export interface SettingsPatch {

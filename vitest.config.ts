@@ -29,6 +29,7 @@ export default defineConfig({
             VAPID_PUBLIC: vapidPublic,
             VAPID_PRIVATE: jwk.d!,
             VAPID_SUBJECT: "mailto:test@example.invalid",
+            PUSH_TEST_HOSTS: "push.test",
           },
         },
       };

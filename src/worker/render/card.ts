@@ -6,8 +6,8 @@ import { esc, jsonForScript, page, avatarHtml, AVATAR_CSS, BELL_MONO_SVG } from 
 export type CardSize = "a6" | "a5" | "4x6";
 
 export const CARD_SIZES: Record<CardSize, { label: string; w: number; h: number; page: string }> = {
-  a6: { label: "A6", w: 105, h: 148, page: "A6 portrait" },
-  a5: { label: "A5", w: 148, h: 210, page: "A5 portrait" },
+  a6: { label: "A6", w: 105, h: 148, page: "105mm 148mm" },
+  a5: { label: "A5", w: 148, h: 210, page: "148mm 210mm" },
   "4x6": { label: "4×6 in", w: 101.6, h: 152.4, page: "4in 6in" },
 };
 

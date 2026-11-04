@@ -90,6 +90,6 @@ export function isSampleTile(id: string | null): boolean {
   return !!id && SAMPLE_POSTS.some((p) => p.id === id);
 }
 
-export async function deleteOldSampleTaps(env: Env, now = new Date()): Promise<void> {
+export async function deleteOldSampleTaps(env: Env, now: Date = new Date()): Promise<void> {
   await env.DB.prepare(`DELETE FROM sample_taps WHERE created_at < ?1`).bind(new Date(now.getTime() - 7 * 86400000).toISOString()).run();
 }

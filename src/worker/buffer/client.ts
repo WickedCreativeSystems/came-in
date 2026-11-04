@@ -78,6 +78,13 @@ export async function countCall(env: Env, now = new Date()): Promise<void> {
   ).bind(day).run();
 }
 
+export async function countRefresh(env: Env, now = new Date()): Promise<void> {
+  const day = now.toISOString().slice(0, 10);
+  await env.DB.prepare(
+    `INSERT INTO buffer_calls_daily (day, count, token_refreshes) VALUES (?1, 0, 1) ON CONFLICT(day) DO UPDATE SET token_refreshes = token_refreshes + 1`,
+  ).bind(day).run();
+}
+
 export async function setBlocked(env: Env, until: Date): Promise<void> {
   await env.DB.prepare(
     `INSERT INTO buffer_rate (window, blocked_until) VALUES ('block', ?1)
@@ -206,7 +213,8 @@ export function exchangeCode(env: Env, params: { code: string; redirectUri: stri
   });
 }
 
-export function refreshToken(env: Env, refresh: string): Promise<TokenResponse> {
+export async function refreshToken(env: Env, refresh: string): Promise<TokenResponse> {
+  await countRefresh(env);
   return tokenPost(env, {
     grant_type: "refresh_token",
     client_id: env.BUFFER_CLIENT_ID,

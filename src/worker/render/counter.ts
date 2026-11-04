@@ -33,7 +33,7 @@ html{scrollbar-width:none}html::-webkit-scrollbar{display:none}
 .row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:4px 16px 16px;position:sticky;bottom:0;background:var(--paper)}
 .row .btn{height:56px;white-space:normal;text-align:center;line-height:1.15;padding:0 8px}
 .ft{padding:4px 16px 16px;font-size:13px}
-.ft button{color:var(--ink-2);text-decoration:underline;font-size:13px}
+.ft button,.ft>a{color:var(--ink-2);text-decoration:underline;font-size:13px}
 .menu{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
 .menu[hidden]{display:none}
 .ok{position:fixed;left:16px;right:16px;top:12px;z-index:5;display:flex;align-items:center;gap:12px;background:var(--label);color:var(--label-ink);border:1px solid var(--rule-2);border-radius:4px;padding:10px 14px;font-weight:600;font-size:16px;transform:translateY(-8px);opacity:0;transition:transform 260ms var(--settle),opacity 260ms var(--settle);pointer-events:none}
@@ -57,11 +57,11 @@ export function renderCounterPage(d: CounterPageData): string {
 <div class="ask"><h1>What brought them in?</h1></div>
 <div class="grid" id="g">${d.tiles.map(tileHtml).join("")}</div>
 <div class="row"><button class="btn" data-a="walked_past" data-n="Walked past">Walked past</button><button class="btn" data-a="friend" data-n="A friend told them">A friend told them</button><button class="btn" data-a="google" data-n="Found us on Google">Found us on Google</button></div>
-<div class="ft"><button id="own" aria-expanded="false">Owner</button><div class="menu" id="menu" hidden>${
+<div class="ft">${
     d.owner
-      ? `${d.closeEndpoint ? `<button class="btn" id="cls">Close the counter on this device</button>` : ""}<a class="btn quiet" href="${esc(d.wallUrl)}">Back to the wall</a>`
-      : `<a class="btn quiet" href="${esc(d.wallUrl)}">Back to the wall</a>`
-  }</div></div>
+      ? `<button id="own" aria-expanded="false">Owner</button><div class="menu" id="menu" hidden>${d.closeEndpoint ? `<button class="btn" id="cls">Close the counter on this device</button>` : ""}<a class="btn quiet" href="${esc(d.wallUrl)}">Back to the wall</a></div>`
+      : `<a href="/">Owner</a>`
+  }</div>
 <div class="ok" id="ok" role="status" aria-live="polite"></div>
 <div class="strip" id="err" hidden role="alert">We couldn't reach the shop. Try again?</div>
 <script type="application/json" id="cfg">${jsonForScript({ token: d.token, ep: d.endpoint, close: d.closeEndpoint, wall: d.wallUrl })}</script>`;
@@ -85,7 +85,7 @@ var ok=$('ok'),err=$('err'),busy=false,t1,t2,rm=matchMedia('(prefers-reduced-mot
 function e(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function confirm(text,img){clearTimeout(t1);clearTimeout(t2);ok.style.top=Math.max(12,Math.round($('g').getBoundingClientRect().top))+'px';ok.className='ok';ok.innerHTML=(img?'<img src="'+e(img)+'" alt="">':'')+'<span>'+e(text)+'</span>';
 requestAnimationFrame(function(){requestAnimationFrame(function(){ok.classList.add('in')})});
-t1=setTimeout(function(){ok.classList.add('out');t2=setTimeout(function(){ok.className='ok';ok.innerHTML='';busy=false},rm?0:320)},2000)}
+var at=Date.now();t1=setTimeout(function(){ok.classList.add('out');t2=setTimeout(function(){ok.className='ok';ok.innerHTML='';setTimeout(function(){busy=false},Math.max(0,3050-(Date.now()-at)))},rm?0:320)},2000)}
 function send(b,tries){fetch(C.ep,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b),keepalive:true}).then(function(r){
 if(r.status===409||r.status===410){location.reload();return}if(r.status>=500)throw 0;err.hidden=true}).catch(function(){
 if(tries<5)setTimeout(function(){send(b,tries+1)},(tries+1)*2000);else err.hidden=false})}
@@ -94,6 +94,6 @@ confirm(tile?'Got it. '+label+'.':'Got it. '+label+'.',img);
 send({token:C.token,tile:tile,answer:answer,device:dev},0)}
 $('g').addEventListener('click',function(ev){var b=ev.target.closest('.t');if(!b)return;var n=b.dataset.n;tap('post',b.dataset.i,n.charAt(0).toUpperCase()+n.slice(1),b.dataset.img||null)});
 document.querySelectorAll('.row .btn').forEach(function(b){b.onclick=function(){tap(b.dataset.a,null,b.dataset.n,null)}});
-$('own').onclick=function(){var m=$('menu');m.hidden=!m.hidden;this.setAttribute('aria-expanded',String(!m.hidden))};
+var own=$('own');if(own)own.onclick=function(){var m=$('menu');m.hidden=!m.hidden;this.setAttribute('aria-expanded',String(!m.hidden))};
 var cls=$('cls');if(cls)cls.onclick=function(){cls.disabled=true;fetch(C.close,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:C.token}),credentials:'same-origin'}).then(function(){location.href=C.wall})};
 })();`;

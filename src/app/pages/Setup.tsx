@@ -6,7 +6,7 @@ import type { WallData, ChannelRow, Theme } from "@shared/types";
 import { serviceName } from "@shared/marks";
 import { api, ApiError } from "../lib/api";
 import { applyTheme } from "../lib/theme";
-import { ringMyPhone, initialPhoneState, type PhoneState } from "../lib/push";
+import { ringMyPhone, initialPhoneState, thisPhoneRings, type PhoneState } from "../lib/push";
 import { Header } from "../ui/Header";
 import { Bell } from "../ui/glyphs";
 
@@ -318,8 +318,11 @@ function IOSSteps(): JSX.Element {
   );
 }
 
-function RingMyPhone({ sample, pushKey, phones, onDone }: { sample: boolean; pushKey: string | null; phones: number; onDone: () => void }): JSX.Element {
+function RingMyPhone({ sample, pushKey, onDone }: { sample: boolean; pushKey: string | null; phones: number; onDone: () => void }): JSX.Element {
   const [state, setState] = useState<PhoneState>(() => initialPhoneState());
+  useEffect(() => {
+    void thisPhoneRings().then((yes) => yes && setState((s) => (s === "idle" ? "ok" : s)));
+  }, []);
   async function go() {
     setState("working");
     try {
@@ -338,7 +341,7 @@ function RingMyPhone({ sample, pushKey, phones, onDone }: { sample: boolean; pus
           Ring my phone
         </button>
       )}
-      {(state === "ok" || (state === "idle" && phones > 0)) && <p class="small">Your phone will ring.</p>}
+      {state === "ok" && <p class="small">Your phone will ring.</p>}
       {state === "denied" && <p class="small">Notifications are off for Came In in your phone's settings. Turn them on, then tap Ring my phone again.</p>}
       {state === "ios" && (
         <div class="note">

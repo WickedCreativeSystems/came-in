@@ -3,6 +3,14 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { env } from "cloudflare:workers";
 import { makeShop, addChannel, addTile, call, ownerCookie, fakeBuffer, cookiesFrom } from "./helpers";
 import { pollDue } from "../src/worker/poll";
+import worker from "../src/worker/index";
+import { createScheduledController, createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
+
+async function runCron(cron: string, at: Date) {
+  const ctx = createExecutionContext();
+  await worker.scheduled(createScheduledController({ cron, scheduledTime: at }), env, ctx);
+  await waitOnExecutionContext(ctx);
+}
 import { getShop } from "../src/worker/db";
 import type { RoomMessage } from "../src/shared/types";
 
@@ -123,13 +131,13 @@ describe("the printed card (P8, plan 3.11)", () => {
     const id = await shopWithPosts();
     const cookie = await ownerCookie(id);
     const a6 = await (await call("/card", { cookie })).text();
-    expect(a6).toContain("@page{size:A6 portrait;margin:0}");
+    expect(a6).toContain("@page{size:105mm 148mm;margin:0}");
     expect(a6).toContain(".card{width:105mm;height:148mm");
     for (const w of ["Saw us online?", "Tap the post that brought you in.<br>Three seconds, no app.", "Came In", "Print", "Save as PDF", "@testbakery"]) expect(a6).toContain(w);
     expect(a6).toMatch(/<div class="qr"[^>]*><svg[^>]*viewBox="0 0 \d+ \d+"/);
     expect(a6).not.toContain("prefers-color-scheme:dark");
     const a5 = await (await call("/card?size=a5", { cookie })).text();
-    expect(a5).toContain("@page{size:A5 portrait;margin:0}");
+    expect(a5).toContain("@page{size:148mm 210mm;margin:0}");
     expect(a5).toContain(".card{width:148mm;height:210mm");
     const four = await (await call("/card?size=4x6", { cookie })).text();
     expect(four).toContain("@page{size:4in 6in;margin:0}");
@@ -256,6 +264,8 @@ describe("Setup (P10, plan 3.8)", () => {
     expect(await bad.json()).toMatchObject({ error: "That link doesn't look like a Google review link.", field: "reviewUrl" });
     for (const ok of ["https://g.page/r/x/review", "https://maps.app.goo.gl/abc", "https://www.google.com/maps/place/x", "https://search.google.com/local/writereview?placeid=1"])
       expect((await call("/api/setup", { ...json({ reviewUrl: ok }), cookie })).status).toBe(200);
+    for (const bad of ["https://google.ru.com/x", "https://google.click/x", "https://google.com.evil.com/x", "https://evil.com/?google.com"])
+      expect((await call("/api/setup", { ...json({ reviewUrl: bad }), cookie })).status, bad).toBe(400);
     expect((await call("/api/setup", { ...json({ reviewUrl: "http://g.page/r/x" }), cookie })).status).toBe(400);
   });
 
@@ -332,14 +342,20 @@ describe("rate-limit discipline (P19, plan 1.2)", () => {
       .bind(new Date(dayStart.getTime() + 2 * 86400000).toISOString(), new Date(dayStart.getTime() - 3600000).toISOString(), ...ids)
       .run();
     const fb = fakeBuffer();
-    const deps = { token: async () => "tok", notify: async () => {}, syncRunning: async () => false };
-    for (let t = 0; t < 24 * 60; t += 15) await pollDue(env, deps, new Date(dayStart.getTime() + t * 60000));
-    const calls = fb.calls.filter((c) => c.query.includes("CameInSentPosts")).length;
-    // Per shop: 32 polls in the 06:00-22:00 window at the quiet rule's 30 minutes, and 8 hourly
-    // polls outside it: 40, so 160 for four shops, the plan's own "≈ 160" (plan 1.2). The done line
-    // says "under 160"; asked The Playner to make it "at most 160".
-    expect(calls).toBeLessThanOrEqual(160);
-    expect(calls).toBeGreaterThan(100);
+    const counted = async () => ((await env.DB.prepare(`SELECT SUM(count) AS n FROM buffer_calls_daily`).first<{ n: number | null }>())?.n ?? 0);
+    const before = await counted();
+    // The real crons, through the Worker's scheduled handler, every 15 minutes for a day and the 04:00 run.
+    for (let t = 0; t < 24 * 60; t += 15) {
+      const at = new Date(dayStart.getTime() + t * 60000);
+      if (at.getUTCHours() === 4 && at.getUTCMinutes() === 0) await runCron("0 4 * * *", at);
+      await runCron("*/15 * * * *", at);
+    }
+    const calls = (await counted()) - before;
+    // Per shop: 32 polls in the 06:00-22:00 window at the quiet rule's 30 minutes, 8 hourly polls
+    // outside it, and the daily channel refresh: 41, so 164 for four shops (P19: "at most 164").
+    expect(fb.calls.filter((c) => c.query.includes("CameInChannels")).length).toBe(4);
+    expect(calls).toBeGreaterThanOrEqual(160);
+    expect(calls).toBeLessThanOrEqual(164);
     // Every call updated buffer_rate from the ratelimit header.
     const r = await env.DB.prepare(`SELECT remaining, quota FROM buffer_rate WHERE window = '24h'`).first<{ remaining: number; quota: number }>();
     expect(r).toEqual({ remaining: 437, quota: 600 });
@@ -364,5 +380,76 @@ describe("look check on 34fc040 (LookieBot)", () => {
     expect(await (await call("/card", { cookie })).text()).toContain(":root{--u:calc(105mm / 298)}");
     expect(await (await call("/card?size=a5", { cookie })).text()).toContain(":root{--u:calc(148mm / 298)}");
     expect(await (await call("/card?size=4x6", { cookie })).text()).toContain(":root{--u:calc(101.6mm / 298)}");
+  });
+});
+
+
+describe("check fixes on ad8bbf5 (NerdCider)", () => {
+  it("a subscription is only accepted for a browser push service, and a sample browser keeps at most five phones", async () => {
+    const first = await call("/api/sample/setup");
+    const cookie = cookiesFrom(first);
+    for (const host of ["evil.example.com", "came-in-staging.walkertbrown.workers.dev", "fcm.googleapis.com.evil.com"]) {
+      const r = await call("/api/sample/push/subscribe", { ...json({ device: "d", subscription: await testSubscription(`https://${host}/x`) }), cookie });
+      expect(r.status, host).toBe(400);
+    }
+    for (const host of ["fcm.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com", "wns2-par02p.notify.windows.com"]) {
+      const r = await call("/api/sample/push/subscribe", { ...json({ device: "d", subscription: await testSubscription(`https://${host}/x`) }), cookie });
+      expect(r.status, host).toBe(200);
+    }
+    for (let i = 0; i < 4; i++) await call("/api/sample/push/subscribe", { ...json({ device: `d${i}`, subscription: await testSubscription(`https://fcm.googleapis.com/fcm/send/${i}`) }), cookie });
+    const session = cookie.match(/ci_sample=([^;]+)/)![1];
+    const n = await env.DB.prepare(`SELECT COUNT(*) AS n FROM sample_push_subs WHERE session_id = ?1`).bind(session).first<{ n: number }>();
+    expect(n!.n).toBe(5);
+    const shop = await shopWithPosts();
+    expect((await call("/api/push/subscribe", { ...json({ device: "p", subscription: await testSubscription("https://evil.example.com/x") }), cookie: await ownerCookie(shop) })).status).toBe(400);
+  });
+
+  it("the counter's 3-second rule holds for two taps at the same instant, and counts only tiles on its grid", async () => {
+    const id = await shopWithPosts();
+    const token = await openCounterFor(id);
+    const both = await Promise.all([
+      call("/api/counter/tap", json({ token, tile: null, answer: "walked_past", device: "t" })),
+      call("/api/counter/tap", json({ token, tile: null, answer: "friend", device: "t" })),
+    ]);
+    const bodies = (await Promise.all(both.map((r) => r.json()))) as { counted: boolean }[];
+    expect(bodies.filter((b) => b.counted)).toHaveLength(1);
+    await env.DB.prepare(`UPDATE tiles SET hidden = 1 WHERE id = ?1`).bind(`hours-${id}`).run();
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: Date.now() + 5000 });
+    expect((await call("/api/counter/tap", json({ token, tile: `hours-${id}`, answer: "post", device: "t" }))).status).toBe(404);
+    vi.useRealTimers();
+    expect((await call("/api/tap", json({ shop: id, tile: `hours-${id}`, answer: "post", source: "card", device: "c" }))).status).toBe(404);
+  });
+
+  it("the counter waits the full 3 seconds before the next answer, and the owner corner needs the owner", async () => {
+    const id = await shopWithPosts();
+    const token = await openCounterFor(id);
+    const html = await (await call(`/c/${token}`)).text();
+    expect(html).toContain("Math.max(0,3050-(Date.now()-at))");
+    expect(html).toContain('<a href="/">Owner</a>');
+    expect(html).not.toContain("Back to the wall");
+  });
+
+  it("the card's QR, the tap link and the script use the Worker's public address, whatever host the page was opened on", async () => {
+    const id = await shopWithPosts();
+    const cookie = await ownerCookie(id);
+    const headers = new Headers({ cookie });
+    const res = await (await import("../src/worker/index")).default.fetch(new Request("https://other-host.test/api/setup", { headers }), env, { waitUntil() {}, passThroughOnException() {}, props: {} } as unknown as ExecutionContext);
+    const d = (await res.json()) as { tapUrl: string; embed: string };
+    expect(d.tapUrl).toBe(`https://came-in.test/t/${id}`);
+    expect(d.embed).toContain('src="https://came-in.test/embed.js"');
+  });
+});
+
+
+describe("token refreshes are counted on their own (plan 1.2)", () => {
+  it("a refresh adds to token_refreshes, not to the API count", async () => {
+    const { refreshToken } = await import("../src/worker/buffer/client");
+    fakeBuffer();
+    const read = async () => (await env.DB.prepare(`SELECT SUM(count) AS c, SUM(token_refreshes) AS r FROM buffer_calls_daily`).first<{ c: number | null; r: number | null }>())!;
+    const a = await read();
+    await refreshToken(env, "rt-old");
+    const b = await read();
+    expect((b.r ?? 0) - (a.r ?? 0)).toBe(1);
+    expect((b.c ?? 0) - (a.c ?? 0)).toBe(0);
   });
 });
