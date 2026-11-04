@@ -130,7 +130,7 @@ a { color: inherit; }
 .toggle { position: relative; width: 44px; height: 24px; border-radius: 12px; background: var(--rule-2); transition: background var(--t-fade); flex: none; }
 .toggle[aria-checked="true"] { background: var(--ink); }
 .toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: var(--label); transition: transform var(--t-fade) var(--ease-settle); }
-.toggle[aria-checked="true"]::after { transform: translateX(20px); }
+.toggle[aria-checked="true"]::after { transform: translateX(20px); background: var(--paper); }
 
 /* Chips */
 .chip { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px 0 10px; border: 1px solid var(--rule); border-radius: var(--r); font-size: 14px; font-weight: 600; color: var(--ink); background: var(--paper); text-decoration: none; }

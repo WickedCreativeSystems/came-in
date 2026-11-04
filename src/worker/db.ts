@@ -24,6 +24,7 @@ export interface ShopRow {
   created_at: string;
   revoked_at: string | null;
   deleted_at: string | null;
+  card_printed_at: string | null;
 }
 
 export interface TileRow {
@@ -79,8 +80,8 @@ export async function wallTiles(env: Env, shop: ShopRow, now = new Date(), opts:
             (SELECT p.id FROM posts p WHERE p.tile_id = t.id AND p.thumb_status = 'ok' ORDER BY p.sent_at LIMIT 1) AS thumb_post,
             (SELECT p.kind FROM posts p WHERE p.tile_id = t.id ORDER BY CASE p.kind WHEN 'photo' THEN 0 WHEN 'video' THEN 1 WHEN 'link' THEN 2 ELSE 3 END LIMIT 1) AS kind,
             (SELECT MAX(p.is_story) FROM posts p WHERE p.tile_id = t.id) AS is_story,
-            (SELECT json_group_array(DISTINCT c.service) FROM posts p JOIN channels c ON c.id = p.channel_id WHERE p.tile_id = t.id) AS services,
-            (SELECT json_group_array(json_object('service', c.service, 'url', p.external_link)) FROM posts p JOIN channels c ON c.id = p.channel_id WHERE p.tile_id = t.id AND p.external_link IS NOT NULL) AS links,
+            (SELECT json_group_array(DISTINCT c.service) FROM posts p JOIN channels c ON c.id = p.channel_id WHERE p.tile_id = t.id AND c.enabled = 1) AS services,
+            (SELECT json_group_array(json_object('service', c.service, 'url', p.external_link)) FROM posts p JOIN channels c ON c.id = p.channel_id WHERE p.tile_id = t.id AND c.enabled = 1 AND p.external_link IS NOT NULL) AS links,
             (SELECT COUNT(*) FROM taps x WHERE x.tile_id = t.id AND x.answer = 'post') AS people
        FROM tiles t
       WHERE t.shop_id = ?1 AND t.first_sent_at >= ?2 ${opts.includeHidden ? "" : "AND t.hidden = 0"}
@@ -125,6 +126,15 @@ export function tapGrid(tiles: WallTile[]): { story: WallTile | null; tiles: Wal
 
 export async function tileById(env: Env, shopId: string, tileId: string): Promise<TileRow | null> {
   return env.DB.prepare(`SELECT * FROM tiles WHERE id = ?1 AND shop_id = ?2`).bind(tileId, shopId).first<TileRow>();
+}
+
+/** A tile a tap may count: the shop's, not hidden, on an enabled channel, inside the 60 days (plan 3.5, 3.6). */
+export async function tileOnGrid(env: Env, shopId: string, tileId: string, now = new Date()): Promise<TileRow | null> {
+  const since = new Date(now.getTime() - 60 * 86400000).toISOString();
+  return env.DB.prepare(
+    `SELECT t.* FROM tiles t WHERE t.id = ?1 AND t.shop_id = ?2 AND t.hidden = 0 AND t.first_sent_at >= ?3
+       AND EXISTS (SELECT 1 FROM posts p JOIN channels c ON c.id = p.channel_id WHERE p.tile_id = t.id AND c.enabled = 1)`,
+  ).bind(tileId, shopId, since).first<TileRow>();
 }
 
 export async function tileText(env: Env, tileId: string): Promise<{ text: string; hasImage: boolean; thumbPost: string | null }> {

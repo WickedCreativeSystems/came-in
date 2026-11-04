@@ -4,11 +4,14 @@ import "./app.css";
 import { Wall } from "./pages/Wall";
 import { WhichShop, Channels, Reading } from "./pages/FirstRun";
 import { Later } from "./pages/Later";
+import { Setup } from "./pages/Setup";
+import { registerServiceWorker } from "./lib/push";
 import { injectMarkSprite } from "./ui/marks";
 import { listenForFirstInteraction } from "./lib/bell";
 
 listenForFirstInteraction();
 injectMarkSprite();
+registerServiceWorker();
 
 function route() {
   const p = location.pathname.replace(/\/+$/, "") || "/";
@@ -28,9 +31,9 @@ function route() {
     case "/sample/week":
       return <Later tab="week" sample title="This week" phase={3} />;
     case "/setup":
-      return <Later tab="setup" sample={false} title="Setup" phase={2} />;
+      return <Setup sample={false} />;
     case "/sample/setup":
-      return <Later tab="setup" sample title="Setup" phase={2} />;
+      return <Setup sample />;
     default:
       if (p.startsWith("/post/")) return <Later tab="wall" sample={false} title="A post" phase={3} />;
       location.href = "/";

@@ -78,7 +78,7 @@ export async function sampleWall(env: Env, session: string, now = new Date()): P
   };
 }
 
-export async function recordSampleTap(env: Env, session: string, tile: string | null, answer: "post" | "walked_past", now = new Date()): Promise<{ name: string | null; count: number; countToday: number; imageUrl: string | null }> {
+export async function recordSampleTap(env: Env, session: string, tile: string | null, answer: "post" | "walked_past" | "friend" | "google", now = new Date()): Promise<{ name: string | null; count: number; countToday: number; imageUrl: string | null }> {
   await env.DB.prepare(`INSERT INTO sample_taps (session_id, tile_id, answer, created_at) VALUES (?1, ?2, ?3, ?4)`).bind(session, tile, answer, now.toISOString()).run();
   if (!tile) return { name: null, count: 0, countToday: 0, imageUrl: null };
   const wall = await sampleWall(env, session, now);
@@ -90,6 +90,6 @@ export function isSampleTile(id: string | null): boolean {
   return !!id && SAMPLE_POSTS.some((p) => p.id === id);
 }
 
-export async function deleteOldSampleTaps(env: Env, now = new Date()): Promise<void> {
+export async function deleteOldSampleTaps(env: Env, now: Date = new Date()): Promise<void> {
   await env.DB.prepare(`DELETE FROM sample_taps WHERE created_at < ?1`).bind(new Date(now.getTime() - 7 * 86400000).toISOString()).run();
 }
