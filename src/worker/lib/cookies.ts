@@ -31,6 +31,11 @@ async function writeOwner(c: Context<{ Bindings: Env }>, current: string, shops:
   });
 }
 
+/** Sign this browser in to exactly these shops, the first current. */
+export async function setOwnerShops(c: Context<{ Bindings: Env }>, shops: string[]): Promise<void> {
+  await writeOwner(c, shops[0], shops);
+}
+
 /** Sign this browser in to a shop, keeping the others it already holds (at most 10). */
 export async function setOwnerCookie(c: Context<{ Bindings: Env }>, shopId: string, opts: { keep?: boolean } = {}): Promise<void> {
   const held = opts.keep === false ? [] : (await ownerState(c))?.shops ?? [];

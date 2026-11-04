@@ -13,7 +13,7 @@ import {
 } from "./buffer/client";
 import { ACCOUNT } from "./buffer/queries";
 import { codeChallenge, codeVerifier, randomToken, shopId as newShopId, encrypt, decrypt, timingSafeEqual } from "./lib/crypto";
-import { setOwnerCookie, ownerShopId, ownerState, switchOwnerShop, dropOwnerShop, setOAuthCookie, readOAuthCookie, clearOAuthCookie, sampleSession } from "./lib/cookies";
+import { setOwnerCookie, setOwnerShops, ownerShopId, ownerState, switchOwnerShop, dropOwnerShop, setOAuthCookie, readOAuthCookie, clearOAuthCookie, sampleSession } from "./lib/cookies";
 import { getShop, liveShop, wallTiles, tapGrid, postCounts, wake, type ShopRow } from "./db";
 import { storeTokens } from "./tokens";
 import { syncChannels, setCardChannel, retryMissingImages } from "./sync";
@@ -108,9 +108,7 @@ async function ownerLocations(c: C): Promise<{ current: string; shops: { id: str
 app.get("/staging/shops", async (c) => {
   if (c.env.APP_ENV !== "staging") return c.notFound();
   const ids = await seedStagingShops(c.env);
-  await setOwnerCookie(c, ids[0], { keep: false });
-  for (const id of ids.slice(1)) await setOwnerCookie(c, id);
-  await switchOwnerShop(c, ids[0]);
+  await setOwnerShops(c, ids);
   return c.redirect("/wall", 302);
 });
 
