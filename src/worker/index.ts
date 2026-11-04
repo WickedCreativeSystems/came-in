@@ -13,7 +13,7 @@ import {
 } from "./buffer/client";
 import { ACCOUNT } from "./buffer/queries";
 import { codeChallenge, codeVerifier, randomToken, shopId as newShopId, encrypt, decrypt, timingSafeEqual } from "./lib/crypto";
-import { setOwnerCookie, ownerShopId, setOAuthCookie, readOAuthCookie, clearOAuthCookie, sampleSession } from "./lib/cookies";
+import { setOwnerCookie, ownerShopId, ownerState, switchOwnerShop, dropOwnerShop, setOAuthCookie, readOAuthCookie, clearOAuthCookie, sampleSession } from "./lib/cookies";
 import { getShop, liveShop, wallTiles, tapGrid, postCounts, wake, type ShopRow } from "./db";
 import { storeTokens } from "./tokens";
 import { syncChannels, setCardChannel, retryMissingImages } from "./sync";
@@ -21,7 +21,7 @@ import { pollDue, pollShop } from "./poll";
 import { parseTapInput, recordTap } from "./taps";
 import { sampleWall, recordSampleTap, isSampleTile, deleteOldSampleTaps } from "./sample";
 import { renderTapPage, renderGonePage, type TapTile } from "./render/tap";
-import { renderLanding, renderPrivacy, renderCredits } from "./render/site";
+import { renderLanding, renderPrivacy, renderCredits, renderPricing, renderAddLocation, priceLabel, paymentLink } from "./render/site";
 import { SAMPLE_SHOP, SAMPLE_POSTS } from "../shared/sample";
 
 const SAMPLE_POSTS_BY_ID = new Map(SAMPLE_POSTS.map((p) => [p.id, p]));
@@ -87,13 +87,52 @@ app.get("/", (c) => {
 });
 app.get("/privacy", (c) => c.html(renderPrivacy(c.env.CONTACT_EMAIL ?? null)));
 app.get("/credits", (c) => c.html(renderCredits(c.env.CONTACT_EMAIL ?? null)));
+app.get("/pricing", (c) => c.html(renderPricing({ price: priceLabel(c.env.PRICE_TEXT), link: paymentLink(c.env.STRIPE_PAYMENT_LINK), contactEmail: c.env.CONTACT_EMAIL ?? null })));
+
+// ---------- Locations (plan 1.5, 3.13) ----------
+
+/** The shops this browser holds, in the order of its signed list (live ones only). */
+async function ownerLocations(c: C): Promise<{ current: string; shops: { id: string; name: string; avatarUrl: string | null }[] } | null> {
+  const st = await ownerState(c);
+  if (!st) return null;
+  const shops: { id: string; name: string; avatarUrl: string | null }[] = [];
+  for (const id of st.shops) {
+    const s = await liveShop(c.env, id);
+    if (s) shops.push({ id: s.id, name: s.name, avatarUrl: s.avatar_key ? `/i/${s.id}/avatar` : null });
+  }
+  return { current: st.current, shops };
+}
+
+app.get("/setup/add", async (c) => {
+  if (!(await ownerState(c))) return c.redirect("/", 302);
+  const q = c.req.query("state");
+  return c.html(renderAddLocation({ state: q === "none" ? "none" : q === "reconnected" ? "reconnected" : "start", contactEmail: c.env.CONTACT_EMAIL ?? null }));
+});
+
+app.get("/api/locations", async (c) => {
+  noStore(c);
+  const l = await ownerLocations(c);
+  if (!l) return c.json({ error: "signed out" }, 401);
+  const price = priceLabel(c.env.PRICE_TEXT);
+  return c.json({ ...l, price, pay: !!(price && paymentLink(c.env.STRIPE_PAYMENT_LINK)) });
+});
+
+// Switch to another shop this browser holds. An id that is not in the signed list is refused and nothing changes.
+app.post("/setup/switch", async (c) => {
+  const b = (await c.req.json().catch(() => ({}))) as { shop?: unknown };
+  const id = typeof b.shop === "string" ? b.shop : "";
+  if (!id || !(await liveShop(c.env, id)) || !(await switchOwnerShop(c, id))) return c.json({ error: "not one of your shops" }, 403);
+  return c.json({ ok: true, next: "/wall" });
+});
 
 // ---------- OAuth (plan 1.2) ----------
 
 app.get("/auth/start", async (c) => {
   const verifier = codeVerifier();
   const state = randomToken(32);
-  await setOAuthCookie(c, { verifier, state });
+  // "Add a location" runs Connect Buffer again for another shop; it only means something when signed in (plan 3.13).
+  const add = c.req.query("add") === "1" && !!(await ownerState(c));
+  await setOAuthCookie(c, { verifier, state, add });
   const url = authorizeUrl(c.env, { redirectUri: `${origin(c)}/auth/callback`, state, codeChallenge: await codeChallenge(verifier) });
   return c.redirect(url, 302);
 });
@@ -124,6 +163,33 @@ app.get("/auth/callback", async (c) => {
   const tz = acct.timezone && isValidTimeZone(acct.timezone) ? acct.timezone : "Europe/London";
   const orgs = acct.organizations ?? [];
   if (orgs.length === 0) return c.redirect("/?error=exchange", 302);
+  const held = saved.add ? await ownerState(c) : null;
+  if (held) {
+    // Another shop for this browser: only organizations it has not added yet (plan 3.13).
+    const have = new Set<string>();
+    for (const o of orgs) {
+      const s = await c.env.DB.prepare(`SELECT id FROM shops WHERE buffer_account_id = ?1 AND buffer_org_id = ?2`).bind(acct.id, o.id).first<{ id: string }>();
+      if (s && held.shops.includes(s.id)) have.add(o.id);
+    }
+    const fresh = orgs.filter((o) => !have.has(o.id));
+    if (fresh.length === 0) {
+      // A sign-in that returns the one shop already held reconnects it; otherwise there is nothing new.
+      if (orgs.length === 1) {
+        const shop = await connectShop(c.env, acct.id, orgs[0], tz, tokens);
+        await setOwnerCookie(c, shop.id);
+        return c.redirect("/setup/add?state=reconnected", 302);
+      }
+      return c.redirect("/setup/add?state=none", 302);
+    }
+    if (fresh.length === 1) {
+      const shop = await connectShop(c.env, acct.id, fresh[0], tz, tokens);
+      await setOwnerCookie(c, shop.id);
+      return c.redirect("/setup/channels", 302);
+    }
+    const pending = await encrypt(JSON.stringify({ accountId: acct.id, orgs: fresh, tz, tokens, at: Date.now() }), c.env.TOKEN_ENC_KEY);
+    setCookie(c, PENDING_COOKIE, pending, { httpOnly: true, secure: origin(c).startsWith("https:"), sameSite: "Lax", path: "/", maxAge: 600 });
+    return c.redirect("/setup/org", 302);
+  }
   if (orgs.length === 1) {
     const shop = await connectShop(c.env, acct.id, orgs[0], tz, tokens);
     await setOwnerCookie(c, shop.id);
@@ -738,8 +804,8 @@ app.post("/api/shop/delete", async (c) => {
   if (!shop) return c.json({ error: "signed out" }, 401);
   // The notes come out of Buffer through jobs that run after this answers.
   if ((await deleteShop(c.env, shop.id)) > 0) c.executionCtx.waitUntil(room(c.env, shop.id).kickJobs(shop.id));
-  clearOwnerCookie(c);
-  return c.json({ ok: true, next: "/" });
+  const more = await dropOwnerShop(c, shop.id);
+  return c.json({ ok: true, next: more ? "/wall" : "/" });
 });
 
 // ---------- Phase 3: This week, a post's page, the write-backs, the share image ----------

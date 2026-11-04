@@ -40,7 +40,7 @@ function header(): string {
 
 export function footer(contactEmail: string | null, opts: { photoCredits?: boolean } = {}): string {
   const contact = contactEmail ? `<a href="mailto:${esc(contactEmail)}">Contact</a>` : "";
-  return `<footer class="foot"><span>Anonymous. A post, a time, nothing else.</span><a href="/privacy">Privacy</a>${contact}<span>Built for Buffer Commit 2026</span>${opts.photoCredits ? `<a href="/credits">Photo credits</a>` : ""}</footer>`;
+  return `<footer class="foot"><span>Anonymous. A post, a time, nothing else.</span><a href="/privacy">Privacy</a><a href="/pricing">Pricing</a>${contact}<span>Built for Buffer Commit 2026</span>${opts.photoCredits ? `<a href="/credits">Photo credits</a>` : ""}</footer>`;
 }
 
 export function renderLanding(opts: { error?: "denied" | "exchange" | null; contactEmail: string | null }): string {
@@ -55,7 +55,7 @@ export function renderLanding(opts: { error?: "denied" | "exchange" | null; cont
 <p>Came In reads the posts you've already sent through Buffer, the app many shops use to schedule posts. Customers (or your staff) tap the one that brought them in. Your phone rings.</p>
 <div class="bs"><a class="btn primary" href="/sample">Try the sample bakery</a><a class="btn" href="/auth/start">Connect Buffer</a></div>
 <div class="cap">Connect Buffer takes you to Buffer to sign in. Came In only reads your posts and channels.</div>
-<div class="cap free">Free for one shop.</div></section>
+<div class="cap free">Free for one shop. <a href="/pricing">Pricing</a></div></section>
 <section class="loop" aria-label="How it works">
 <figure><img src="/landing/card.jpg" alt="The printed card on a shop counter: Saw us online? Tap the post that brought you in." width="800" height="600" loading="lazy"><figcaption>The card on your counter.</figcaption></figure>
 <figure><img src="/landing/tap.jpg" alt="A phone showing the shop's posts as tiles to tap." width="800" height="600" loading="lazy"><figcaption>A customer taps the post they saw.</figcaption></figure>
@@ -112,4 +112,56 @@ export function renderCredits(contactEmail: string | null): string {
 <p>Fonts: Big Shoulders and Libre Franklin, from Google Fonts, under the SIL Open Font License.</p>
 </article>${footer(contactEmail)}</div>`;
   return page({ title: "Photo credits · Came In", css: SITE_CSS, body, followSystem: true });
+}
+
+
+/** The price as a person reads it: "$9" whether the secret says 9 or $9. */
+export function priceLabel(v: string | undefined | null): string | null {
+  const t = (v ?? "").trim();
+  if (!t || t.length > 24) return null;
+  return t.startsWith("$") ? t : `$${t}`;
+}
+
+/** Only a Stripe-hosted link is used as the Pay button. */
+export function paymentLink(v: string | undefined | null): string | null {
+  try {
+    const u = new URL((v ?? "").trim());
+    return u.protocol === "https:" && (u.hostname === "stripe.com" || u.hostname.endsWith(".stripe.com")) ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+
+/** /pricing (plan 3.13): One shop is free; with a price and a Payment Link, what more shops cost and where to pay. We don't check payments. */
+export function renderPricing(opts: { price: string | null; link: string | null; contactEmail: string | null }): string {
+  const paid = !!(opts.price && opts.link);
+  const more = paid
+    ? `<p><strong>More shops are ${esc(opts.price!)} a month each.</strong></p>
+<p><a class="btn primary" href="${esc(opts.link!)}" target="_blank" rel="noopener">Pay for more shops</a></p>
+<p class="cap">After you pay, add your next shop from Setup, under Locations. We don't check payments, so you won't be locked out.</p>`
+    : `<p><strong>Need more than one shop? Write to us.</strong></p>${opts.contactEmail ? `<p><a href="mailto:${esc(opts.contactEmail)}">${esc(opts.contactEmail)}</a></p>` : ""}`;
+  const body = `<div class="wrap">${header()}<article class="prose">
+<h1>Pricing</h1>
+<p><strong>One shop is free.</strong></p>
+${more}
+</article>${footer(opts.contactEmail)}</div>`;
+  return page({ title: "Pricing · Came In", css: SITE_CSS, body, followSystem: true });
+}
+
+/** Before consent, and the two strips after it, for adding another shop (plan 3.13). */
+export function renderAddLocation(opts: { state: "start" | "none" | "reconnected"; contactEmail: string | null }): string {
+  const strip =
+    opts.state === "none"
+      ? `<div class="strip" role="status">Every shop in this Buffer is already added.</div>`
+      : opts.state === "reconnected"
+        ? `<div class="strip" role="status">Reconnected.</div>`
+        : "";
+  const inner =
+    opts.state === "start"
+      ? `<h1>Add a location</h1><p class="cap">You'll sign in to Buffer again, so each shop keeps its own connection.</p><p><a class="btn primary" href="/auth/start?add=1">Connect Buffer</a> <a class="btn quiet" href="/setup#locations">Back</a></p>`
+      : opts.state === "none"
+        ? `<p><a class="btn" href="/auth/start?add=1">Connect a different Buffer account</a> <a class="btn quiet" href="/setup#locations">Back</a></p>`
+        : `<p><a class="btn" href="/wall">Back to your wall</a></p>`;
+  const body = `<div class="wrap">${header()}${strip}<section class="hero">${inner}</section>${footer(opts.contactEmail)}</div>`;
+  return page({ title: "Add a location · Came In", css: SITE_CSS, body, followSystem: true });
 }

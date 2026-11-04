@@ -8,7 +8,8 @@ import { api, ApiError } from "../lib/api";
 import { applyTheme } from "../lib/theme";
 import { ringMyPhone, initialPhoneState, thisPhoneRings, isIOS, type PhoneState } from "../lib/push";
 import { Header } from "../ui/Header";
-import { Bell } from "../ui/glyphs";
+import { Bell, Avatar } from "../ui/glyphs";
+import { fetchLocations, switchTo, type Locations } from "../lib/locations";
 
 interface SetupData {
   settings: { thankYou: string | null; reviewUrl: string | null; markWinners: boolean; theme: Theme; cardPrinted: boolean };
@@ -160,6 +161,12 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
         </Section>
 
         {!sample && (
+          <Section id="locations" eyebrow="Locations">
+            <LocationsSetting />
+          </Section>
+        )}
+
+        {!sample && (
           <Section id="channels" eyebrow="Channels">
             <ChannelsSetting rows={data.channels} />
           </Section>
@@ -179,6 +186,39 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
         </footer>
       </main>
     </>
+  );
+}
+
+function LocationsSetting(): JSX.Element {
+  const [locs, setLocs] = useState<Locations | null>(null);
+  useEffect(() => {
+    fetchLocations().then(setLocs).catch(() => undefined);
+  }, []);
+  return (
+    <div>
+      <p>Each shop has its own wall, card and settings.</p>
+      {locs?.shops.map((s) => (
+        <div class="loc-row" key={s.id}>
+          <Avatar name={s.name} url={s.avatarUrl} size={32} />
+          <span class="loc-name">{s.name}</span>
+          {s.id === locs.current ? (
+            <span class="caption muted">Current</span>
+          ) : (
+            <button class="btn quiet sm" onClick={() => void switchTo(s.id)}>
+              Open
+            </button>
+          )}
+        </div>
+      ))}
+      <p>
+        <a class="btn" href="/setup/add">
+          Add a location
+        </a>
+      </p>
+      <p class="small muted">
+        {locs?.price ? `More than one shop is ${locs.price} a month each.` : "One shop is free."} <a href="/pricing">See Pricing.</a>
+      </p>
+    </div>
   );
 }
 
