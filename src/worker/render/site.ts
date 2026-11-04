@@ -26,6 +26,8 @@ const SITE_CSS = `
 @media (max-width:720px){.why{grid-template-columns:1fr}}
 .foot{border-top:1px solid var(--rule);padding:16px 0 32px;font-size:11px;line-height:1.3;color:var(--ink-3);display:flex;gap:8px 16px;flex-wrap:wrap}
 .foot a{color:var(--ink-2)}
+.prose .price{font-family:var(--fd);font-weight:700;font-size:22px;line-height:1.2;margin:16px 0}
+.prose{max-width:560px}
 .strip{margin:24px 0 0;border:1px solid var(--rule);border-radius:4px;padding:12px 16px;font-size:14px}
 .prose{max-width:640px;padding:48px 0 64px}
 .prose h1{margin:0 0 24px;font-family:var(--fd);font-weight:700;font-size:28px;line-height:1.02}
@@ -136,7 +138,7 @@ export function paymentLink(v: string | undefined | null): string | null {
 export function renderPricing(opts: { price: string | null; link: string | null; contactEmail: string | null }): string {
   const paid = !!(opts.price && opts.link);
   const more = paid
-    ? `<p><strong>More shops are ${esc(opts.price!)} a month each.</strong></p>
+    ? `<p class="price">More shops are ${esc(opts.price!)} a month each.</p>
 <p><a class="btn primary" href="${esc(opts.link!)}" target="_blank" rel="noopener">Pay for more shops</a></p>
 <p class="cap">After you pay, add your next shop from Setup, under Locations. We don't check payments, so you won't be locked out.</p>`
     : `<p><strong>Need more than one shop? Write to us.</strong></p>${opts.contactEmail ? `<p><a href="mailto:${esc(opts.contactEmail)}">${esc(opts.contactEmail)}</a></p>` : ""}`;

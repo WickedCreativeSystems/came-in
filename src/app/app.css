@@ -307,11 +307,15 @@ p.small.has-hint { margin-bottom: 0; }
 .print-card a { text-decoration: underline; }
 
 .switcher { position: relative; }
-.switch-btn { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; text-align: left; color: inherit; }
+.switch-btn { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-height: 40px; text-align: left; color: inherit; }
 .switch-btn svg { flex: none; }
-.switch-menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; min-width: 220px; background: var(--paper); border: 1px solid var(--rule-2); border-radius: var(--r); padding: 6px; display: grid; gap: 2px; box-shadow: 0 8px 24px -12px rgba(0, 0, 0, .35); }
-.switch-item { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 10px; border-radius: var(--r); font-weight: 600; font-size: 15px; color: var(--ink); text-decoration: none; text-align: left; }
+.switch-menu { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; min-width: 220px; background: var(--paper); border: 1px solid var(--rule-2); border-radius: var(--r); padding: 6px; display: grid; gap: 2px; box-shadow: 4px 4px 0 var(--rule-2); animation: fadein 200ms ease 1; }
+@media (max-width: 720px) { .switch-menu { min-width: min(280px, calc(100vw - 32px)); } }
+.switch-item { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 10px; border-radius: var(--r); font-weight: 600; font-size: 15px; color: var(--ink); text-decoration: none; text-align: left; }
 .switch-item:hover { background: var(--paper-3); }
 .switch-rule { height: 1px; background: var(--rule); margin: 4px 0; }
-.loc-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--rule); }
+.loc-list { background: var(--paper-2); border-radius: var(--r-tile); padding: 0 12px; margin: 8px 0 16px; }
+.loc-row { display: flex; align-items: center; gap: 12px; min-height: 56px; border-bottom: 1px solid var(--rule); }
+.loc-row:last-child { border-bottom: 0; }
+.loc-row .current::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); margin-right: 6px; vertical-align: middle; }
 .loc-row .loc-name { flex: 1 1 auto; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

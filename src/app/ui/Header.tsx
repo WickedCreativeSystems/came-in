@@ -54,18 +54,19 @@ export function Header({ shop, today, tab, base }: { shop: ShopSummary; today: n
               <div class="switcher">
                 <button class="shop-name switch-btn" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
                   {shop.name}
-                  <Icon name="chevron" size={14} />
+                  <Icon name="chevron" size={12} />
                 </button>
                 {menu && (
                   <div class="switch-menu" role="menu">
                     {locs!.shops.filter((s) => s.id !== shop.id).map((s) => (
                       <button key={s.id} role="menuitem" class="switch-item" onClick={() => void switchTo(s.id)}>
-                        <Avatar name={s.name} url={s.avatarUrl} size={24} />
+                        <Avatar name={s.name} url={s.avatarUrl} size={28} />
                         <span>{s.name}</span>
                       </button>
                     ))}
                     <div class="switch-rule" role="separator" />
                     <a role="menuitem" class="switch-item" href="/setup/add">
+                      <Icon name="plus" size={18} />
                       Add a location
                     </a>
                   </div>

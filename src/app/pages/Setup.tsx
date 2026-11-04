@@ -197,12 +197,13 @@ function LocationsSetting(): JSX.Element {
   return (
     <div>
       <p>Each shop has its own wall, card and settings.</p>
+      <div class="loc-list">
       {locs?.shops.map((s) => (
         <div class="loc-row" key={s.id}>
           <Avatar name={s.name} url={s.avatarUrl} size={32} />
           <span class="loc-name">{s.name}</span>
           {s.id === locs.current ? (
-            <span class="caption muted">Current</span>
+            <span class="caption muted current">Current</span>
           ) : (
             <button class="btn quiet sm" onClick={() => void switchTo(s.id)}>
               Open
@@ -210,6 +211,7 @@ function LocationsSetting(): JSX.Element {
           )}
         </div>
       ))}
+      </div>
       <p>
         <a class="btn" href="/setup/add">
           Add a location
