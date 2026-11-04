@@ -1,0 +1,58 @@
+{
+  // Came In: one Worker, two deployments. `came-in` is production, `came-in-staging`
+  // is the phase being checked. Each has its own D1 database, R2 bucket and
+  // Durable Object namespace; nothing is shared (plan, section 2).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "came-in",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  "rules": [{ "type": "Text", "globs": ["**/*.css", "**/*.svg", "**/*.html"], "fallthrough": true }],
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS",
+    "not_found_handling": "none",
+    "run_worker_first": true
+  },
+  "vars": {
+    "APP_ENV": "production",
+    "PUBLIC_ORIGIN": "https://came-in.walkertbrown.workers.dev"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "came-in",
+      "database_id": "761e0b23-8275-403d-922e-5a3cceab898a",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "came-in-media" }],
+  "durable_objects": {
+    "bindings": [{ "name": "SHOP_ROOM", "class_name": "ShopRoom" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ShopRoom"] }],
+  "triggers": { "crons": ["*/15 * * * *", "0 4 * * *"] },
+  "env": {
+    "staging": {
+      "name": "came-in-staging",
+      "vars": {
+        "APP_ENV": "staging",
+        "PUBLIC_ORIGIN": "https://came-in-staging.walkertbrown.workers.dev"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "came-in-staging",
+          "database_id": "29fa9258-b8b2-4bf7-af96-b31056ef8681",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "came-in-media-staging" }],
+      "durable_objects": {
+        "bindings": [{ "name": "SHOP_ROOM", "class_name": "ShopRoom" }]
+      },
+      "triggers": { "crons": ["*/15 * * * *", "0 4 * * *"] }
+    }
+  }
+}
