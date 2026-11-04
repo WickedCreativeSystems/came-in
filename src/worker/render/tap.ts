@@ -57,6 +57,7 @@ html,.th{scrollbar-width:none}html::-webkit-scrollbar,.th::-webkit-scrollbar{dis
 .th.in{transform:none}
 .th[hidden]{display:none}
 html.emb body{min-height:0}
+html.emb .ph{height:160px;min-height:0}
 html.emb .th{position:static;inset:auto;transform:none;transition:none;min-height:320px;overflow:visible}
 html.emb #pg.away{display:none}
 .ph{height:46%;min-height:180px;position:relative;overflow:hidden;background:var(--paper-2);flex:none}
