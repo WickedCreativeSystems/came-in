@@ -419,3 +419,76 @@ describe("Pinterest needs a board (plan 1.2)", () => {
     expect(fb.created[0]).toMatchObject({ metadata: { instagram: { type: "reel" } } });
   });
 });
+
+describe("check fixes on e80197b (NerdCider, The Playner's ruling)", () => {
+  it("a hidden post stays on the wall and in This week, and its people still count", async () => {
+    const id = await shopWithPosts();
+    const cookie = await ownerCookie(id);
+    for (const d of ["a", "b", "c"]) await call("/api/tap", json({ shop: id, tile: `sour-${id}`, answer: "post", source: "card", device: d }));
+    await call(`/api/post/sour-${id}`, { ...json({ hidden: true }), cookie });
+    const wall = (await (await call("/api/wall", { cookie })).json()) as { tiles: { id: string; hidden: boolean }[]; countThisWeek: number };
+    expect(wall.tiles.find((t) => t.id === `sour-${id}`)).toMatchObject({ hidden: true });
+    expect(wall.countThisWeek).toBe(3);
+    const week = (await (await call("/api/week", { cookie })).json()) as { summary: { people: number }; tiles: { id: string; hidden: boolean; weekPeople: number }[] };
+    expect(week.summary.people).toBe(3);
+    expect(week.tiles[0]).toMatchObject({ id: `sour-${id}`, hidden: true, weekPeople: 3 });
+    expect(await (await call(`/t/${id}`)).text()).not.toContain(`sour-${id}`);
+  });
+
+  it("the sheets learn what each channel would refuse before they open", async () => {
+    const id = await shopWithPosts();
+    await addChannel(id, `yt-${id}`, "youtube");
+    await addChannel(id, `pin-${id}`, "pinterest");
+    await addChannel(id, `tt-${id}`, "tiktok");
+    const cookie = await ownerCookie(id);
+    fakeBuffer();
+    const img = (await (await call(`/api/post/sour-${id}/targets`, { cookie })).json()) as { channels: { service: string; refusal: string | null }[] };
+    const r = Object.fromEntries(img.channels.map((c) => [c.service, c.refusal]));
+    expect(r).toEqual({ instagram: null, facebook: null, youtube: "video", pinterest: "board", tiktok: null });
+    const text = (await (await call(`/api/post/hours-${id}/targets`, { cookie })).json()) as { channels: { service: string; refusal: string | null }[] };
+    const t = Object.fromEntries(text.channels.map((c) => [c.service, c.refusal]));
+    expect(t).toMatchObject({ instagram: "photo", tiktok: "photo", youtube: "video", facebook: null });
+    const week = (await (await call("/api/week/targets", { cookie })).json()) as { channels: { service: string; refusal: string | null }[] };
+    expect(week.channels.find((c) => c.service === "youtube")!.refusal).toBe("video");
+  });
+
+  it("a video whose source no longer loads needs the video", async () => {
+    const id = await shopWithPosts();
+    await addTile(id, { id: `vid-${id}`, text: "Shaping day", sentAt: ago(5), channelId: `ig-${id}` });
+    await env.DB.prepare(`UPDATE posts SET kind = 'video', source_url = 'https://vid.test/gone.mp4' WHERE id = ?1`).bind(`p-vid-${id}`).run();
+    fakeBuffer({ heads: { "https://vid.test/gone.mp4": 404 } });
+    const r = (await (await call(`/api/post/vid-${id}/targets`, { cookie: await ownerCookie(id) })).json()) as { channels: { refusal: string | null }[] };
+    expect(r.channels.every((c) => c.refusal === "video")).toBe(true);
+  });
+
+  it("the sample stores no images; no route stores one without the owner cookie", async () => {
+    const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]);
+    expect((await call("/api/sample/share/square", { method: "POST", headers: { "content-type": "image/png" }, body: PNG })).status).toBe(404);
+    expect((await call("/api/share/square", { method: "POST", headers: { "content-type": "image/png" }, body: PNG })).status).toBe(401);
+  });
+
+  it("a job is claimed before it runs, so two runners can't both send it", async () => {
+    const id = await shopWithPosts();
+    const fb = fakeBuffer({ heads: { "https://img.test/sour.jpg": 200 } });
+    const { enqueue } = await import("../src/worker/writes");
+    await enqueue(env, id, "post_again", { channelId: `fb-${id}`, text: "again", assets: [] });
+    await Promise.all([runJobs(env, id), runJobs(env, id)]);
+    expect(fb.created).toHaveLength(1);
+  });
+
+  it("taps that step past 3 together still tag and note", async () => {
+    const id = await shopWithPosts();
+    const fb = fakeBuffer();
+    // Four taps land before any job runs.
+    for (const d of ["a", "b", "c", "d"]) await call("/api/tap", json({ shop: id, tile: `sour-${id}`, answer: "post", source: "card", device: d }));
+    await runJobs(env, id);
+    expect(fb.notes).toHaveLength(1);
+    const { nextNoteStep } = await import("../src/worker/writes");
+    expect([nextNoteStep(0), nextNoteStep(3), nextNoteStep(10), nextNoteStep(100), nextNoteStep(250)]).toEqual([3, 10, 25, 200, 300]);
+  });
+
+  it("empty Last week and This month have their own words", () => {
+    expect(summarize([], tiles(), TZ, "last").headline).toBe("Nobody tapped last week.");
+    expect(summarize([], tiles(), TZ, "month").headline).toBe("Nobody has tapped yet this month.");
+  });
+});

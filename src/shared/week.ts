@@ -76,7 +76,7 @@ export function summarize(taps: WeekTap[], tiles: WeekTile[], tz: string, range:
 
   // Headline (plan 3.7): 0, under ten answers, or the full sentence.
   let headline: string;
-  if (n === 0) headline = range === "this" ? "Nobody has tapped yet this week." : `Nobody tapped ${words}.`;
+  if (n === 0) headline = range === "this" ? "Nobody has tapped yet this week." : range === "month" ? "Nobody has tapped yet this month." : "Nobody tapped last week.";
   else if (answers < 10) headline = `${people(n)} said a post brought them in ${words}.`;
   else headline = `${people(n)} came in because of ${posts === 1 ? "1 post" : `${posts} posts`}.`;
 

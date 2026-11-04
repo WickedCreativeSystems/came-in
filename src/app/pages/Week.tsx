@@ -7,7 +7,7 @@ import { applyTheme } from "../lib/theme";
 import { drawShare } from "../lib/share";
 import { Header } from "../ui/Header";
 import { Tile } from "../ui/Tile";
-import { PostAgainSheet, PostThisSheet, Sheet, outcomeLine, type Channel, type Outcome } from "../ui/Sheets";
+import { PostAgainSheet, PostThisSheet, Sheet, outcomeLine, resultLine, type Channel, type Outcome } from "../ui/Sheets";
 
 type Range = "this" | "last" | "month";
 
@@ -34,6 +34,7 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
   const [share, setShare] = useState<null | { story: string | null; square: string | null; storyUrl: string | null; squareUrl: string | null; busy: boolean }>(null);
   const [postThis, setPostThis] = useState(false);
   const [postLine, setPostLine] = useState<string | null>(null);
+  const [busyIdea, setBusyIdea] = useState<Record<string, boolean>>({});
   const base = sample ? "/sample" : "";
 
   useEffect(() => {
@@ -65,7 +66,9 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
     try {
       const [story, square] = await Promise.all([drawShare("story", input), drawShare("square", input)]);
       const up = (kind: string, blob: Blob) =>
-        fetch(`${sample ? "/api/sample/share" : "/api/share"}/${kind}?range=${range}`, { method: "POST", headers: { "content-type": "image/png" }, body: blob, credentials: "same-origin" })
+        sample
+          ? Promise.resolve("sample")
+          : fetch(`/api/share/${kind}?range=${range}`, { method: "POST", headers: { "content-type": "image/png" }, body: blob, credentials: "same-origin" })
           .then((r) => r.json() as Promise<{ url?: string }>)
           .then((j) => j.url ?? null)
           .catch(() => null);
@@ -141,7 +144,7 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
                 Post this
               </button>
             </div>
-            {postLine && <p class="small outcome">{postLine}</p>}
+            {postLine && <p class={`small outcome${postLine === outcomeLine("failed") ? " failed" : ""}`}>{postLine}</p>}
             <div class="wall week-wall">
               {data.tiles.map((t, i) => (
                 <div class="week-tile" key={t.id}>
@@ -155,20 +158,40 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
                     <button
                       class="tile-action"
                       aria-label="More like this"
+                      disabled={!!busyIdea[t.id]}
                       onClick={async () => {
+                        if (busyIdea[t.id]) return;
+                        setBusyIdea((b) => ({ ...b, [t.id]: true }));
                         try {
                           const r = await api<{ outcome: Outcome }>(`${sample ? "/api/sample/post" : "/api/post"}/${t.id}/idea`, { method: "POST" });
                           setLines((l) => ({ ...l, [t.id]: outcomeLine(r.outcome) }));
                         } catch {
                           setLines((l) => ({ ...l, [t.id]: outcomeLine("failed") }));
                         }
+                        setBusyIdea((b) => ({ ...b, [t.id]: false }));
                       }}
                     >
                       <span class="long">More like this</span>
                       <span class="short" aria-hidden="true">More like it</span>
                     </button>
+                    {t.hidden && (
+                      <>
+                        <span class="tile-divider" aria-hidden="true" />
+                        <button
+                          class="tile-action"
+                          onClick={async () => {
+                            try {
+                              await api(`${sample ? "/api/sample/post" : "/api/post"}/${t.id}`, { json: { hidden: false } });
+                              setData((d) => (d ? { ...d, tiles: d.tiles.map((x) => (x.id === t.id ? { ...x, hidden: false } : x)) } : d));
+                            } catch {}
+                          }}
+                        >
+                          Show on the card
+                        </button>
+                      </>
+                    )}
                   </div>
-                  {lines[t.id] && <p class="small outcome">{lines[t.id]}</p>}
+                  {lines[t.id] && <p class={`small outcome${lines[t.id] === outcomeLine("failed") ? " failed" : ""}`}>{lines[t.id]}</p>}
                 </div>
               ))}
             </div>
@@ -184,10 +207,10 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
       {again && data && (
         <PostAgainSheet
           endpoint={`${sample ? "/api/sample/post" : "/api/post"}/${again}/again`}
-          channels={data.channels.map((c) => ({ ...c, needsPhoto: c.service === "instagram" && !data.tiles.find((t) => t.id === again)?.hasImage }))}
+          targets={`${sample ? "/api/sample/post" : "/api/post"}/${again}/targets`}
           onClose={() => setAgain(null)}
-          onDone={(o) => {
-            setLines((l) => ({ ...l, [again]: outcomeLine(o) }));
+          onDone={(r) => {
+            setLines((l) => ({ ...l, [again]: resultLine(r) }));
             setAgain(null);
           }}
         />
@@ -215,15 +238,15 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
       {postThis && data && top && (
         <PostThisSheet
           endpoint={sample ? "/api/sample/week/post" : "/api/week/post"}
-          channels={data.channels}
+          targets={sample ? "/api/sample/week/targets" : "/api/week/targets"}
           text={`${top.weekPeople} of you came in because of this post ${range === "this" ? "this week" : range === "last" ? "last week" : "this month"}. Thank you.`}
           image={share?.squareUrl ?? ""}
           onClose={() => {
             setPostThis(false);
             setShare(null);
           }}
-          onDone={(o) => {
-            setPostLine(outcomeLine(o));
+          onDone={(r) => {
+            setPostLine(resultLine(r));
             setPostThis(false);
             setShare(null);
           }}

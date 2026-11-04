@@ -35,7 +35,7 @@ export function rankTiles(summary: WeekSummary, tiles: WallTile[]): (WallTile & 
 export async function shopWeek(env: Env, shop: ShopRow, range: Range, now = new Date()): Promise<WeekData> {
   const { from, to } = rangeWindow(range, now, shop.timezone);
   const [tiles, taps, details] = await Promise.all([
-    wallTiles(env, shop, now),
+    wallTiles(env, shop, now, { includeHidden: true }),
     env.DB.prepare(`SELECT tile_id, answer, source, created_at FROM taps WHERE shop_id = ?1 AND created_at >= ?2 AND created_at < ?3`).bind(shop.id, from.toISOString(), to.toISOString()).all<{ tile_id: string | null; answer: WeekTap["answer"]; source: string; created_at: string }>(),
     env.DB.prepare(`SELECT tile_id, MAX(kind_detail) AS d FROM posts WHERE shop_id = ?1 AND kind_detail IS NOT NULL GROUP BY tile_id`).bind(shop.id).all<{ tile_id: string; d: WeekTile["kindDetail"] }>(),
   ]);

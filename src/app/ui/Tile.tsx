@@ -13,7 +13,7 @@ export function Tile({ tile, index, now, tz, flash, href }: { tile: WallTile; in
   const label = `${tile.name}. ${tile.count === 1 ? "1 person" : `${tile.count} people`} came in.`;
   const Tag = (href ? "a" : "div") as "a";
   return (
-    <Tag class={`tile${tile.isLive ? " live" : ""}`} data-id={tile.id} href={href} aria-label={label}>
+    <Tag class={`tile${tile.isLive ? " live" : ""}${tile.hidden ? " off-card" : ""}`} data-id={tile.id} href={href} aria-label={tile.hidden ? `${label} Hidden from the card.` : label} title={tile.hidden ? "Hidden from the card" : undefined}>
       {showImage ? (
         <img src={tile.imageUrl!} alt="" loading={index < 10 ? "eager" : "lazy"} decoding="async" onError={() => setBroken(true)} />
       ) : (
@@ -25,7 +25,7 @@ export function Tile({ tile, index, now, tz, flash, href }: { tile: WallTile; in
       )}
       <div class="top">
         <span class={`day${tile.isLive ? " live" : ""}`}>{dayBadge(sent, now, tz, tile.isLive, "wall")}</span>
-        <Marks services={tile.services} />
+        {tile.hidden ? <span class="day off-badge">Off the card</span> : <Marks services={tile.services} />}
       </div>
       <Sticker count={tile.count} index={index} flash={flash} onPaper={!showImage} />
       {tile.tagged && (

@@ -9,8 +9,51 @@ export interface Channel {
   id: string;
   name: string;
   service: string;
-  needsPhoto?: boolean;
-  needsBoard?: boolean;
+  /** Why the server would refuse this channel, asked before the sheet opens (plan 3.9). */
+  refusal?: "photo" | "video" | "board" | null;
+}
+
+const REFUSAL_WORDS = { photo: "needs a photo", video: "needs the video", board: "needs a board in Buffer" } as const;
+
+function blocked(c: Channel): boolean {
+  return !!c.refusal;
+}
+
+export interface SheetResult {
+  outcome: Outcome;
+  ok: string[];
+  failed: string[];
+}
+
+function and(names: string[]): string {
+  return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+/**
+ * The sheet's line (plan 3.9): "Added to your Buffer queue." when every
+ * channel took it; "Added on Instagram and TikTok. YouTube didn't take it."
+ * when some didn't; the failure line when none did.
+ */
+export function resultLine(r: SheetResult): string {
+  if (r.outcome === "failed" || !r.ok.length) return outcomeLine("failed");
+  if (!r.failed.length) return outcomeLine(r.outcome);
+  const lead = r.outcome === "draft" ? `Saved as a draft on ${and(r.ok)} (staging).` : `Added on ${and(r.ok)}.`;
+  return `${lead} ${and(r.failed)} didn't take it.`;
+}
+
+async function send(endpoint: string, body: unknown, channels: Channel[]): Promise<SheetResult> {
+  try {
+    const r = await api<{ outcome: Outcome; results?: { channelId: string; status: string }[] }>(endpoint, { json: body });
+    const name = (id: string) => {
+      const c = channels.find((ch) => ch.id === id);
+      return c ? serviceName(c.service) : "One channel";
+    };
+    const good = ["queued", "draft", "approval", "retrying"];
+    const results = r.results ?? [];
+    return { outcome: r.outcome, ok: results.filter((x) => good.includes(x.status)).map((x) => name(x.channelId)), failed: results.filter((x) => !good.includes(x.status)).map((x) => name(x.channelId)) };
+  } catch {
+    return { outcome: "failed", ok: [], failed: [] };
+  }
 }
 
 export type Outcome = "queued" | "approval" | "draft" | "failed" | "saved";
@@ -23,7 +66,7 @@ export function outcomeLine(o: Outcome): string {
     case "approval":
       return "Sent to Buffer, waiting for approval.";
     case "draft":
-      return "Saved as a draft in your Buffer.";
+      return "Saved as a draft in Buffer (staging).";
     case "saved":
       return "Saved to your Buffer Ideas.";
     default:
@@ -57,20 +100,21 @@ function ChannelToggles({ channels, on, setOn }: { channels: Channel[]; on: Set<
   return (
     <ul class="ch-toggles">
       {channels.map((c) => (
-        <li key={c.id}>
+        <li key={c.id} class={c.refusal ? "refused" : undefined}>
           <Mark service={c.service} />
           <span class="ch-label">
-            {c.name}
-            <span class="caption muted"> · {serviceName(c.service)}</span>
-            {c.needsPhoto && <span class="eyebrow needs"> needs a photo</span>}
-            {c.needsBoard && <span class="eyebrow needs"> needs a board in Buffer</span>}
+            <span class="ch-name-line">
+              {c.name}
+              <span class="caption muted"> · {serviceName(c.service)}</span>
+            </span>
+            {c.refusal && <span class="caption reason">{REFUSAL_WORDS[c.refusal]}</span>}
           </span>
           <button
             class="toggle"
             role="switch"
             aria-checked={on.has(c.id)}
             aria-label={`${c.name} on ${serviceName(c.service)}`}
-            disabled={c.needsPhoto || c.needsBoard}
+            disabled={blocked(c)}
             onClick={() => {
               const n = new Set(on);
               if (n.has(c.id)) n.delete(c.id);
@@ -85,8 +129,23 @@ function ChannelToggles({ channels, on, setOn }: { channels: Channel[]; on: Set<
 }
 
 /** "Post it again to:" (plan 3.9): Instagram off and marked "needs a photo" if the post has none. */
-export function PostAgainSheet({ endpoint, channels, onClose, onDone }: { endpoint: string; channels: Channel[]; onClose: () => void; onDone: (o: Outcome) => void }): JSX.Element {
-  const [on, setOn] = useState(() => new Set(channels.filter((c) => !c.needsPhoto && !c.needsBoard).map((c) => c.id)));
+function useTargets(url: string): Channel[] | null {
+  const [channels, setChannels] = useState<Channel[] | null>(null);
+  useEffect(() => {
+    api<{ channels: Channel[] }>(url)
+      .then((r) => setChannels(r.channels))
+      .catch(() => setChannels([]));
+  }, [url]);
+  return channels;
+}
+
+export function PostAgainSheet({ endpoint, targets, onClose, onDone }: { endpoint: string; targets: string; onClose: () => void; onDone: (r: SheetResult) => void }): JSX.Element {
+  const channels = useTargets(targets);
+  return channels ? <PostAgainReady endpoint={endpoint} channels={channels} onClose={onClose} onDone={onDone} /> : <Sheet title="Post it again to:" onClose={onClose}><p class="small muted"><span class="spin" aria-hidden="true" /></p></Sheet>;
+}
+
+function PostAgainReady({ endpoint, channels, onClose, onDone }: { endpoint: string; channels: Channel[]; onClose: () => void; onDone: (r: SheetResult) => void }): JSX.Element {
+  const [on, setOn] = useState(() => new Set(channels.filter((c) => !blocked(c)).map((c) => c.id)));
   const [busy, setBusy] = useState(false);
   return (
     <Sheet title="Post it again to:" onClose={onClose}>
@@ -97,12 +156,7 @@ export function PostAgainSheet({ endpoint, channels, onClose, onDone }: { endpoi
           disabled={busy || !on.size}
           onClick={async () => {
             setBusy(true);
-            try {
-              const r = await api<{ outcome: Outcome }>(endpoint, { json: { channels: [...on] } });
-              onDone(r.outcome);
-            } catch {
-              onDone("failed");
-            }
+            onDone(await send(endpoint, { channels: [...on] }, channels));
           }}
         >
           {busy && <span class="spin" aria-hidden="true" />}
@@ -117,8 +171,13 @@ export function PostAgainSheet({ endpoint, channels, onClose, onDone }: { endpoi
 }
 
 /** "Post this to:" (plan 3.7): channel toggles, the text, then Add to my Buffer queue. */
-export function PostThisSheet({ endpoint, channels, text: initial, image, onClose, onDone }: { endpoint: string; channels: Channel[]; text: string; image: string; onClose: () => void; onDone: (o: Outcome) => void }): JSX.Element {
-  const [on, setOn] = useState(() => new Set(channels.filter((c) => !c.needsBoard && c.service !== "youtube").map((c) => c.id)));
+export function PostThisSheet(props: { endpoint: string; targets: string; text: string; image: string; onClose: () => void; onDone: (r: SheetResult) => void }): JSX.Element {
+  const channels = useTargets(props.targets);
+  return channels ? <PostThisReady {...props} channels={channels} /> : <Sheet title="Post this to:" onClose={props.onClose}><p class="small muted"><span class="spin" aria-hidden="true" /></p></Sheet>;
+}
+
+function PostThisReady({ endpoint, channels, text: initial, image, onClose, onDone }: { endpoint: string; channels: Channel[]; text: string; image: string; onClose: () => void; onDone: (r: SheetResult) => void }): JSX.Element {
+  const [on, setOn] = useState(() => new Set(channels.filter((c) => !blocked(c)).map((c) => c.id)));
   const [text, setText] = useState(initial);
   const [busy, setBusy] = useState(false);
   return (
@@ -134,12 +193,7 @@ export function PostThisSheet({ endpoint, channels, text: initial, image, onClos
           disabled={busy || !on.size}
           onClick={async () => {
             setBusy(true);
-            try {
-              const r = await api<{ outcome: Outcome }>(endpoint, { json: { channels: [...on], text, image } });
-              onDone(r.outcome);
-            } catch {
-              onDone("failed");
-            }
+            onDone(await send(endpoint, { channels: [...on], text, image }, channels));
           }}
         >
           {busy && <span class="spin" aria-hidden="true" />}

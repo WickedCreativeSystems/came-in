@@ -22,7 +22,9 @@ import { parseTapInput, recordTap } from "./taps";
 import { sampleWall, recordSampleTap, isSampleTile, deleteOldSampleTaps } from "./sample";
 import { renderTapPage, renderGonePage, type TapTile } from "./render/tap";
 import { renderLanding, renderPrivacy, renderCredits } from "./render/site";
-import { SAMPLE_SHOP } from "../shared/sample";
+import { SAMPLE_SHOP, SAMPLE_POSTS } from "../shared/sample";
+
+const SAMPLE_POSTS_BY_ID = new Map(SAMPLE_POSTS.map((p) => [p.id, p]));
 import { dayBadge, bellSentence, whereLine, firstLine } from "../shared/names";
 import { isValidTimeZone } from "../shared/time";
 import type { WallData, WallTile, ChannelRow } from "../shared/types";
@@ -35,7 +37,7 @@ import { parsePatch, shopSettings, saveShopSettings, sampleSettings, saveSampleS
 import { clearOwnerCookie } from "./lib/cookies";
 import { shopWeek, parseRange } from "./week";
 import { shopPostPage } from "./post";
-import { postAgain, postShare, moreLikeThis, queueWinnerJobs, runJobs, type PostTarget, type ChannelResult } from "./writes";
+import { postAgain, postShare, moreLikeThis, queueWinnerJobs, runJobs, againTargets, refusalFor, type PostTarget, type ChannelResult } from "./writes";
 import { sampleWeek, samplePostPage, SAMPLE_CHANNELS } from "./sample";
 import { mondayBody, summarize } from "../shared/week";
 import { zonedParts, shopWeekKey } from "../shared/time";
@@ -771,6 +773,33 @@ app.post("/api/post/:tile/again", async (c) => {
   return c.json(sheetAnswer(results, c.env.BUFFER_DRAFTS === "1"));
 });
 
+// The sheets ask which channels would refuse, before they open (plan 3.9).
+app.get("/api/post/:tile/targets", async (c) => {
+  noStore(c);
+  const shop = await ownerShop(c);
+  if (!shop) return c.json({ error: "signed out" }, 401);
+  const t = await againTargets(c.env, shop.id, c.req.param("tile"), await targetChannels(c.env, shop.id));
+  if (!t) return c.json({ error: "no such post" }, 404);
+  return c.json({ channels: t });
+});
+
+app.get("/api/week/targets", async (c) => {
+  noStore(c);
+  const shop = await ownerShop(c);
+  if (!shop) return c.json({ error: "signed out" }, 401);
+  // Post this sends the square share image.
+  return c.json({ channels: (await targetChannels(c.env, shop.id)).map((ch) => ({ ...ch, refusal: refusalFor(ch.service, "image") })) });
+});
+
+app.get("/api/sample/post/:tile/targets", (c) => {
+  const p = SAMPLE_POSTS_BY_ID.get(c.req.param("tile"));
+  if (!p) return c.json({ error: "no such post" }, 404);
+  const media = p.textOnly ? "none" : p.id === "hands" ? "video" : "image";
+  return c.json({ channels: SAMPLE_CHANNELS.map((ch) => ({ ...ch, refusal: refusalFor(ch.service, media) })) });
+});
+
+app.get("/api/sample/week/targets", (c) => c.json({ channels: SAMPLE_CHANNELS.map((ch) => ({ ...ch, refusal: refusalFor(ch.service, "image") })) }));
+
 app.post("/api/post/:tile/idea", async (c) => {
   const shop = await ownerShop(c);
   if (!shop) return c.json({ error: "signed out" }, 401);
@@ -782,6 +811,8 @@ app.post("/api/post/:tile/idea", async (c) => {
 
 // The share image: drawn in the owner's browser, uploaded here, served for Buffer to fetch (plan 3.7, P14).
 const SHARE_MAX = 5 * 1024 * 1024;
+const SHARE_KEEP = 10; // per shop and kind; older ones are deleted
+
 async function storeShare(c: C, owner: string, kind: string, range: string, tz: string): Promise<Response> {
   if (kind !== "story" && kind !== "square") return c.json({ error: "bad kind" }, 400);
   if (c.req.header("content-type") !== "image/png") return c.json({ error: "PNG only" }, 415);
@@ -791,6 +822,10 @@ async function storeShare(c: C, owner: string, kind: string, range: string, tz: 
   if (![0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((b, i) => sig[i] === b)) return c.json({ error: "not a PNG" }, 415);
   const name = `${shopWeekKey(new Date(), tz)}-${parseRange(range)}-${kind}-${randomToken(8)}.png`;
   await c.env.MEDIA.put(`share/${owner}/${name}`, buf, { httpMetadata: { contentType: "image/png", cacheControl: "public, max-age=31536000, immutable" } });
+  // Keep the newest few of each kind; a queued post's image is among them.
+  const list = await c.env.MEDIA.list({ prefix: `share/${owner}/` });
+  const mine = list.objects.filter((o) => o.key.includes(`-${kind}-`)).sort((a, b) => b.uploaded.getTime() - a.uploaded.getTime());
+  if (mine.length > SHARE_KEEP) await c.env.MEDIA.delete(mine.slice(SHARE_KEEP).map((o) => o.key));
   return c.json({ ok: true, url: `${publicOrigin(c)}/s/${owner}/${name}` });
 }
 
@@ -800,15 +835,10 @@ app.post("/api/share/:kind", async (c) => {
   return storeShare(c, shop.id, c.req.param("kind"), c.req.query("range") ?? "this", shop.timezone);
 });
 
-app.post("/api/sample/share/:kind", async (c) => {
-  const session = sampleSession(c, () => randomToken(32));
-  return storeShare(c, `sample-${session.slice(0, 12)}`, c.req.param("kind"), c.req.query("range") ?? "this", SAMPLE_SHOP.timezone);
-});
-
 app.get("/s/:owner/:file", async (c) => {
   const owner = c.req.param("owner");
   const file = c.req.param("file");
-  if (!/^[a-z0-9-]{4,40}$/i.test(owner) || !/^[A-Za-z0-9-]+\.png$/.test(file)) return c.notFound();
+  if (!/^[a-z]{10}$/.test(owner) || !/^[A-Za-z0-9-]+\.png$/.test(file)) return c.notFound();
   return serveR2(c, `share/${owner}/${file}`, "public, max-age=31536000, immutable");
 });
 

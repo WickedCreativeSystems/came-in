@@ -8,7 +8,7 @@ import { applyTheme } from "../lib/theme";
 import { Header } from "../ui/Header";
 import { Marks } from "../ui/marks";
 import { Icon } from "../ui/icons";
-import { PostAgainSheet, outcomeLine, type Channel, type Outcome } from "../ui/Sheets";
+import { PostAgainSheet, outcomeLine, resultLine, type Channel, type Outcome } from "../ui/Sheets";
 
 interface PostData {
   tile: WallTile;
@@ -45,6 +45,7 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
   const [again, setAgain] = useState(false);
   const [line, setLine] = useState<string | null>(null);
   const [ideaLine, setIdeaLine] = useState<string | null>(null);
+  const [ideaBusy, setIdeaBusy] = useState(false);
   const base = sample ? "/sample" : "";
   const apiBase = `${sample ? "/api/sample/post" : "/api/post"}/${encodeURIComponent(tileId)}`;
 
@@ -97,7 +98,7 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
               </div>
               {t.links.length > 0 && (
                 <p class="post-links">
-                  {t.links.map((l) => (
+                  {t.links.filter((l) => /^https:\/\//.test(l.url)).map((l) => (
                     <a key={l.url} class="btn quiet sm" href={l.url} target="_blank" rel="noopener">
                       {seeItOn(l.service)}
                       <Icon name="external" size={16} />
@@ -162,13 +163,17 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
                 </button>
                 <button
                   class="btn"
+                  disabled={ideaBusy}
                   onClick={async () => {
+                    if (ideaBusy) return;
+                    setIdeaBusy(true);
                     try {
                       const r = await api<{ outcome: Outcome }>(`${apiBase}/idea`, { method: "POST" });
                       setIdeaLine(outcomeLine(r.outcome));
                     } catch {
                       setIdeaLine(outcomeLine("failed"));
                     }
+                    setIdeaBusy(false);
                   }}
                 >
                   More like this
@@ -185,8 +190,8 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
                   {t.hidden ? "Show on the card" : "Hide from the card"}
                 </button>
               </div>
-              {line && <p class="small outcome">{line}</p>}
-              {ideaLine && <p class="small outcome">{ideaLine}</p>}
+              {line && <p class={`small outcome${line === outcomeLine("failed") ? " failed" : ""}`}>{line}</p>}
+              {ideaLine && <p class={`small outcome${ideaLine === outcomeLine("failed") ? " failed" : ""}`}>{ideaLine}</p>}
               {(t.tagged || data.noteLeft) && (
                 <p class="caption status-lines">
                   <Icon name="tag" size={14} />
@@ -200,10 +205,10 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
       {again && data && (
         <PostAgainSheet
           endpoint={`${apiBase}/again`}
-          channels={data.channels}
+          targets={`${apiBase}/targets`}
           onClose={() => setAgain(false)}
-          onDone={(o) => {
-            setLine(outcomeLine(o));
+          onDone={(r) => {
+            setLine(resultLine(r));
             setAgain(false);
           }}
         />

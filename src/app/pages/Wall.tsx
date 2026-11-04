@@ -73,6 +73,13 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
     }, 300);
   }
 
+  async function showOnCard(id: string) {
+    try {
+      await api(`${sample ? "/api/sample/post" : "/api/post"}/${encodeURIComponent(id)}`, { json: { hidden: false } });
+      await load();
+    } catch {}
+  }
+
   async function doRefresh() {
     if (refresh !== "rest") return;
     setRefresh("checking");
@@ -98,7 +105,7 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
 
   const now = new Date(data.now);
   const tz = data.shop.timezone;
-  const shown = data.tiles.filter((t) => !t.hidden);
+  const shown = data.tiles;
   const base = sample ? "/sample" : "";
   const tapUrl = sample ? "/sample/t" : `/t/${data.shop.id}?try=1`;
   const allDone = Object.values(data.checklist).every(Boolean);
@@ -177,9 +184,20 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
         </div>
         {shown.length ? (
           <div class="wall">
-            {shown.map((t, i) => (
-              <Tile key={t.id} tile={t} index={i} now={now} tz={tz} flash={flash === t.id} href={`${base}/post/${t.id}`} />
-            ))}
+            {shown.map((t, i) =>
+              t.hidden ? (
+                <div class="week-tile" key={t.id}>
+                  <Tile tile={t} index={i} now={now} tz={tz} flash={flash === t.id} href={`${base}/post/${t.id}`} />
+                  <div class="tile-actions">
+                    <button class="tile-action" onClick={() => void showOnCard(t.id)}>
+                      Show on the card
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <Tile key={t.id} tile={t} index={i} now={now} tz={tz} flash={flash === t.id} href={`${base}/post/${t.id}`} />
+              ),
+            )}
           </div>
         ) : data.sync.status === "running" ? (
           <p class="small muted">Reading your posts…{data.sync.count > 0 ? ` ${data.sync.count} so far` : ""}</p>
