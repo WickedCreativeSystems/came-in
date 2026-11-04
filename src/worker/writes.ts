@@ -395,6 +395,8 @@ async function noteTile(env: Env, shop: ShopRow, token: string, tileId: string, 
   if (!tile) return "no tile";
   if (tile.note_count >= people) return "done";
   const text = noteText(people);
+  // Another runner is making this tile's first note right now: try again on the next tick.
+  if (tile.note_id === "making") return "retry";
   if (tile.note_id) {
     const r = await graphql<{ updateCollaborationNote: UnionResult }>(env, token, UPDATE_NOTE, { input: { noteId: tile.note_id, text } });
     if (r.data.updateCollaborationNote.__typename !== "UpdateCollaborationNoteSuccess") return r.data.updateCollaborationNote.message ?? "note not updated";
@@ -403,8 +405,20 @@ async function noteTile(env: Env, shop: ShopRow, token: string, tileId: string, 
   }
   const first = await env.DB.prepare(`SELECT id FROM posts WHERE tile_id = ?1 ORDER BY sent_at LIMIT 1`).bind(tileId).first<{ id: string }>();
   if (!first) return "no post";
-  const r = await graphql<{ createCollaborationNote: UnionResult & { edge?: { node: { id: string } } } }>(env, token, CREATE_NOTE, { input: { subject: { postId: first.id }, text } });
-  if (r.data.createCollaborationNote.__typename !== "CreateCollaborationNoteSuccess" || !r.data.createCollaborationNote.edge) return r.data.createCollaborationNote.message ?? "note not made";
+  // One note per tile, however runners overlap: claim the tile's note before making it.
+  const claim = await env.DB.prepare(`UPDATE tiles SET note_id = 'making' WHERE id = ?1 AND note_id IS NULL`).bind(tileId).run();
+  if (!claim.meta.changes) return "retry";
+  let r: { data: { createCollaborationNote: UnionResult & { edge?: { node: { id: string } } } } };
+  try {
+    r = await graphql(env, token, CREATE_NOTE, { input: { subject: { postId: first.id }, text } });
+  } catch (e) {
+    await env.DB.prepare(`UPDATE tiles SET note_id = NULL WHERE id = ?1 AND note_id = 'making'`).bind(tileId).run();
+    throw e;
+  }
+  if (r.data.createCollaborationNote.__typename !== "CreateCollaborationNoteSuccess" || !r.data.createCollaborationNote.edge) {
+    await env.DB.prepare(`UPDATE tiles SET note_id = NULL WHERE id = ?1 AND note_id = 'making'`).bind(tileId).run();
+    return r.data.createCollaborationNote.message ?? "note not made";
+  }
   await env.DB.prepare(`UPDATE tiles SET note_id = ?2, note_count = ?3 WHERE id = ?1`).bind(tileId, r.data.createCollaborationNote.edge.node.id, people).run();
   return "done";
 }

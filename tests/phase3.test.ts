@@ -476,6 +476,17 @@ describe("check fixes on e80197b (NerdCider, The Playner's ruling)", () => {
     expect(fb.created).toHaveLength(1);
   });
 
+  it("two runners making a tile's first note at once make one note", async () => {
+    const id = await shopWithPosts();
+    const fb = fakeBuffer();
+    const { enqueue } = await import("../src/worker/writes");
+    await enqueue(env, id, "note", { tileId: `sour-${id}`, people: 3 });
+    await enqueue(env, id, "note", { tileId: `sour-${id}`, people: 3 });
+    await Promise.all([runJobs(env, id), runJobs(env, id)]);
+    await runJobs(env, id, new Date(Date.now() + 20 * 60000));
+    expect(fb.notes).toHaveLength(1);
+  });
+
   it("taps that step past 3 together still tag and note", async () => {
     const id = await shopWithPosts();
     const fb = fakeBuffer();

@@ -59,7 +59,7 @@ export async function shopPostPage(env: Env, shop: ShopRow, tileId: string, now 
     sent: sentCaption(new Date(tile.firstSentAt), now, shop.timezone),
     byDay: groupByDay(taps.results.map((t) => ({ at: t.created_at })), now, shop.timezone),
     bySource: sourceLines(taps.results),
-    noteLeft: !!row?.note_id,
+    noteLeft: !!row?.note_id && row.note_id !== "making",
     media,
     channels: channels.results.map((c) => ({ id: c.id, name: c.display_name || c.name, service: c.service, needsPhoto: (c.service === "instagram" || c.service === "tiktok") && media === "none", needsBoard: c.service === "pinterest" })),
   };
