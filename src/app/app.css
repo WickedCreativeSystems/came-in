@@ -250,6 +250,11 @@ nav.bottombar { display: none; }
   .tile-action .long { display: none; }
   .tile-action .short { display: inline; font-size: 13px; }
 }
+@media (max-width: 379px) {
+  .tile-action { padding: 0 5px; }
+  .tile-action:first-child { margin-left: -5px; }
+  .tile-action .short { font-size: 12px; }
+}
 .share-grid { display: grid; grid-template-columns: 9fr 16fr; gap: 16px; align-items: end; margin-bottom: 8px; }
 .share-grid figure { margin: 0; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .share-grid img { width: 100%; border-radius: var(--r); box-shadow: 0 0 0 1px var(--rule); }

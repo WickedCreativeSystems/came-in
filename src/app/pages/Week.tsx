@@ -171,8 +171,8 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
                         setBusyIdea((b) => ({ ...b, [t.id]: false }));
                       }}
                     >
-                      <span class="long">More like it</span>
-                      <span class="short" aria-hidden="true">More like this</span>
+                      <span class="long">More like this</span>
+                      <span class="short" aria-hidden="true">More like it</span>
                     </button>
                     {t.hidden && (
                       <>

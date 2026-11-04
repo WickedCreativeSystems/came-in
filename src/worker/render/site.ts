@@ -11,10 +11,10 @@ const SITE_CSS = `
 .hero h1{margin:0 0 16px;font-family:var(--fd);font-weight:700;font-size:40px;line-height:1.02;letter-spacing:-.005em}
 .hero p{margin:0 0 24px;color:var(--ink-2);font-size:16px;max-width:620px}
 .bs{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-.cap{margin:12px 0 0;font-size:13px;color:var(--ink-2);max-width:480px}
+.cap{margin:12px 0 0;font-size:13px;line-height:1.4;color:var(--ink-2);max-width:52ch}
 .bs{flex-direction:row}
-@media (max-width:480px){.bs{flex-direction:column;align-items:stretch}.bs .btn{justify-content:center}}
-.free{margin-top:12px;font-size:13px;color:var(--ink-2)}
+@media (max-width:480px){.bs{flex-direction:column;align-items:stretch;gap:8px}.bs .btn{justify-content:center}}
+.cap.free{margin-top:4px;max-width:none}
 @media (max-width:720px){.hero{padding:32px 0}.hero h1{font-size:30px}}
 .loop{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;padding:0 0 64px}
 .loop figure{margin:0}
@@ -54,8 +54,8 @@ export function renderLanding(opts: { error?: "denied" | "exchange" | null; cont
 <section class="hero"><h1>Find out which of your posts bring people through the door.</h1>
 <p>Came In reads the posts you've already sent through Buffer. Customers (or your staff) tap the one that brought them in. Your phone rings.</p>
 <div class="bs"><a class="btn primary" href="/sample">Try the sample bakery</a><a class="btn" href="/auth/start">Connect Buffer</a></div>
-<p class="cap">Connect Buffer takes you to Buffer to sign in. Came In only reads your posts and channels.</p>
-<div class="free">Free for one shop.</div></section>
+<div class="cap">Connect Buffer takes you to Buffer to sign in. Came In only reads your posts and channels.</div>
+<div class="cap free">Free for one shop.</div></section>
 <section class="loop" aria-label="How it works">
 <figure><img src="/landing/card.jpg" alt="The printed card on a shop counter: Saw us online? Tap the post that brought you in." width="800" height="600" loading="lazy"><figcaption>The card on your counter.</figcaption></figure>
 <figure><img src="/landing/tap.jpg" alt="A phone showing the shop's posts as tiles to tap." width="800" height="600" loading="lazy"><figcaption>A customer taps the post they saw.</figcaption></figure>
