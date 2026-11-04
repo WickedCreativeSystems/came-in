@@ -300,8 +300,10 @@ app.get("/qr/sample.svg", async (c) => {
   return c.body(await qrSvg(`${origin(c)}/sample/t`));
 });
 
-app.get("/qr/:shop{[a-z]{10}}.svg", async (c) => {
-  const shop = await liveShop(c.env, c.req.param("shop"));
+app.get("/qr/:file", async (c) => {
+  const m = /^([a-z]{10})\.svg$/.exec(c.req.param("file"));
+  if (!m) return c.notFound();
+  const shop = await liveShop(c.env, m[1]);
   if (!shop) return c.notFound();
   c.header("Content-Type", "image/svg+xml");
   c.header("Cache-Control", "public, max-age=3600");

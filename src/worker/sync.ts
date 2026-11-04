@@ -76,7 +76,7 @@ export interface PageResult {
 }
 
 /** One page of sent posts since `since`, upserted with their images. */
-export async function syncPostsPage(env: Env, shop: ShopRow, token: string, since: Date, cursor: string | null, first = PAGE_SIZE): Promise<PageResult> {
+export async function syncPostsPage(env: Env, shop: ShopRow, token: string, since: Date, cursor: string | null, first = PAGE_SIZE, onRows?: (upserted: number) => Promise<void>): Promise<PageResult> {
   const channelIds = await enabledChannelIds(env, shop.id);
   if (!channelIds.length) return { upserted: 0, newPosts: 0, hasNextPage: false, endCursor: null };
   const { data } = await graphql<PostsPage>(env, token, SENT_POSTS, {
@@ -91,8 +91,10 @@ export async function syncPostsPage(env: Env, shop: ShopRow, token: string, sinc
   for (const post of posts) {
     if (await upsertPost(env, shop, post)) newPosts++;
   }
-  // Images after the rows, so a slow image never blocks the wall.
-  await Promise.all(posts.map((p) => fetchImages(env, shop, p).catch(() => undefined)));
+  // Tell the first-run screen as soon as the rows are in; images come after,
+  // so a slow image never holds up the count or the wall.
+  if (onRows) await onRows(posts.length);
+  await mapLimit(posts, 12, (p) => fetchImages(env, shop, p).catch(() => undefined));
   return { upserted: posts.length, newPosts, hasNextPage: data.posts.pageInfo.hasNextPage, endCursor: data.posts.pageInfo.endCursor };
 }
 
@@ -215,4 +217,13 @@ export async function retryMissingImages(env: Env, token: (shopId: string) => Pr
   }
   void token;
   return fixed;
+}
+
+/** Run `fn` over `items`, at most `limit` at a time. */
+export async function mapLimit<T>(items: T[], limit: number, fn: (item: T) => Promise<unknown>): Promise<void> {
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) await fn(items[next++]);
+  });
+  await Promise.all(workers);
 }

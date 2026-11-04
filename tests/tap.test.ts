@@ -239,3 +239,15 @@ describe("the sample's one session (P6)", () => {
     expect(res.headers.getSetCookie().some((c) => c.startsWith("ci_sample="))).toBe(true);
   });
 });
+
+describe("the try strip's QR code (plan 3.4)", () => {
+  it("serves an SVG QR for a shop's tap page, and the sample's", async () => {
+    const id = await makeShop();
+    const res = await call(`/qr/${id}.svg`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("image/svg+xml");
+    expect(await res.text()).toMatch(/^<svg/);
+    expect((await call("/qr/sample.svg")).status).toBe(200);
+    expect((await call("/qr/nosuchshop.svg")).status).toBe(404);
+  });
+});

@@ -15,6 +15,9 @@
     "not_found_handling": "none",
     "run_worker_first": true
   },
+  // Production answers on Walker's subdomain and on workers.dev.
+  "workers_dev": true,
+  "routes": [{ "pattern": "camein.bananafest-destiny.com", "custom_domain": true }],
   "vars": {
     "APP_ENV": "production",
     "PUBLIC_ORIGIN": "https://came-in.walkertbrown.workers.dev"
@@ -36,6 +39,8 @@
   "env": {
     "staging": {
       "name": "came-in-staging",
+      "workers_dev": true,
+      "routes": [],
       "vars": {
         "APP_ENV": "staging",
         "PUBLIC_ORIGIN": "https://came-in-staging.walkertbrown.workers.dev"

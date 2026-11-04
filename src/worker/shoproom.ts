@@ -145,10 +145,14 @@ export class ShopRoom extends DurableObject<Env> {
         return;
       }
       const fresh = (await getShop(this.env, shop.id)) ?? shop;
-      const page = await syncPostsPage(this.env, fresh, token, new Date(state.since), state.cursor);
-      state.count += page.upserted;
+      const before = state.count;
+      const page = await syncPostsPage(this.env, fresh, token, new Date(state.since), state.cursor, undefined, async (n) => {
+        await this.broadcast({ type: "sync", status: "running", count: before + n });
+      });
+      state.count = before + page.upserted;
       state.cursor = page.endCursor;
       state.failures = 0;
+      await this.ctx.storage.put("sync", state);
       await this.broadcast({ type: "sync", status: "running", count: state.count });
       if (page.hasNextPage && page.endCursor) {
         await this.ctx.storage.put("sync", state);
