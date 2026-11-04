@@ -332,7 +332,7 @@ describe("nickname and hide from the card (P17)", () => {
     expect(p.byDay.reduce((a, b) => a + b.n, 0)).toBe(2);
     expect(p.bySource).toEqual([
       { label: "From the card", n: 1 },
-      { label: "At the counter", n: 1 },
+      { label: "At the till", n: 1 },
       { label: "Online", n: 0 },
     ]);
     expect(p.sent).toMatch(/^Sent \w+, \d+:\d\d (am|pm)$/);

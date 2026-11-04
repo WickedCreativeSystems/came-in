@@ -70,7 +70,7 @@ describe("the counter (P7, plan 3.6)", () => {
     ]);
   });
 
-  it("has no per-device limit, only one tap per 3 seconds; a post tap rings 'At the counter', not on the counter", async () => {
+  it("has no per-device limit, only one tap per 3 seconds; a post tap rings 'At the till', not on the staff screen", async () => {
     const id = await shopWithPosts();
     const token = await openCounterFor(id);
     const wall = await openSocket(id, "laptop");
@@ -87,7 +87,7 @@ describe("the counter (P7, plan 3.6)", () => {
     vi.useRealTimers();
     await settle();
     const ring = wall.got.find((m) => m.type === "ring");
-    expect(ring).toMatchObject({ where: "At the counter · just now", tileId: `sour-${id}` });
+    expect(ring).toMatchObject({ where: "At the till · just now", tileId: `sour-${id}` });
     expect(counterScreen.got.some((m) => m.type === "ring")).toBe(false);
     const n = await env.DB.prepare(`SELECT COUNT(*) AS n FROM taps WHERE shop_id = ?1 AND tile_id = ?2`).bind(id, `sour-${id}`).first<{ n: number }>();
     expect(n!.n).toBe(2);

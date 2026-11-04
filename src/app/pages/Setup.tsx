@@ -93,7 +93,7 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
 
         <Section id="staff" eyebrow="Staff screen">
           <p>A screen for your staff, not something to print.</p>
-          <p>This turns this phone or tablet into the counter. It stays signed in until you close it.</p>
+          <p>This turns this phone or tablet into the staff screen. It stays signed in until you close it.</p>
           <OpenCounter sample={sample} />
         </Section>
 
