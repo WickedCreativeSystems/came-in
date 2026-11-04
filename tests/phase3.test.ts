@@ -503,3 +503,16 @@ describe("check fixes on e80197b (NerdCider, The Playner's ruling)", () => {
     expect(summarize([], tiles(), TZ, "month").headline).toBe("Nobody has tapped yet this month.");
   });
 });
+
+describe("the sample's hidden post (NerdCider, LookieBot on f9d6a5f)", () => {
+  it("leaves the sample's tap page and counter for that browser, and stays for another", async () => {
+    const first = await call("/api/sample/wall");
+    const cookie = cookiesFrom(first);
+    await call("/api/sample/post/hours", { ...json({ hidden: true }), cookie });
+    expect(await (await call("/sample/t", { cookie })).text()).not.toContain('data-i="hours"');
+    expect(await (await call("/sample/c", { cookie })).text()).not.toContain('data-i="hours"');
+    expect(await (await call("/sample/t")).text()).toContain('data-i="hours"');
+    await call("/api/sample/post/hours", { ...json({ hidden: false }), cookie });
+    expect(await (await call("/sample/t", { cookie })).text()).toContain('data-i="hours"');
+  });
+});

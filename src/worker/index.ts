@@ -417,7 +417,8 @@ app.get("/sample/t", async (c) => {
   const session = sampleSession(c, () => randomToken(32));
   const settings = await sampleSettings(c.env, session);
   const now = new Date();
-  const wall = await sampleWall(c.env, "none", now);
+  // This browser's own sample, so a post it hid leaves the tap page (P17).
+  const wall = await sampleWall(c.env, session, now);
   const { story, tiles } = tapGrid(wall.tiles);
   return c.html(
     renderTapPage({
@@ -632,7 +633,7 @@ app.get("/sample/c", async (c) => {
   return c.html(
     renderCounterPage({
       shop: { name: SAMPLE_SHOP.name, handle: SAMPLE_SHOP.handle, avatarUrl: null },
-      tiles: wall.tiles.slice(0, 12).map((t) => toTapTile(t, now, SAMPLE_SHOP.timezone)),
+      tiles: wall.tiles.filter((t) => !t.hidden).slice(0, 12).map((t) => toTapTile(t, now, SAMPLE_SHOP.timezone)),
       token: "sample",
       endpoint: "/api/sample/counter/tap",
       owner: true,
