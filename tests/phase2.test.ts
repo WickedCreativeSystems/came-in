@@ -453,3 +453,27 @@ describe("token refreshes are counted on their own (plan 1.2)", () => {
     expect((b.c ?? 0) - (a.c ?? 0)).toBe(0);
   });
 });
+
+
+describe("Chrome's real push hosts (regression on 13acc64)", () => {
+  it("accepts the endpoints browsers really return, and refuses other Google hosts", async () => {
+    const { pushHostAllowed } = await import("../src/worker/push");
+    for (const ok of [
+      "https://jmt17.google.com/fcm/send/dQw4w9WgXcQ:APA91bH",
+      "https://fcm.googleapis.com/fcm/send/eXaMpLe:APA91bG",
+      "https://android.googleapis.com/gcm/send/abc",
+      "https://updates.push.services.mozilla.com/wpush/v2/gAAAAABl",
+      "https://web.push.apple.com/QGuQyavXutnMH",
+      "https://wns2-par02p.notify.windows.com/w/?token=BQYAAAB",
+    ])
+      expect(pushHostAllowed(ok, undefined), ok).toBe(true);
+    for (const bad of ["https://storage.googleapis.com/bucket/o", "https://evil.com/fcm/send/x", "https://google.com.evil.com/x", "http://fcm.googleapis.com/fcm/send/x", "https://jmt17.google.com.evil.com/x"])
+      expect(pushHostAllowed(bad, undefined), bad).toBe(false);
+  });
+
+  it("a desktop Chrome subscription on jmt17.google.com saves", async () => {
+    const id = await shopWithPosts();
+    const r = await call("/api/push/subscribe", { ...json({ device: "chrome", subscription: await testSubscription("https://jmt17.google.com/fcm/send/abc:APA91b") }), cookie: await ownerCookie(id) });
+    expect(r.status).toBe(200);
+  });
+});

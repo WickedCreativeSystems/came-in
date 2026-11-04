@@ -34,7 +34,15 @@ export interface SubscriptionInput {
  * The browsers' push services. Came In only ever POSTs to these, so a
  * subscription can't turn the Worker into a relay to any other host.
  */
-const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /^[a-z0-9-]+\.googleapis\.com$/, /^updates\.push\.services\.mozilla\.com$/, /^web\.push\.apple\.com$/, /^[a-z0-9-]+\.push\.apple\.com$/, /^[a-z0-9-]+\.notify\.windows\.com$/];
+const PUSH_HOSTS = [
+  /^fcm\.googleapis\.com$/, // Chrome, Edge on Android, Brave, Opera
+  /^android\.googleapis\.com$/, // older Chrome
+  /^[a-z0-9-]+\.google\.com$/, // Chrome on the desktop, for example jmt17.google.com
+  /^updates\.push\.services\.mozilla\.com$/, // Firefox
+  /^web\.push\.apple\.com$/, // Safari
+  /^[a-z0-9-]+\.push\.apple\.com$/,
+  /^[a-z0-9-]+\.notify\.windows\.com$/, // Edge on Windows
+];
 
 export function pushHostAllowed(endpoint: string, extra: string | undefined): boolean {
   let host: string;

@@ -6,7 +6,7 @@ import type { WallData, ChannelRow, Theme } from "@shared/types";
 import { serviceName } from "@shared/marks";
 import { api, ApiError } from "../lib/api";
 import { applyTheme } from "../lib/theme";
-import { ringMyPhone, initialPhoneState, thisPhoneRings, type PhoneState } from "../lib/push";
+import { ringMyPhone, initialPhoneState, thisPhoneRings, isIOS, type PhoneState } from "../lib/push";
 import { Header } from "../ui/Header";
 import { Bell } from "../ui/glyphs";
 
@@ -351,7 +351,7 @@ function RingMyPhone({ sample, pushKey, onDone }: { sample: boolean; pushKey: st
       {state === "unsupported" && (
         <div class="note">
           <p class="small">This phone can't ring. The bell still rings wherever Came In is open.</p>
-          <IOSSteps />
+          {isIOS() && <IOSSteps />}
         </div>
       )}
     </div>
