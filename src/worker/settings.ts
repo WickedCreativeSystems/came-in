@@ -4,6 +4,7 @@ import type { Env } from "./env";
 import type { ShopRow } from "./db";
 import { SAMPLE_SHOP } from "../shared/sample";
 import type { Theme } from "../shared/types";
+import { enqueue } from "./writes";
 
 export interface Settings {
   thankYou: string | null;
@@ -124,13 +125,23 @@ export async function saveSampleSettings(env: Env, session: string, p: SettingsP
 }
 
 /** Disconnect and delete everything (plan 3.8): the shop's rows and R2 objects go; a tombstone keeps the tap page's "isn't using Came In" answer. */
-export async function deleteShop(env: Env, shopId: string): Promise<void> {
-  const tables = ["taps", "posts", "tiles", "channels", "counters", "push_subs", "buffer_tokens", "buffer_jobs"];
+/**
+ * Disconnect and delete (plan 3.8, P18). Every row and image of the shop goes
+ * now, except the Buffer sign-in and one job per note Came In left: those stay
+ * only until each note is deleted in Buffer, then closeDeletedShop removes them.
+ * Returns the number of notes still to remove.
+ */
+export async function deleteShop(env: Env, shopId: string): Promise<number> {
+  const notes = await env.DB.prepare(`SELECT note_id FROM tiles WHERE shop_id = ?1 AND note_id IS NOT NULL AND note_id != 'making'`).bind(shopId).all<{ note_id: string }>();
+  const tables = ["taps", "posts", "tiles", "channels", "counters", "push_subs", "buffer_jobs"];
   await env.DB.batch(tables.map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE shop_id = ?1`).bind(shopId)));
+  const hasToken = await env.DB.prepare(`SELECT 1 FROM buffer_tokens WHERE shop_id = ?1`).bind(shopId).first();
+  if (hasToken) for (const n of notes.results) await enqueue(env, shopId, "delete_note", { noteId: n.note_id });
+  if (!hasToken || !notes.results.length) await env.DB.prepare(`DELETE FROM buffer_tokens WHERE shop_id = ?1`).bind(shopId).run();
   await env.DB.prepare(
     `UPDATE shops SET name = '', handle = '', avatar_key = NULL, card_channel_id = NULL, thank_you_text = NULL, review_url = NULL, deleted_at = ?2 WHERE id = ?1`,
   ).bind(shopId, new Date().toISOString()).run();
-  for (const prefix of [`thumbs/${shopId}/`, `full/${shopId}/`]) {
+  for (const prefix of [`thumbs/${shopId}/`, `full/${shopId}/`, `share/${shopId}/`]) {
     let cursor: string | undefined;
     do {
       const list = await env.MEDIA.list({ prefix, cursor });
@@ -139,4 +150,5 @@ export async function deleteShop(env: Env, shopId: string): Promise<void> {
     } while (cursor);
   }
   await env.MEDIA.delete(`avatars/${shopId}`);
+  return hasToken ? notes.results.length : 0;
 }

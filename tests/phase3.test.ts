@@ -375,6 +375,30 @@ describe("the Monday push (P11)", () => {
     expect(bodies).toHaveLength(1);
     void sent;
   });
+
+  it("catches up: if the 08:00 tick was missed, the first tick after it sends, once, and Tuesday does not", async () => {
+    const id = await shopWithPosts();
+    const lastWeek = new Date("2026-11-04T18:00:00Z");
+    for (let i = 0; i < 11; i++)
+      await env.DB.prepare(`INSERT INTO taps (id, shop_id, tile_id, answer, source, device_hash, rewarded, created_at) VALUES (?1, ?2, ?3, 'post', 'card', ?4, 0, ?5)`)
+        .bind(`mc-${id}-${i}`, id, i % 2 ? `sour-${id}` : `hours-${id}`, `d${i}`, lastWeek.toISOString())
+        .run();
+    await call("/api/push/subscribe", { ...json({ device: "p2", subscription: await subscription() }), cookie: await ownerCookie(id) });
+    let pushes = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const req = input instanceof Request ? input : new Request(String(input), init);
+      if (new URL(req.url).host === "push.test") {
+        pushes++;
+        return new Response(null, { status: 201 });
+      }
+      return new Response("no", { status: 404 });
+    });
+    // 08:00 to 08:59 ticks never ran; 9:30 am Monday is the first tick.
+    expect(await mondayPushes(env, new Date("2026-11-09T15:30:00Z"))).toContain(id);
+    expect(await mondayPushes(env, new Date("2026-11-09T15:45:00Z"))).not.toContain(id);
+    expect(await mondayPushes(env, new Date("2026-11-10T15:30:00Z"))).not.toContain(id);
+    expect(pushes).toBe(1);
+  });
 });
 
 async function subscription() {

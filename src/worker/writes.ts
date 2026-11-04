@@ -6,10 +6,10 @@ import type { Env } from "./env";
 import type { ShopRow } from "./db";
 import { getShop } from "./db";
 import { graphql, BufferError } from "./buffer/client";
-import { CREATE_POST, CREATE_NOTE, UPDATE_NOTE, CREATE_IDEA, type UnionResult } from "./buffer/mutations";
+import { CREATE_POST, CREATE_NOTE, UPDATE_NOTE, DELETE_NOTE, CREATE_IDEA, type UnionResult } from "./buffer/mutations";
 import { uuid } from "./lib/crypto";
 
-export type JobKind = "note" | "post_again" | "idea" | "post_share";
+export type JobKind = "note" | "post_again" | "idea" | "post_share" | "delete_note";
 
 export interface PostTarget {
   channelId: string;
@@ -286,7 +286,8 @@ export async function runJobs(env: Env, shopId: string | null, now = new Date())
       .run();
     if (!claim.meta.changes) continue;
     const shop = await getShop(env, job.shop_id);
-    if (!shop || shop.deleted_at) {
+    // A deleted shop's only work is taking Came In's notes out of its Buffer.
+    if (!shop || (shop.deleted_at && job.kind !== "delete_note")) {
       await finish(env, job.id, "shop gone");
       continue;
     }
@@ -305,7 +306,28 @@ export async function runJobs(env: Env, shopId: string | null, now = new Date())
       await retry(env, job.id, job.tries, 60000 * 2 ** job.tries, true, (e as Error).message);
     }
   }
+  // A deleted shop keeps its Buffer sign-in only until its notes are gone.
+  for (const id of new Set(results.map((j) => j.shop_id))) await closeDeletedShop(env, id);
   return done;
+}
+
+/** When a deleted shop has no note left to remove (done, or given up on), its sign-in and jobs go too (P18). */
+export async function closeDeletedShop(env: Env, shopId: string): Promise<boolean> {
+  const shop = await getShop(env, shopId);
+  if (!shop?.deleted_at) return false;
+  const left = await env.DB.prepare(`SELECT 1 FROM buffer_jobs WHERE shop_id = ?1 AND kind = 'delete_note' AND done_at IS NULL AND tries < ?2 LIMIT 1`).bind(shopId, MAX_TRIES).first();
+  if (left) return false;
+  await env.DB.batch([
+    env.DB.prepare(`DELETE FROM buffer_tokens WHERE shop_id = ?1`).bind(shopId),
+    env.DB.prepare(`DELETE FROM buffer_jobs WHERE shop_id = ?1`).bind(shopId),
+  ]);
+  return true;
+}
+
+/** The daily tick: a deleted shop whose notes could not all be removed stops holding a sign-in. */
+export async function closeDeletedShops(env: Env): Promise<void> {
+  const { results } = await env.DB.prepare(`SELECT id FROM shops WHERE deleted_at IS NOT NULL AND EXISTS (SELECT 1 FROM buffer_tokens b WHERE b.shop_id = shops.id)`).all<{ id: string }>();
+  for (const s of results) await closeDeletedShop(env, s.id);
 }
 
 async function finish(env: Env, id: string, error: string | null): Promise<void> {
@@ -328,6 +350,12 @@ async function runJob(env: Env, shop: ShopRow, kind: JobKind, p: Record<string, 
   const token = await shopToken(env, shop.id);
   if (!token) return "reconnect";
   switch (kind) {
+    case "delete_note": {
+      const { data } = await graphql<{ deleteCollaborationNote: UnionResult }>(env, token, DELETE_NOTE, { input: { noteId: String(p.noteId) } });
+      const r = data.deleteCollaborationNote;
+      // Already gone in Buffer is as good as deleted.
+      return r.__typename === "DeleteCollaborationNoteSuccess" || /not found|does not exist/i.test(r.message ?? "") ? "done" : "retry";
+    }
     case "note":
       return noteTile(env, shop, token, String(p.tileId), Number(p.people));
     case "post_again":

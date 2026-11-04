@@ -124,7 +124,7 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
                     class={`input${nickErr ? " error" : ""}`}
                     value={nick}
                     maxLength={24}
-                    placeholder="the sourdough post"
+                    placeholder={data.tile.name}
                     onInput={(e) => {
                       setNick((e.target as HTMLInputElement).value);
                       setNickState("rest");
