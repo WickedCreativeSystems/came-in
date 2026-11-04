@@ -148,7 +148,10 @@ nav.bottombar { display: none; }
   .with-phone nav.bottombar { bottom: 0; }
   .with-phone .fab { bottom: 72px; }
   .shop-name { font-size: 22px; }
-  .today .lbl { display: none; }
+  /* "4 came in": the number keeps its word; only "today" goes (look.md section 4). */
+  .today .lbl { font-weight: 600; font-size: 14px; white-space: nowrap; }
+  .today .lbl-day { display: none; }
+  .shop-handle { max-width: 34vw; }
   .page { padding: 16px 16px 120px; }
   .try { grid-template-columns: auto 1fr; gap: 12px; padding: 12px; }
   .try .qr { width: 74px; height: 74px; }

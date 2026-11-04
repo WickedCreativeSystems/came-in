@@ -40,7 +40,9 @@ export function Header({ shop, today, tab, base }: { shop: ShopSummary; today: n
             <div class="today" title="People who came in because of a post today">
               <BellMono size={18} />
               <TickNumber value={today} class="n" />
-              <span class="lbl">came in today</span>
+              <span class="lbl">
+                came in<span class="lbl-day"> today</span>
+              </span>
             </div>
           )}
           <button
