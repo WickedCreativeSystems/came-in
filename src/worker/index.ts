@@ -424,7 +424,8 @@ app.get("/embed.js", (c) => {
 var o=new URL(s.src).origin,f=document.createElement("iframe");f.src=id==="sample"?o+"/sample/t":o+"/e/"+id;f.title="Saw us online? Tap the post that brought you in.";f.loading="lazy";
 f.style.cssText="display:block;width:100%;max-width:520px;height:560px;border:0;margin:0 auto;background:transparent";f.setAttribute("allow","");
 s.parentNode.insertBefore(f,s.nextSibling);
-addEventListener("message",function(e){if(e.source!==f.contentWindow||!e.data||e.data.cameIn!=="height")return;var h=Math.max(560,Math.min(4000,Number(e.data.h)||0));f.style.height=h+"px"})})();`);
+var rm=matchMedia("(prefers-reduced-motion: reduce)").matches;if(!rm)f.style.transition="height 260ms cubic-bezier(.2,.8,.2,1)";
+addEventListener("message",function(e){if(e.source!==f.contentWindow||!e.data||e.data.cameIn!=="height")return;var h=Math.max(320,Math.min(4000,Number(e.data.h)||0));f.style.height=h+"px";if(e.data.thanks&&f.getBoundingClientRect().top<0)f.scrollIntoView({block:"start",behavior:rm?"auto":"smooth"})})})();`);
 });
 
 app.get("/e/:shop{[a-z]{10}}", async (c) => {

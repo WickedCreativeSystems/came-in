@@ -99,6 +99,7 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
     return (
       <main class="page">
         {error && <div class="strip stamp" role="alert">Something's wrong on our side. Try again in a minute.</div>}
+        {!error && <div class="setup-hold" aria-hidden="true" />}
       </main>
     );
   }

@@ -69,7 +69,12 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
     void load();
   }, []);
 
-  if (!wall) return <main class="page" />;
+  if (!wall)
+    return (
+      <main class="page">
+        <div class="setup-hold" aria-hidden="true" />
+      </main>
+    );
   const t = data?.tile;
   return (
     <>

@@ -55,7 +55,13 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
       .catch(() => setError(true));
   }, [range]);
 
-  if (!wall) return <main class="page">{error && <div class="strip stamp" role="alert">Something's wrong on our side. Try again in a minute.</div>}</main>;
+  if (!wall)
+    return (
+      <main class="page">
+        {error && <div class="strip stamp" role="alert">Something's wrong on our side. Try again in a minute.</div>}
+        {!error && <div class="setup-hold" aria-hidden="true" />}
+      </main>
+    );
   const now = new Date(wall.now);
   const top = data?.tiles.find((t) => t.id === data.summary.topTileId) ?? null;
 

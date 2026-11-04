@@ -234,3 +234,18 @@ describe("the privacy page says what goes to Anthropic", () => {
     expect(html).toContain("For a post with a picture or video, its picture and words are sent once to Anthropic, only to give the post a short name. Nothing else is sent, and nothing about a customer.");
   });
 });
+
+describe("the embed's thanks screen (plan 3.12)", () => {
+  it("sits at the top of the frame and the frame is told its height", async () => {
+    const id = await makeShop();
+    await addChannel(id, `ig-${id}`, "instagram");
+    const html = await (await call(`/e/${id}`)).text();
+    expect(html).toContain("html.emb .th{position:static");
+    expect(html).toContain("pg.classList.add('away')");
+    expect(html).toContain("cameIn:'height'");
+    expect(html).toContain("thanks:!!thanks");
+    const js = await (await call("/embed.js")).text();
+    expect(js).toContain("Math.max(320");
+    expect(js).toContain("e.data.thanks");
+  });
+});
