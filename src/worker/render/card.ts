@@ -24,11 +24,12 @@ export interface CardData {
   sizeHref: (s: CardSize) => string;
 }
 
-// At A6 the card is 105 mm wide; look.md's px values are for that width,
-// where 1 px is 105/397 mm (96 dpi). --u is one look.md px at this size.
+// look.md section 4: the card is drawn 298 units wide, and every value is in
+// those units. One unit is the card's width / 298 (A6 0.3523 mm, A5 0.4966 mm,
+// 4×6 in 0.3409 mm); everything scales by it, type included.
 function css(size: CardSize): string {
   const s = CARD_SIZES[size];
-  const u = `${(s.w / 105) * (25.4 / 96)}mm`;
+  const u = `calc(${s.w}mm / 298)`;
   return `${AVATAR_CSS}
 :root{--u:${u}}
 body{background:var(--paper-2)}
@@ -39,15 +40,15 @@ body{background:var(--paper-2)}
 .sizes a[aria-current]{color:var(--paper);background:var(--ink);border-color:var(--ink)}
 .stage{padding:32px 16px 64px;display:grid;place-items:center;overflow:auto}
 .note{text-align:center;color:var(--ink-2);font-size:13px;margin:0 16px 32px}
-.card{width:${s.w}mm;height:${s.h}mm;background:#FFF;color:#231F1B;border-radius:3px;box-shadow:0 1px 0 rgba(0,0,0,.08),0 12px 30px -12px rgba(0,0,0,.35);padding:calc(24 * var(--u));display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;overflow:hidden}
-.card .av{width:calc(48 * var(--u))!important;height:calc(48 * var(--u))!important;font-size:calc(22 * var(--u))!important;margin:calc(14 * var(--u)) 0 calc(10 * var(--u));-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.card{width:${s.w}mm;height:${s.h}mm;background:#FFF;color:#231F1B;border-radius:3px;box-shadow:0 1px 0 rgba(0,0,0,.08),0 12px 30px -12px rgba(0,0,0,.35);padding:calc(28 * var(--u)) calc(24 * var(--u));display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;overflow:hidden}
+.card .av{width:calc(48 * var(--u))!important;height:calc(48 * var(--u))!important;font-size:calc(22 * var(--u))!important;margin:0 0 calc(10 * var(--u));-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .card .nm{font-family:var(--fd);font-weight:700;font-size:calc(28 * var(--u));line-height:1;letter-spacing:.005em}
-.card .hn{font-size:calc(12 * var(--u));color:#6E665D;margin:calc(4 * var(--u)) 0 calc(22 * var(--u))}
+.card .hn{font-size:calc(12 * var(--u));line-height:1.2;color:#6E665D;margin:calc(3 * var(--u)) 0 calc(22 * var(--u))}
 .card .ask{font-family:var(--fd);font-weight:700;font-size:calc(34 * var(--u));line-height:.98;letter-spacing:-.005em;margin:0 0 calc(6 * var(--u))}
 .card .sub{font-size:calc(13 * var(--u));color:#6E665D;margin:0 0 calc(18 * var(--u));line-height:1.3}
 .card .qr{width:calc(132 * var(--u));height:calc(132 * var(--u));border:1px solid #D8D3CA;border-radius:3px;padding:calc(6 * var(--u));background:#FFF;flex:none}
 .card .qr svg{width:100%;height:100%;display:block;shape-rendering:crispEdges}
-.card .ci{margin-top:auto;display:inline-flex;align-items:center;gap:calc(6 * var(--u));font-family:var(--fd);font-weight:800;font-size:calc(13 * var(--u));letter-spacing:.04em;text-transform:uppercase;color:#6E665D}
+.card .ci{margin-top:auto;line-height:1;display:inline-flex;align-items:center;gap:calc(6 * var(--u));font-family:var(--fd);font-weight:800;font-size:calc(13 * var(--u));letter-spacing:.04em;text-transform:uppercase;color:#6E665D}
 .card .ci svg{width:calc(14 * var(--u));height:calc(14 * var(--u))}
 .card .punch{position:absolute;top:calc(12 * var(--u));left:50%;width:calc(9 * var(--u));height:calc(9 * var(--u));border-radius:50%;background:#ECE9E2;box-shadow:inset 0 1px 1px rgba(0,0,0,.15);transform:translateX(-50%)}
 @page{size:${s.page};margin:0}

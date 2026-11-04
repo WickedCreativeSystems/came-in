@@ -356,3 +356,13 @@ describe("rate-limit discipline (P19, plan 1.2)", () => {
     await env.DB.prepare(`DELETE FROM buffer_rate WHERE window = '15m'`).run();
   });
 });
+
+describe("look check on 34fc040 (LookieBot)", () => {
+  it("the card's unit is its width / 298 at every size", async () => {
+    const id = await makeShop();
+    const cookie = await ownerCookie(id);
+    expect(await (await call("/card", { cookie })).text()).toContain(":root{--u:calc(105mm / 298)}");
+    expect(await (await call("/card?size=a5", { cookie })).text()).toContain(":root{--u:calc(148mm / 298)}");
+    expect(await (await call("/card?size=4x6", { cookie })).text()).toContain(":root{--u:calc(101.6mm / 298)}");
+  });
+});

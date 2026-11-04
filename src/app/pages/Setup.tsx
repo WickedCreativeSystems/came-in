@@ -70,7 +70,7 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
         {sample && (
           <div class="strip">
             <span>Sample bakery. Taps here only ring this browser.</span>
-            <a class="btn primary sm" href="/auth/start">
+            <a class="btn primary" href="/auth/start">
               Connect your own Buffer
             </a>
           </div>
@@ -212,7 +212,7 @@ function TextSetting({ value, placeholder, max, label, type, onSave }: { value: 
           }}
         />
         <button
-          class="btn primary sm"
+          class="btn primary"
           disabled={state === "saving"}
           onClick={async () => {
             setState("saving");
@@ -245,7 +245,7 @@ function CopyField({ value, label, mono }: { value: string; label: string; mono?
       </label>
       <input id={id} class={`input${mono ? " mono" : ""}`} readOnly value={value} onFocus={(e) => (e.target as HTMLInputElement).select()} />
       <button
-        class="btn sm"
+        class="btn"
         onClick={async () => {
           try {
             await navigator.clipboard.writeText(value);
@@ -402,7 +402,7 @@ function ChannelsSetting({ rows: initial }: { rows: ChannelRow[] }): JSX.Element
       )}
       <div class="btn-row">
         <button
-          class="btn primary sm"
+          class="btn primary"
           disabled={state === "saving" || !rows.some((r) => r.enabled)}
           onClick={async () => {
             setState("saving");
