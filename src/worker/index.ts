@@ -709,7 +709,7 @@ app.get("/api/sample/week", async (c) => {
 
 async function targetChannels(env: Env, shopId: string): Promise<{ id: string; name: string; service: string }[]> {
   const { results } = await env.DB.prepare(`SELECT id, name, display_name, service FROM channels WHERE shop_id = ?1 AND enabled = 1 ORDER BY rowid`).bind(shopId).all<{ id: string; name: string; display_name: string | null; service: string }>();
-  return results.map((r) => ({ id: r.id, name: r.display_name || r.name, service: r.service }));
+  return results.map((r) => ({ id: r.id, name: r.display_name || r.name, service: r.service, needsBoard: r.service === "pinterest" }));
 }
 
 async function chosenTargets(env: Env, shopId: string, ids: unknown): Promise<PostTarget[]> {

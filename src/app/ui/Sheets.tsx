@@ -10,6 +10,7 @@ export interface Channel {
   name: string;
   service: string;
   needsPhoto?: boolean;
+  needsBoard?: boolean;
 }
 
 export type Outcome = "queued" | "approval" | "draft" | "failed" | "saved";
@@ -62,13 +63,14 @@ function ChannelToggles({ channels, on, setOn }: { channels: Channel[]; on: Set<
             {c.name}
             <span class="caption muted"> · {serviceName(c.service)}</span>
             {c.needsPhoto && <span class="eyebrow needs"> needs a photo</span>}
+            {c.needsBoard && <span class="eyebrow needs"> needs a board in Buffer</span>}
           </span>
           <button
             class="toggle"
             role="switch"
             aria-checked={on.has(c.id)}
             aria-label={`${c.name} on ${serviceName(c.service)}`}
-            disabled={c.needsPhoto}
+            disabled={c.needsPhoto || c.needsBoard}
             onClick={() => {
               const n = new Set(on);
               if (n.has(c.id)) n.delete(c.id);
@@ -84,7 +86,7 @@ function ChannelToggles({ channels, on, setOn }: { channels: Channel[]; on: Set<
 
 /** "Post it again to:" (plan 3.9): Instagram off and marked "needs a photo" if the post has none. */
 export function PostAgainSheet({ endpoint, channels, onClose, onDone }: { endpoint: string; channels: Channel[]; onClose: () => void; onDone: (o: Outcome) => void }): JSX.Element {
-  const [on, setOn] = useState(() => new Set(channels.filter((c) => !c.needsPhoto).map((c) => c.id)));
+  const [on, setOn] = useState(() => new Set(channels.filter((c) => !c.needsPhoto && !c.needsBoard).map((c) => c.id)));
   const [busy, setBusy] = useState(false);
   return (
     <Sheet title="Post it again to:" onClose={onClose}>
@@ -116,7 +118,7 @@ export function PostAgainSheet({ endpoint, channels, onClose, onDone }: { endpoi
 
 /** "Post this to:" (plan 3.7): channel toggles, the text, then Add to my Buffer queue. */
 export function PostThisSheet({ endpoint, channels, text: initial, image, onClose, onDone }: { endpoint: string; channels: Channel[]; text: string; image: string; onClose: () => void; onDone: (o: Outcome) => void }): JSX.Element {
-  const [on, setOn] = useState(() => new Set(channels.map((c) => c.id)));
+  const [on, setOn] = useState(() => new Set(channels.filter((c) => !c.needsBoard && c.service !== "youtube").map((c) => c.id)));
   const [text, setText] = useState(initial);
   const [busy, setBusy] = useState(false);
   return (

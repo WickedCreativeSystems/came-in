@@ -16,7 +16,7 @@ export interface PostTarget {
   service: string;
 }
 
-export type ChannelResult = { channelId: string; status: "queued" | "draft" | "approval" | "failed" | "needs_video" | "needs_photo" | "retrying"; message?: string };
+export type ChannelResult = { channelId: string; status: "queued" | "draft" | "approval" | "failed" | "needs_video" | "needs_photo" | "needs_board" | "retrying"; message?: string };
 
 /** The note's words (look.md section 8). */
 export function noteText(people: number): string {
@@ -34,15 +34,15 @@ export function isNoteStep(n: number): boolean {
  * Google Business need a type; YouTube a title, and only takes video;
  * TikTok a title for photo posts.
  */
-export function metadataFor(service: string, kind: "image" | "video" | "none", title: string): Record<string, unknown> | null {
+export function metadataFor(service: string, kind: "image" | "video" | "none", title: string, original?: string | null): Record<string, unknown> | null {
   const t = title.slice(0, 100);
   switch (service) {
     case "instagram":
-      return { instagram: { type: kind === "video" ? "reel" : "post", shouldShareToFeed: true } };
+      return { instagram: { type: original && ["post", "reel", "story"].includes(original) ? original : kind === "video" ? "reel" : "post", shouldShareToFeed: true } };
     case "facebook":
-      return { facebook: { type: kind === "video" ? "reel" : "post" } };
+      return { facebook: { type: original && ["post", "reel", "story"].includes(original) ? original : kind === "video" ? "reel" : "post" } };
     case "googlebusiness":
-      return { google: { type: "whats_new" } };
+      return { google: { type: original && ["whats_new", "offer", "event"].includes(original) ? original : "whats_new" } };
     case "youtube":
       return { youtube: { title: t, categoryId: "22" } };
     case "tiktok":
@@ -62,19 +62,24 @@ async function headOk(url: string): Promise<boolean> {
 }
 
 interface TileMedia {
+  types: Record<string, string>;
   text: string;
   imagePost: { id: string; source: string | null; full: boolean } | null;
   videoSource: string | null;
 }
 
 export async function tileMedia(env: Env, shopId: string, tileId: string): Promise<TileMedia | null> {
-  const { results } = await env.DB.prepare(`SELECT id, text, kind, source_url, thumb_status FROM posts WHERE tile_id = ?1 AND shop_id = ?2 ORDER BY length(text) DESC`).bind(tileId, shopId).all<{ id: string; text: string; kind: string; source_url: string | null; thumb_status: string }>();
+  const { results } = await env.DB.prepare(
+    `SELECT p.id, p.text, p.kind, p.source_url, p.thumb_status, p.meta_type, c.service FROM posts p LEFT JOIN channels c ON c.id = p.channel_id WHERE p.tile_id = ?1 AND p.shop_id = ?2 ORDER BY length(p.text) DESC`,
+  ).bind(tileId, shopId).all<{ id: string; text: string; kind: string; source_url: string | null; thumb_status: string; meta_type: string | null; service: string | null }>();
   if (!results.length) return null;
   const img = results.find((p) => p.kind === "photo");
   const vid = results.find((p) => p.kind === "video");
   let full = false;
   if (img) full = !!(await env.MEDIA.head(`full/${shopId}/${img.id}`));
-  return { text: results[0].text, imagePost: img ? { id: img.id, source: img.source_url, full } : null, videoSource: vid?.source_url ?? null };
+  const types: Record<string, string> = {};
+  for (const p of results) if (p.service && p.meta_type && !types[p.service]) types[p.service] = p.meta_type;
+  return { text: results[0].text, imagePost: img ? { id: img.id, source: img.source_url, full } : null, videoSource: vid?.source_url ?? null, types };
 }
 
 /**
@@ -95,7 +100,7 @@ export async function postAgain(env: Env, shop: ShopRow, tileId: string, targets
   const assets = image ? [{ image: { url: image } }] : video ? [{ video: { url: video } }] : [];
   const out: ChannelResult[] = [];
   const kind = image ? "image" : video ? "video" : "none";
-  const title = firstLineOf(text ?? media.text);
+  const title = youtubeTitle(text ?? media.text, shop.name);
   for (const t of targets) {
     if (!image && media.videoSource && !video) {
       out.push({ channelId: t.channelId, status: "needs_video" });
@@ -109,7 +114,11 @@ export async function postAgain(env: Env, shop: ShopRow, tileId: string, targets
       out.push({ channelId: t.channelId, status: "needs_video" });
       continue;
     }
-    out.push(await createOne(env, shop, "post_again", { channelId: t.channelId, text: text ?? media.text, assets, tileId, metadata: metadataFor(t.service, kind, title) }));
+    if (t.service === "pinterest") {
+      out.push({ channelId: t.channelId, status: "needs_board" });
+      continue;
+    }
+    out.push(await createOne(env, shop, "post_again", { channelId: t.channelId, text: text ?? media.text, assets, tileId, metadata: metadataFor(t.service, kind, title, media.types[t.service]) }));
   }
   return out;
 }
@@ -122,7 +131,11 @@ export async function postShare(env: Env, shop: ShopRow, targets: PostTarget[], 
       out.push({ channelId: t.channelId, status: "needs_video" });
       continue;
     }
-    out.push(await createOne(env, shop, "post_share", { channelId: t.channelId, text, assets: [{ image: { url: imageUrl } }], metadata: metadataFor(t.service, "image", firstLineOf(text)) }));
+    if (t.service === "pinterest") {
+      out.push({ channelId: t.channelId, status: "needs_board" });
+      continue;
+    }
+    out.push(await createOne(env, shop, "post_share", { channelId: t.channelId, text, assets: [{ image: { url: imageUrl } }], metadata: metadataFor(t.service, "image", youtubeTitle(text, shop.name)) }));
   }
   return out;
 }
@@ -135,8 +148,10 @@ interface CreatePayload {
   metadata?: Record<string, unknown> | null;
 }
 
-function firstLineOf(text: string): string {
-  return (text.split(/\r?\n/).find((l) => l.trim()) ?? "").trim() || "Came In";
+/** YouTube's title: the first 100 characters of the text, or "<shop name> on Came In" (plan 1.2). */
+export function youtubeTitle(text: string, shopName: string): string {
+  const t = text.replace(/\s+/g, " ").trim();
+  return t ? t.slice(0, 100) : `${shopName} on Came In`;
 }
 
 async function createOne(env: Env, shop: ShopRow, kind: "post_again" | "post_share", p: CreatePayload, token?: string | null): Promise<ChannelResult> {

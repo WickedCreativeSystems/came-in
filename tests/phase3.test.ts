@@ -388,7 +388,34 @@ describe("per-network metadata on createPost", () => {
     expect(metadataFor("instagram", "video", "t")).toEqual({ instagram: { type: "reel", shouldShareToFeed: true } });
     expect(metadataFor("googlebusiness", "image", "t")).toEqual({ google: { type: "whats_new" } });
     expect(metadataFor("youtube", "video", "A free matching game")).toEqual({ youtube: { title: "A free matching game", categoryId: "22" } });
+    expect(metadataFor("instagram", "image", "t", "story")).toEqual({ instagram: { type: "story", shouldShareToFeed: true } });
+    const { youtubeTitle } = await import("../src/worker/writes");
+    expect(youtubeTitle("x".repeat(150), "Rye")).toHaveLength(100);
+    expect(youtubeTitle("  ", "Rye & Lantern")).toBe("Rye & Lantern on Came In");
     expect(metadataFor("tiktok", "image", "t")).toEqual({ tiktok: { title: "t" } });
     expect(metadataFor("tiktok", "video", "t")).toBeNull();
+  });
+});
+
+
+describe("Pinterest needs a board (plan 1.2)", () => {
+  it("is off in the sheet and never sent", async () => {
+    const id = await shopWithPosts();
+    await addChannel(id, `pin-${id}`, "pinterest");
+    const cookie = await ownerCookie(id);
+    const page = (await (await call(`/api/post/sour-${id}`, { cookie })).json()) as { channels: { service: string; needsBoard: boolean }[] };
+    expect(page.channels.find((c) => c.service === "pinterest")!.needsBoard).toBe(true);
+    const fb = fakeBuffer({ heads: { "https://img.test/sour.jpg": 200 } });
+    const r = (await (await call(`/api/post/sour-${id}/again`, { ...json({ channels: [`pin-${id}`] }), cookie })).json()) as { results: { status: string }[] };
+    expect(r.results[0].status).toBe("needs_board");
+    expect(fb.created).toHaveLength(0);
+  });
+
+  it("reuses the original post's type on its network", async () => {
+    const id = await shopWithPosts();
+    await env.DB.prepare(`UPDATE posts SET meta_type = 'reel' WHERE id = ?1`).bind(`p-sour-${id}`).run();
+    const fb = fakeBuffer({ heads: { "https://img.test/sour.jpg": 200 } });
+    await call(`/api/post/sour-${id}/again`, { ...json({ channels: [`ig-${id}`] }), cookie: await ownerCookie(id) });
+    expect(fb.created[0]).toMatchObject({ metadata: { instagram: { type: "reel" } } });
   });
 });

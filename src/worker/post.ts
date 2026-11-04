@@ -14,7 +14,7 @@ export interface PostPage {
   bySource: { label: string; n: number }[];
   noteLeft: boolean;
   media: "image" | "video" | "none";
-  channels: { id: string; name: string; service: string; needsPhoto: boolean }[];
+  channels: { id: string; name: string; service: string; needsPhoto: boolean; needsBoard: boolean }[];
 }
 
 export function dayLabel(at: Date, now: Date, tz: string): string {
@@ -61,6 +61,6 @@ export async function shopPostPage(env: Env, shop: ShopRow, tileId: string, now 
     bySource: sourceLines(taps.results),
     noteLeft: !!row?.note_id,
     media,
-    channels: channels.results.map((c) => ({ id: c.id, name: c.display_name || c.name, service: c.service, needsPhoto: c.service === "instagram" && media === "none" })),
+    channels: channels.results.map((c) => ({ id: c.id, name: c.display_name || c.name, service: c.service, needsPhoto: (c.service === "instagram" || c.service === "tiktok") && media === "none", needsBoard: c.service === "pinterest" })),
   };
 }

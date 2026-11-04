@@ -151,6 +151,6 @@ export async function samplePostPage(env: Env, session: string, tileId: string, 
     bySource: sourceLines(taps),
     noteLeft: p.tagged,
     media: p.textOnly ? "none" : p.id === "hands" ? "video" : "image",
-    channels: SAMPLE_CHANNELS.map((c) => ({ ...c, needsPhoto: c.service === "instagram" && !!p.textOnly })),
+    channels: SAMPLE_CHANNELS.map((c) => ({ ...c, needsPhoto: c.service === "instagram" && !!p.textOnly, needsBoard: false })),
   };
 }
