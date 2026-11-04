@@ -82,8 +82,9 @@ nav.bottombar { display: none; }
 .sticker { position: absolute; left: 10px; bottom: 10px; display: inline-flex; align-items: baseline; gap: 6px; background: var(--label); color: var(--label-ink); padding: 5px 10px 4px 9px; border-radius: var(--r); box-shadow: 0 0 0 1px rgba(35, 31, 27, .12); transform: rotate(var(--tilt, -1.5deg)); transform-origin: 0 100%; transition: background 600ms var(--ease-settle); }
 .sticker .n { font-family: var(--font-display); font-weight: 800; font-size: 26px; line-height: .9; height: 22px; }
 .sticker .w { font-weight: 600; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
-.sticker.zero { background: transparent; color: #FFFFFF; box-shadow: 0 0 0 1px rgba(255, 255, 255, .7); text-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
-.sticker.zero.on-paper { color: var(--ink-2); box-shadow: 0 0 0 1px var(--rule-2); text-shadow: none; }
+/* A zero on a photo is the same paper sticker with the number and word in #6E665D, so it stays legible on white graphics (look.md section 5). */
+.sticker.zero { color: #6E665D; }
+.sticker.zero.on-paper { background: transparent; color: var(--ink-2); box-shadow: 0 0 0 1px var(--rule-2); text-shadow: none; }
 .sticker.flash { background: var(--brass); color: #231F1B; box-shadow: 0 0 0 1px rgba(35, 31, 27, .12); text-shadow: none; transition: none; }
 .tile .tagged { position: absolute; right: 10px; bottom: 12px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #FFFFFF; text-shadow: 0 1px 2px rgba(0, 0, 0, .4); display: flex; align-items: center; gap: 4px; animation: fadein var(--t-fade) ease 1; }
 .tile .text-only ~ .tagged { color: var(--ink-2); text-shadow: none; }
