@@ -27,6 +27,12 @@ import { dayBadge, bellSentence, whereLine, firstLine } from "../shared/names";
 import { isValidTimeZone } from "../shared/time";
 import type { WallData, WallTile, ChannelRow } from "../shared/types";
 import type { TokenResponse } from "./buffer/client";
+import { pushShop, pushSample, parseSubscription, saveShopSub, saveSampleSub, pushConfigured, type PushNote } from "./push";
+import { openCounter, getCounter, closeCounter, parseCounterTap, recordCounterTap } from "./counter";
+import { renderCounterPage, renderCounterClosed } from "./render/counter";
+import { renderCard, cardSize, type CardSize } from "./render/card";
+import { parsePatch, shopSettings, saveShopSettings, sampleSettings, saveSampleSettings, setSample, deleteShop } from "./settings";
+import { clearOwnerCookie } from "./lib/cookies";
 
 export { ShopRoom };
 
@@ -250,7 +256,7 @@ app.get("/api/wall", async (c) => {
     strips: { rateLimited: !!blocked, reconnect: !!shop.revoked_at },
     checklist: {
       connected: true,
-      card: false,
+      card: !!shop.card_printed_at,
       counter: (extras?.counters ?? 0) > 0,
       phone: (extras?.subs ?? 0) > 0,
       thankYou: !!shop.thank_you_text,
@@ -369,8 +375,10 @@ app.post("/api/tap", async (c) => {
   const out = await recordTap(c.env, input);
   if (out.status === 200 && "ring" in out && out.ring) {
     const r = room(c.env, input.shop);
-    // The bell rings for every open owner screen except the tapping device (plan 1.4).
+    // The bell rings for every open owner screen except the tapping device, then every phone (plan 1.4).
+    const shop = await liveShop(c.env, input.shop);
     c.executionCtx.waitUntil(r.ring(out.ring.message, out.ring.exceptDevice));
+    if (shop) c.executionCtx.waitUntil(pushShop(c.env, shop.id, ringNote(shop.name, shop.avatar_key ? `/i/${shop.id}/avatar` : null, out.ring.message.sentence, "/wall", out.ring.message.tileId), out.ring.exceptDevice));
   }
   return c.json(out.body, out.status);
 });
@@ -380,12 +388,20 @@ app.post("/api/tap", async (c) => {
 app.get("/api/sample/wall", async (c) => {
   noStore(c);
   const session = sampleSession(c, () => randomToken(32));
-  return c.json(await sampleWall(c.env, session));
+  const [wall, settings, subs] = await Promise.all([
+    sampleWall(c.env, session),
+    sampleSettings(c.env, session),
+    c.env.DB.prepare(`SELECT COUNT(*) AS n FROM sample_push_subs WHERE session_id = ?1 AND failed_at IS NULL`).bind(session).first<{ n: number }>(),
+  ]);
+  wall.shop.theme = settings.theme;
+  wall.checklist = { connected: true, card: settings.cardPrinted, counter: settings.counterOpened, phone: (subs?.n ?? 0) > 0, thankYou: !!settings.thankYou, review: !!settings.reviewUrl };
+  return c.json(wall);
 });
 
 app.get("/sample/t", async (c) => {
   c.header("Cache-Control", "no-store");
-  sampleSession(c, () => randomToken(32));
+  const session = sampleSession(c, () => randomToken(32));
+  const settings = await sampleSettings(c.env, session);
   const now = new Date();
   const wall = await sampleWall(c.env, "none", now);
   const { story, tiles } = tapGrid(wall.tiles);
@@ -395,8 +411,8 @@ app.get("/sample/t", async (c) => {
       shop: { id: SAMPLE_SHOP.id, name: SAMPLE_SHOP.name, handle: SAMPLE_SHOP.handle, avatarUrl: null, timezone: SAMPLE_SHOP.timezone },
       story: story ? toTapTile(story, now, SAMPLE_SHOP.timezone) : null,
       tiles: tiles.map((t) => toTapTile(t, now, SAMPLE_SHOP.timezone)),
-      thankYou: SAMPLE_SHOP.thankYouText,
-      reviewUrl: SAMPLE_SHOP.reviewUrl,
+      thankYou: settings.thankYou,
+      reviewUrl: settings.reviewUrl,
       tapEndpoint: "/api/sample/tap",
       source: "sample",
       deviceKey: "ci_device_sample",
@@ -413,8 +429,10 @@ app.post("/api/sample/tap", async (c) => {
   if (answer === "post" && !isSampleTile(tile)) return c.json({ ok: false, error: "no such post" }, 400);
   const now = new Date();
   const r = await recordSampleTap(c.env, session, tile, answer, now);
+  const settings = await sampleSettings(c.env, session);
   if (answer === "post" && r.name) {
-    // Sample taps ring only this browser: its room is sample:<session> (plan 1.5).
+    // Sample taps ring only this browser: its room is sample:<session>, and only phones this browser rang up (plan 1.5).
+    c.executionCtx.waitUntil(pushSample(c.env, session, ringNote(SAMPLE_SHOP.name, null, bellSentence(r.name), "/sample", tile), null));
     c.executionCtx.waitUntil(
       room(c.env, `sample:${session}`).ring({
         type: "ring",
@@ -428,13 +446,235 @@ app.post("/api/sample/tap", async (c) => {
       }),
     );
   }
-  return c.json({ ok: true, counted: true, again: false, name: r.name, ticket: { text: SAMPLE_SHOP.thankYouText, at: now.toISOString() }, reviewUrl: SAMPLE_SHOP.reviewUrl });
+  return c.json({ ok: true, counted: true, again: false, name: r.name, ticket: settings.thankYou ? { text: settings.thankYou, at: now.toISOString() } : null, reviewUrl: settings.reviewUrl });
 });
 
 app.get("/sample/ws", async (c) => {
   if (c.req.header("Upgrade") !== "websocket") return c.text("expected websocket", 426);
   const session = sampleSession(c, () => randomToken(32));
   return room(c.env, `sample:${session}`).fetch(c.req.raw);
+});
+
+// ---------- Phase 2: Setup, the card, the counter, Ring my phone ----------
+
+function ringNote(shopName: string, icon: string | null, sentence: string, url: string, tag: string | null): PushNote {
+  return { title: shopName, body: sentence, icon: icon ?? "/icons/icon-192.png", url, tag: tag ?? undefined };
+}
+
+app.get("/api/setup", async (c) => {
+  noStore(c);
+  const shop = await ownerShop(c);
+  if (!shop) return c.json({ error: "signed out" }, 401);
+  const subs = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM push_subs WHERE shop_id = ?1 AND failed_at IS NULL`).bind(shop.id).first<{ n: number }>();
+  return c.json({
+    settings: shopSettings(shop),
+    tapUrl: `${origin(c)}/t/${shop.id}`,
+    embed: `<script src="${origin(c)}/embed.js" data-shop="${shop.id}"></script>`,
+    phones: subs?.n ?? 0,
+    channels: await channelRows(c.env, shop),
+    pushKey: pushConfigured(c.env) ? c.env.VAPID_PUBLIC : null,
+  });
+});
+
+app.post("/api/setup", async (c) => {
+  const shop = await ownerShop(c);
+  if (!shop) return c.json({ error: "signed out" }, 401);
+  const r = parsePatch(await c.req.json().catch(() => ({})));
+  if (!r.ok) return c.json({ error: r.error, field: r.field }, 400);
+  await saveShopSettings(c.env, shop.id, r.patch);
+  return c.json({ ok: true, settings: shopSettings((await getShop(c.env, shop.id))!) });
+});
+
+app.get("/api/sample/setup", async (c) => {
+  noStore(c);
+  const session = sampleSession(c, () => randomToken(32));
+  const subs = await c.env.DB.prepare(`SELECT COUNT(*) AS n FROM sample_push_subs WHERE session_id = ?1 AND failed_at IS NULL`).bind(session).first<{ n: number }>();
+  const { counterOpened, ...settings } = await sampleSettings(c.env, session);
+  return c.json({
+    settings,
+    tapUrl: `${origin(c)}/sample/t`,
+    embed: `<script src="${origin(c)}/embed.js" data-shop="sample"></script>`,
+    phones: subs?.n ?? 0,
+    channels: [],
+    pushKey: pushConfigured(c.env) ? c.env.VAPID_PUBLIC : null,
+    counterOpened,
+  });
+});
+
+app.post("/api/sample/setup", async (c) => {
+  const session = sampleSession(c, () => randomToken(32));
+  const r = parsePatch(await c.req.json().catch(() => ({})));
+  if (!r.ok) return c.json({ error: r.error, field: r.field }, 400);
+  await saveSampleSettings(c.env, session, r.patch);
+  const { counterOpened, ...settings } = await sampleSettings(c.env, session);
+  void counterOpened;
+  return c.json({ ok: true, settings });
+});
+
+// The printed card (plan 3.11).
+app.get("/card", async (c) => {
+  const shop = await ownerShop(c);
+  if (!shop) return c.redirect("/", 302);
+  const size = cardSize(c.req.query("size"));
+  return c.html(
+    renderCard({
+      shop: { name: shop.name, handle: shop.handle, avatarUrl: shop.avatar_key ? `/i/${shop.id}/avatar` : null },
+      qrSvg: await qrSvg(`${origin(c)}/t/${shop.id}`),
+      size,
+      printedEndpoint: "/api/card/printed",
+      backUrl: "/setup#card",
+      sizeHref: (s: CardSize) => `/card?size=${s}`,
+    }),
+  );
+});
+
+app.get("/sample/card", async (c) => {
+  sampleSession(c, () => randomToken(32));
+  const size = cardSize(c.req.query("size"));
+  return c.html(
+    renderCard({
+      shop: { name: SAMPLE_SHOP.name, handle: SAMPLE_SHOP.handle, avatarUrl: null },
+      qrSvg: await qrSvg(`${origin(c)}/sample/t`),
+      size,
+      printedEndpoint: "/api/sample/card/printed",
+      backUrl: "/sample/setup#card",
+      sizeHref: (s: CardSize) => `/sample/card?size=${s}`,
+    }),
+  );
+});
+
+app.post("/api/card/printed", async (c) => {
+  const shop = await ownerShop(c);
+  if (!shop) return c.json({ error: "signed out" }, 401);
+  await c.env.DB.prepare(`UPDATE shops SET card_printed_at = ?2 WHERE id = ?1`).bind(shop.id, new Date().toISOString()).run();
+  return c.json({ ok: true });
+});
+
+app.post("/api/sample/card/printed", async (c) => {
+  const session = sampleSession(c, () => randomToken(32));
+  await setSample(c.env, session, "card_printed", new Date().toISOString());
+  return c.json({ ok: true });
+});
+
+// The counter (plan 1.5, 3.6).
+app.post("/api/counter/open", async (c) => {
+  const shop = await ownerShop(c);
+  if (!shop) return c.json({ error: "signed out" }, 401);
+  return c.json({ ok: true, url: `/c/${await openCounter(c.env, shop.id)}` });
+});
+
+app.post("/api/counter/close", async (c) => {
+  const shop = await ownerShop(c);
+  if (!shop) return c.json({ error: "signed out" }, 401);
+  const { token } = (await c.req.json().catch(() => ({}))) as { token?: string };
+  if (!token || !(await closeCounter(c.env, shop.id, token))) return c.json({ error: "no such counter" }, 404);
+  return c.json({ ok: true });
+});
+
+app.get("/c/:token", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const counter = await getCounter(c.env, c.req.param("token"));
+  if (!counter) return c.html(renderGonePage(), 404);
+  if (counter.closed_at) return c.html(renderCounterClosed(), 410);
+  const shop = await liveShop(c.env, counter.shop_id);
+  if (!shop) return c.html(renderGonePage(), 404);
+  const now = new Date();
+  c.executionCtx.waitUntil(wake(c.env, shop.id, now));
+  const tiles = (await wallTiles(c.env, shop, now)).slice(0, 12);
+  const owner = (await ownerShopId(c)) === shop.id;
+  return c.html(
+    renderCounterPage({
+      shop: { name: shop.name, handle: shop.handle, avatarUrl: shop.avatar_key ? `/i/${shop.id}/avatar` : null },
+      tiles: tiles.map((t) => toTapTile(t, now, shop.timezone)),
+      token: counter.token,
+      endpoint: "/api/counter/tap",
+      owner,
+      closeEndpoint: owner ? "/api/counter/close" : null,
+      wallUrl: "/wall",
+      sample: false,
+    }),
+  );
+});
+
+app.post("/api/counter/tap", async (c) => {
+  const input = parseCounterTap(await c.req.json().catch(() => null));
+  if (!input) return c.json({ ok: false, error: "bad tap" }, 400);
+  const out = await recordCounterTap(c.env, input);
+  if (out.status === 200 && out.ring) {
+    const { message, exceptDevice, shop } = out.ring;
+    c.executionCtx.waitUntil(room(c.env, shop.id).ring(message, exceptDevice));
+    c.executionCtx.waitUntil(pushShop(c.env, shop.id, ringNote(shop.name, shop.avatar_key ? `/i/${shop.id}/avatar` : null, message.sentence, "/wall", message.tileId), exceptDevice));
+  }
+  return c.json(out.body, out.status);
+});
+
+app.get("/sample/c", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const session = sampleSession(c, () => randomToken(32));
+  await setSample(c.env, session, "counter_opened", "1");
+  const now = new Date();
+  const wall = await sampleWall(c.env, session, now);
+  return c.html(
+    renderCounterPage({
+      shop: { name: SAMPLE_SHOP.name, handle: SAMPLE_SHOP.handle, avatarUrl: null },
+      tiles: wall.tiles.slice(0, 12).map((t) => toTapTile(t, now, SAMPLE_SHOP.timezone)),
+      token: "sample",
+      endpoint: "/api/sample/counter/tap",
+      owner: true,
+      closeEndpoint: null,
+      wallUrl: "/sample",
+      sample: true,
+    }),
+  );
+});
+
+app.post("/api/sample/counter/tap", async (c) => {
+  const session = sampleSession(c, () => randomToken(32));
+  const b = (await c.req.json().catch(() => ({}))) as { tile?: string | null; answer?: string; device?: string };
+  const answer = b.answer === "walked_past" || b.answer === "friend" || b.answer === "google" ? b.answer : "post";
+  const tile = answer === "post" ? (b.tile ?? null) : null;
+  if (answer === "post" && !isSampleTile(tile)) return c.json({ ok: false, error: "no such post" }, 400);
+  const now = new Date();
+  const r = await recordSampleTap(c.env, session, tile, answer, now);
+  if (answer === "post" && r.name) {
+    const message = { type: "ring" as const, tileId: tile, sentence: bellSentence(r.name), where: whereLine("counter"), count: r.count, countToday: r.countToday, imageUrl: r.imageUrl, at: now.toISOString() };
+    c.executionCtx.waitUntil(room(c.env, `sample:${session}`).ring(message));
+    c.executionCtx.waitUntil(pushSample(c.env, session, ringNote(SAMPLE_SHOP.name, null, message.sentence, "/sample", tile), null));
+  }
+  return c.json({ ok: true, counted: true, name: r.name });
+});
+
+// Ring my phone (plan 3.8; P9).
+app.get("/api/push/key", (c) => c.json({ publicKey: pushConfigured(c.env) ? c.env.VAPID_PUBLIC : null }));
+
+app.post("/api/push/subscribe", async (c) => {
+  const shop = await ownerShop(c);
+  if (!shop) return c.json({ error: "signed out" }, 401);
+  const b = (await c.req.json().catch(() => ({}))) as { device?: string; subscription?: unknown };
+  const sub = parseSubscription(b.subscription);
+  const device = typeof b.device === "string" ? b.device.slice(0, 64) : "";
+  if (!sub || !device) return c.json({ error: "bad subscription" }, 400);
+  await saveShopSub(c.env, shop.id, device, sub, c.req.header("user-agent") ?? null);
+  return c.json({ ok: true });
+});
+
+app.post("/api/sample/push/subscribe", async (c) => {
+  const session = sampleSession(c, () => randomToken(32));
+  const b = (await c.req.json().catch(() => ({}))) as { device?: string; subscription?: unknown };
+  const sub = parseSubscription(b.subscription);
+  const device = typeof b.device === "string" ? b.device.slice(0, 64) : "";
+  if (!sub || !device) return c.json({ error: "bad subscription" }, 400);
+  await saveSampleSub(c.env, session, device, sub);
+  return c.json({ ok: true });
+});
+
+// Disconnect and delete everything (plan 3.8).
+app.post("/api/shop/delete", async (c) => {
+  const shop = await ownerShop(c);
+  if (!shop) return c.json({ error: "signed out" }, 401);
+  await deleteShop(c.env, shop.id);
+  clearOwnerCookie(c);
+  return c.json({ ok: true, next: "/" });
 });
 
 // ---------- The owner app (Vite + Preact, static assets) ----------

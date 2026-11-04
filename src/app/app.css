@@ -142,6 +142,11 @@ nav.bottombar { display: none; }
 }
 
 /* Phone width (look.md section 4) */
+@media (max-width: 400px) {
+  /* Second to give way, after the handle: the bell glyph inside the count. */
+  .today svg { display: none; }
+  .today { padding: 0 10px; }
+}
 @media (max-width: 720px) {
   .sign { height: 56px; padding: 0 16px; gap: 12px; }
   nav.tabs { display: none; }
@@ -152,7 +157,10 @@ nav.bottombar { display: none; }
   /* "4 came in": the number keeps its word; only "today" goes (look.md section 4). */
   .today .lbl { font-weight: 600; font-size: 14px; white-space: nowrap; }
   .today .lbl-day { display: none; }
-  .shop-handle { max-width: 34vw; }
+  .shop { flex: 1 1 auto; min-width: 0; }
+  .shop-text { flex: 1 1 auto; min-width: 0; }
+  .shop-handle { max-width: none; }
+  .sign .tools { flex: none; margin-left: 0; }
   .page { padding: 16px 16px 120px; }
   .try { grid-template-columns: auto 1fr; gap: 12px; padding: 12px; }
   .try .qr { width: 74px; height: 74px; }
@@ -168,3 +176,31 @@ nav.bottombar { display: none; }
   .wall-head { flex-wrap: wrap; row-gap: 2px; }
   .wall-head .range { flex-basis: 100%; order: 3; }
 }
+
+/* Setup (plan 3.8) */
+.setup .h1 { margin-bottom: var(--s5); }
+.setup-section { padding: var(--s5) 0; border-top: 1px solid var(--rule); max-width: 720px; scroll-margin-top: 80px; }
+.setup-section .eyebrow { margin: 0 0 var(--s3); }
+.setup-body > p { margin: 0 0 var(--s3); }
+.setup-body > a.small { display: inline-block; margin-top: var(--s2); color: var(--ink-2); }
+.field-row { display: flex; gap: 8px; align-items: center; }
+.field-row .input { flex: 1; min-width: 0; }
+.input.mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
+.counter-chars { margin-top: 6px; }
+.toggle-row { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
+.toggle-row .toggle { margin-top: 2px; }
+.seg { display: flex; gap: 8px; flex-wrap: wrap; }
+.seg .btn[aria-checked="true"] { background: var(--ink); color: var(--paper); }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: var(--s3); }
+.note { background: var(--paper-2); border-radius: var(--r-tile); padding: var(--s4); margin-top: var(--s3); }
+.note > p { margin: 0 0 var(--s3); }
+.ios-steps { list-style: none; counter-reset: s; margin: 0; padding: 0; display: grid; gap: 12px; }
+.ios-steps li { counter-increment: s; display: grid; grid-template-columns: 20px 36px 1fr; gap: 10px; align-items: center; font-size: 14px; }
+.ios-steps li::before { content: counter(s) "."; font-weight: 600; }
+.ios-steps svg { color: var(--ink); }
+.app-icon { width: 32px; height: 32px; border-radius: 8px; background: #F4F2ED; display: grid; place-items: center; box-shadow: 0 0 0 1px var(--rule); }
+.scrim { position: fixed; inset: 0; z-index: 50; background: rgba(23, 20, 15, .6); display: grid; place-items: end center; padding: 16px; }
+@media (min-width: 721px) { .scrim { place-items: center; } }
+.sheet-panel { background: var(--paper); border-radius: var(--r-tile); padding: var(--s5); max-width: 520px; width: 100%; }
+.sheet-panel .h2 { margin-bottom: var(--s4); }
+.btn.stamp:hover { background: var(--stamp-tint); }

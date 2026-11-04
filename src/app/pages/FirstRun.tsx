@@ -176,7 +176,8 @@ export function Reading(): JSX.Element {
       <main class="page narrow">
         <h2 class="h2">Reading your posts…</h2>
         <p class="small reading">
-          <span class="spin" aria-hidden="true" /> {count} so far
+          <span class="spin" aria-hidden="true" />
+          {count > 0 && <span>{count} so far</span>}
         </p>
         {slow === 1 && <p class="small muted">Buffer is taking a while…</p>}
         {slow === 2 && (

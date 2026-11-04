@@ -24,6 +24,7 @@ export interface ShopRow {
   created_at: string;
   revoked_at: string | null;
   deleted_at: string | null;
+  card_printed_at: string | null;
 }
 
 export interface TileRow {
@@ -79,8 +80,8 @@ export async function wallTiles(env: Env, shop: ShopRow, now = new Date(), opts:
             (SELECT p.id FROM posts p WHERE p.tile_id = t.id AND p.thumb_status = 'ok' ORDER BY p.sent_at LIMIT 1) AS thumb_post,
             (SELECT p.kind FROM posts p WHERE p.tile_id = t.id ORDER BY CASE p.kind WHEN 'photo' THEN 0 WHEN 'video' THEN 1 WHEN 'link' THEN 2 ELSE 3 END LIMIT 1) AS kind,
             (SELECT MAX(p.is_story) FROM posts p WHERE p.tile_id = t.id) AS is_story,
-            (SELECT json_group_array(DISTINCT c.service) FROM posts p JOIN channels c ON c.id = p.channel_id WHERE p.tile_id = t.id) AS services,
-            (SELECT json_group_array(json_object('service', c.service, 'url', p.external_link)) FROM posts p JOIN channels c ON c.id = p.channel_id WHERE p.tile_id = t.id AND p.external_link IS NOT NULL) AS links,
+            (SELECT json_group_array(DISTINCT c.service) FROM posts p JOIN channels c ON c.id = p.channel_id WHERE p.tile_id = t.id AND c.enabled = 1) AS services,
+            (SELECT json_group_array(json_object('service', c.service, 'url', p.external_link)) FROM posts p JOIN channels c ON c.id = p.channel_id WHERE p.tile_id = t.id AND c.enabled = 1 AND p.external_link IS NOT NULL) AS links,
             (SELECT COUNT(*) FROM taps x WHERE x.tile_id = t.id AND x.answer = 'post') AS people
        FROM tiles t
       WHERE t.shop_id = ?1 AND t.first_sent_at >= ?2 ${opts.includeHidden ? "" : "AND t.hidden = 0"}

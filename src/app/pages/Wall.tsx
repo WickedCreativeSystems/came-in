@@ -182,7 +182,7 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
             ))}
           </div>
         ) : data.sync.status === "running" ? (
-          <p class="small muted">Reading your posts… {data.sync.count} so far</p>
+          <p class="small muted">Reading your posts…{data.sync.count > 0 ? ` ${data.sync.count} so far` : ""}</p>
         ) : (
           <div class="empty">
             <h2 class="h2">Nothing sent yet.</h2>

@@ -78,7 +78,7 @@ export async function sampleWall(env: Env, session: string, now = new Date()): P
   };
 }
 
-export async function recordSampleTap(env: Env, session: string, tile: string | null, answer: "post" | "walked_past", now = new Date()): Promise<{ name: string | null; count: number; countToday: number; imageUrl: string | null }> {
+export async function recordSampleTap(env: Env, session: string, tile: string | null, answer: "post" | "walked_past" | "friend" | "google", now = new Date()): Promise<{ name: string | null; count: number; countToday: number; imageUrl: string | null }> {
   await env.DB.prepare(`INSERT INTO sample_taps (session_id, tile_id, answer, created_at) VALUES (?1, ?2, ?3, ?4)`).bind(session, tile, answer, now.toISOString()).run();
   if (!tile) return { name: null, count: 0, countToday: 0, imageUrl: null };
   const wall = await sampleWall(env, session, now);
