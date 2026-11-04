@@ -145,7 +145,7 @@ var tk='ci_t:'+C.dk+':'+C.shop;
 function already(){return C.mode!=='sample'&&ls(tk)===day()}
 function e(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function ticket(){if(!C.ty)return'';var d=new Date(),dd,tt;try{dd=d.toLocaleDateString('en-GB',{timeZone:C.tz,weekday:'short',day:'numeric',month:'short'}).replace(/,/g,'');tt=d.toLocaleTimeString('en-US',{timeZone:C.tz,hour:'numeric',minute:'2-digit'}).toLowerCase()}catch(x){dd=d.toDateString();tt=d.toTimeString().slice(0,5)}
-return'<div class="tk"><div><div class="eyebrow">Today\\'s thank-you</div><div class="w">'+e(C.ty)+'</div><div class="c">Show this at the till.</div></div><div class="d">'+e(dd)+'<b>'+e(tt)+'</b></div></div>'}
+return'<div class="tk"><div><div class="eyebrow">Today\\'s thank-you</div><div class="w">'+e(C.ty)+'</div><div class="c">Show this at the till.</div>'+(C.mode==='sample'?'<div class="c">Sample thank-you. You write your own.</div>':'')+'</div><div class="d">'+e(dd)+'<b>'+e(tt)+'</b></div></div>'}
 var pg=$('pg'),last=null;
 function show(html,plain){th.className='th'+(plain?' plain':'');th.innerHTML=html;th.hidden=false;pg.inert=true;setTimeout(function(){var f=th.querySelector('.btn');if(f)f.focus({preventScroll:true})},rm?0:330);if(rm){th.classList.add('in')}else{requestAnimationFrame(function(){requestAnimationFrame(function(){th.classList.add('in')})})}}
 function close(){th.classList.remove('in');pg.inert=false;setTimeout(function(){th.hidden=true;th.innerHTML=''},rm?0:320);g.classList.remove('picked');var o=g.querySelector('.on');if(o)o.classList.remove('on');busy=false;if(last&&last.focus)last.focus({preventScroll:true});

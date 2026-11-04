@@ -69,7 +69,7 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
       <main class="page setup">
         {sample && (
           <div class="strip">
-            <span>Sample bakery. Taps here only ring this browser.</span>
+            <span>Sample bakery. Nothing here reaches a real shop. Tap a post and this page rings.</span>
             <a class="btn primary" href="/auth/start">
               Connect your own Buffer
             </a>
@@ -78,12 +78,14 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
         <h1 class="h1">Setup</h1>
 
         <Section id="card" eyebrow="Card">
+          <p>The sign that goes by your till.</p>
           <a class="btn primary" href={`${base}/card`}>
             Print your card
           </a>
         </Section>
 
         <Section id="counter" eyebrow="Counter">
+          <p>A screen for your staff, not something to print.</p>
           <p>This turns this phone or tablet into the counter. It stays signed in until you close it.</p>
           <OpenCounter sample={sample} />
         </Section>
@@ -335,14 +337,15 @@ function RingMyPhone({ sample, pushKey, onDone }: { sample: boolean; pushKey: st
   }
   return (
     <div>
+      <p class="small">Your phone rings when someone taps. Open Came In on your phone, then tap Ring my phone.</p>
       {state !== "ios" && state !== "unsupported" && state !== "refused" && (
         <button class="btn" disabled={state === "working"} onClick={go}>
           {state === "working" && <span class="spin" aria-hidden="true" />}
           Ring my phone
         </button>
       )}
-      {state === "ok" && <p class="small">Your phone will ring.</p>}
-      {state === "denied" && <p class="small">Notifications are off for Came In in your phone's settings. Turn them on, then tap Ring my phone again.</p>}
+      {state === "ok" && <p class="small">{sample ? "This browser will ring." : "Your phone will ring."}</p>}
+      {state === "denied" && <p class="small">Notifications are blocked for Came In on this device. Allow them in this browser's or phone's settings, then tap Ring my phone again.</p>}
       {state === "ios" && (
         <div class="note">
           <IOSSteps />

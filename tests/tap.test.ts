@@ -177,7 +177,9 @@ describe("the sample bakery (P6, plan 3.10)", () => {
     expect(data.tiles[0]).toMatchObject({ id: "story", isLive: true });
     expect(data.tiles.find((t) => t.id === "sour")!.count).toBe(6);
     expect(data.countToday).toBe(3);
-    expect(data.countThisWeek).toBe(11);
+    // The wall's "this week" and the This week page are one number, whatever day it is.
+    const week = (await (await call("/api/sample/week")).json()) as { summary: { people: number } };
+    expect(data.countThisWeek).toBe(week.summary.people);
   });
 
   it("a tap rings only the same browser's room and adds to this session's counts", async () => {
@@ -194,6 +196,8 @@ describe("the sample bakery (P6, plan 3.10)", () => {
     const after = (await (await call("/api/sample/wall", { cookie })).json()) as { tiles: { id: string; count: number }[]; countToday: number };
     expect(after.tiles.find((t) => t.id === "sour")!.count).toBe(7);
     expect(after.countToday).toBe(4);
+    const weekAfter = (await (await call("/api/sample/week", { cookie })).json()) as { summary: { people: number } };
+    expect((after as unknown as { countThisWeek: number }).countThisWeek).toBe(weekAfter.summary.people);
     // A fresh browser still sees the baseline.
     const fresh = (await (await call("/api/sample/wall")).json()) as { tiles: { id: string; count: number }[] };
     expect(fresh.tiles.find((t) => t.id === "sour")!.count).toBe(6);

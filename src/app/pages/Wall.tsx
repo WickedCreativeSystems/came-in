@@ -117,7 +117,7 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
         {error && <div class="strip stamp" role="alert">Something's wrong on our side. Try again in a minute.</div>}
         {sample && (
           <div class="strip">
-            <span>Sample bakery. Taps here only ring this browser.</span>
+            <span>Sample bakery. Nothing here reaches a real shop. Tap a post and this page rings.</span>
             <a class="btn primary sm" href="/auth/start">
               Connect your own Buffer
             </a>
@@ -130,25 +130,27 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
             </div>
             <div>
               <h2 class="h2">This is what your customers will tap.</h2>
-              <p class="small muted">Try it: scan this with your phone, tap a post, and this screen rings.</p>
+              <p class="small muted">Try it: scan this with your phone, tap a post, and this page rings.</p>
             </div>
-            <a
-              class="btn"
-              href={tapUrl}
-              target="_blank"
-              rel="noopener"
-              onClick={(e) => {
-                if (sample) {
-                  e.preventDefault();
-                  if (window.innerWidth < 1024) setSheet(true);
-                  else
-                    document.querySelector(".phone-wrap")?.animate([{ transform: "translateY(0)" }, { transform: "translateY(-10px)" }, { transform: "translateY(0)" }], { duration: 400, easing: "cubic-bezier(.2,.8,.2,1)" });
-                }
-              }}
-            >
-              <Icon name="phone" size={18} />
-              Open the tap page
-            </a>
+            <div class="try-actions">
+              <a
+                class="btn"
+                href={tapUrl}
+                target="_blank"
+                rel="noopener"
+              >
+                <Icon name="phone" size={18} />
+                Open the tap page
+              </a>
+              {sample && (
+                <div class="counter-link">
+                  <a class="btn quiet" href="/sample/c">
+                    Open the counter
+                  </a>
+                  <span class="small muted">At the till, staff tap here for a customer.</span>
+                </div>
+              )}
+            </div>
           </section>
         ) : null}
         {!allDone && (

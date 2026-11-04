@@ -30,6 +30,8 @@ nav.bottombar { display: none; }
 
 /* Try strip */
 .try { display: grid; grid-template-columns: auto 1fr auto; gap: var(--s5); align-items: center; border: 1px solid var(--rule); border-radius: var(--r-tile); padding: var(--s4) var(--s5); background: var(--paper); margin-bottom: var(--s4); }
+.try-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.try-actions .counter-link { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
 .try .qr { width: 106px; height: 106px; background: #FFFFFF; padding: 4px; border-radius: var(--r); border: 1px solid var(--rule); }
 .try .qr img { width: 100%; height: 100%; }
 .try h2 { margin: 0 0 4px; }
@@ -239,14 +241,19 @@ nav.bottombar { display: none; }
 /* Tile actions (look.md section 5): one row of two quiet small buttons with a hairline divider. */
 .week-tile .tile-actions { display: flex; flex-wrap: wrap; align-items: center; margin-top: 4px; }
 .week-tile .tile-actions .tile-divider:nth-of-type(2) + .tile-action { margin-left: 0; }
-.tile-action { height: 32px; padding: 0 8px; border-radius: var(--r); font-weight: 600; font-size: 14px; line-height: 1; color: var(--ink-2); white-space: nowrap; }
-.tile-action:first-child { margin-left: -8px; }
+.tile-action { height: 32px; padding: 0 6px; border-radius: var(--r); font-weight: 600; font-size: 14px; line-height: 1; color: var(--ink-2); white-space: nowrap; }
+.tile-action:first-child { margin-left: -6px; }
 .tile-action:hover { background: var(--paper-3); color: var(--ink); }
 .tile-action .short { display: none; }
 .tile-divider { width: 1px; height: 14px; background: var(--rule-2); flex: none; }
 @media (max-width: 720px) {
   .tile-action .long { display: none; }
-  .tile-action .short { display: inline; }
+  .tile-action .short { display: inline; font-size: 13px; }
+}
+@media (max-width: 379px) {
+  .tile-action { padding: 0 5px; }
+  .tile-action:first-child { margin-left: -5px; }
+  .tile-action .short { font-size: 12px; }
 }
 .share-grid { display: grid; grid-template-columns: 9fr 16fr; gap: 16px; align-items: end; margin-bottom: 8px; }
 .share-grid figure { margin: 0; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
@@ -269,3 +276,6 @@ nav.bottombar { display: none; }
 .nick .eyebrow { margin-bottom: var(--s2); }
 .nick p { margin: 6px 0 0; }
 .status-lines { display: flex; align-items: center; gap: 6px; color: var(--ink-2); margin-top: var(--s3); }
+
+.sheet-post { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
+.sheet-post img { width: 48px; height: 48px; object-fit: cover; border-radius: var(--r); flex: none; }
