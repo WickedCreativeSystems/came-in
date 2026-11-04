@@ -138,6 +138,9 @@ describe("Post it again, More like this, Post this (P12)", () => {
     expect(fb.created).toHaveLength(2);
     expect(fb.created[0]).toMatchObject({ channelId: `ig-${id}`, text: "Sourdough is out of the oven.", mode: "addToQueue", schedulingType: "automatic", needsApproval: false, assets: [{ image: { url: "https://img.test/sour.jpg" } }] });
     expect(fb.created[0]).not.toHaveProperty("saveToDraft");
+    // Buffer requires each network's metadata (found on the live account).
+    expect(fb.created[0]).toMatchObject({ metadata: { instagram: { type: "post", shouldShareToFeed: true } } });
+    expect(fb.created[1]).toMatchObject({ metadata: { facebook: { type: "post" } } });
     // The original no longer loads: our copy, served by the Worker at the public address.
     fb.heads["https://img.test/sour.jpg"] = 404;
     await call(`/api/post/sour-${id}/again`, { ...json({ channels: [`fb-${id}`] }), cookie });
@@ -377,3 +380,15 @@ async function subscription() {
   crypto.getRandomValues(auth);
   return { endpoint: "https://push.test/monday", keys: { p256dh: b64(raw), auth: b64(auth) } };
 }
+
+
+describe("per-network metadata on createPost", () => {
+  it("gives each network what Buffer requires", async () => {
+    const { metadataFor } = await import("../src/worker/writes");
+    expect(metadataFor("instagram", "video", "t")).toEqual({ instagram: { type: "reel", shouldShareToFeed: true } });
+    expect(metadataFor("googlebusiness", "image", "t")).toEqual({ google: { type: "whats_new" } });
+    expect(metadataFor("youtube", "video", "A free matching game")).toEqual({ youtube: { title: "A free matching game", categoryId: "22" } });
+    expect(metadataFor("tiktok", "image", "t")).toEqual({ tiktok: { title: "t" } });
+    expect(metadataFor("tiktok", "video", "t")).toBeNull();
+  });
+});

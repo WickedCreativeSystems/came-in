@@ -28,6 +28,30 @@ export function isNoteStep(n: number): boolean {
   return n === 3 || n === 10 || n === 25 || n === 50 || (n >= 100 && n % 100 === 0);
 }
 
+/**
+ * Per-network metadata Buffer requires on createPost (found on the live
+ * account: "Instagram posts require a type"). Instagram, Facebook and
+ * Google Business need a type; YouTube a title, and only takes video;
+ * TikTok a title for photo posts.
+ */
+export function metadataFor(service: string, kind: "image" | "video" | "none", title: string): Record<string, unknown> | null {
+  const t = title.slice(0, 100);
+  switch (service) {
+    case "instagram":
+      return { instagram: { type: kind === "video" ? "reel" : "post", shouldShareToFeed: true } };
+    case "facebook":
+      return { facebook: { type: kind === "video" ? "reel" : "post" } };
+    case "googlebusiness":
+      return { google: { type: "whats_new" } };
+    case "youtube":
+      return { youtube: { title: t, categoryId: "22" } };
+    case "tiktok":
+      return kind === "image" ? { tiktok: { title: t } } : null;
+    default:
+      return null;
+  }
+}
+
 async function headOk(url: string): Promise<boolean> {
   try {
     const r = await fetch(url, { method: "HEAD" });
@@ -70,16 +94,22 @@ export async function postAgain(env: Env, shop: ShopRow, tileId: string, targets
   if (!image && media.videoSource && (await headOk(media.videoSource))) video = media.videoSource;
   const assets = image ? [{ image: { url: image } }] : video ? [{ video: { url: video } }] : [];
   const out: ChannelResult[] = [];
+  const kind = image ? "image" : video ? "video" : "none";
+  const title = firstLineOf(text ?? media.text);
   for (const t of targets) {
     if (!image && media.videoSource && !video) {
       out.push({ channelId: t.channelId, status: "needs_video" });
       continue;
     }
-    if (t.service === "instagram" && !assets.length) {
+    if ((t.service === "instagram" || t.service === "tiktok") && !assets.length) {
       out.push({ channelId: t.channelId, status: "needs_photo" });
       continue;
     }
-    out.push(await createOne(env, shop, "post_again", { channelId: t.channelId, text: text ?? media.text, assets, tileId }));
+    if (t.service === "youtube" && kind !== "video") {
+      out.push({ channelId: t.channelId, status: "needs_video" });
+      continue;
+    }
+    out.push(await createOne(env, shop, "post_again", { channelId: t.channelId, text: text ?? media.text, assets, tileId, metadata: metadataFor(t.service, kind, title) }));
   }
   return out;
 }
@@ -87,7 +117,13 @@ export async function postAgain(env: Env, shop: ShopRow, tileId: string, targets
 /** Post this: the share image to each chosen channel (plan 3.7, P14). */
 export async function postShare(env: Env, shop: ShopRow, targets: PostTarget[], text: string, imageUrl: string): Promise<ChannelResult[]> {
   const out: ChannelResult[] = [];
-  for (const t of targets) out.push(await createOne(env, shop, "post_share", { channelId: t.channelId, text, assets: [{ image: { url: imageUrl } }] }));
+  for (const t of targets) {
+    if (t.service === "youtube") {
+      out.push({ channelId: t.channelId, status: "needs_video" });
+      continue;
+    }
+    out.push(await createOne(env, shop, "post_share", { channelId: t.channelId, text, assets: [{ image: { url: imageUrl } }], metadata: metadataFor(t.service, "image", firstLineOf(text)) }));
+  }
   return out;
 }
 
@@ -96,6 +132,11 @@ interface CreatePayload {
   text: string;
   assets: unknown[];
   tileId?: string;
+  metadata?: Record<string, unknown> | null;
+}
+
+function firstLineOf(text: string): string {
+  return (text.split(/\r?\n/).find((l) => l.trim()) ?? "").trim() || "Came In";
 }
 
 async function createOne(env: Env, shop: ShopRow, kind: "post_again" | "post_share", p: CreatePayload, token?: string | null): Promise<ChannelResult> {
@@ -110,6 +151,7 @@ async function createOne(env: Env, shop: ShopRow, kind: "post_again" | "post_sha
     needsApproval: false,
     assets: p.assets,
   };
+  if (p.metadata) input.metadata = p.metadata;
   if (drafts) input.saveToDraft = true;
   try {
     const { data } = await graphql<{ createPost: UnionResult & { post?: { id: string; status: string } } }>(env, t, CREATE_POST, { input });
