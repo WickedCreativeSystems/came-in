@@ -57,7 +57,7 @@ export type TapSource = "card" | "counter" | "online" | "sample";
 export function whereLine(source: TapSource): string {
   switch (source) {
     case "counter":
-      return "At the counter · just now";
+      return "At the till · just now";
     case "online":
       return "Online · just now";
     default:

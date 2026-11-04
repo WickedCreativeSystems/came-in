@@ -100,6 +100,7 @@ export interface FakeBuffer {
   postTags: Record<string, string[]>;
   approval?: boolean;
   notes: { id: string; postId: string | null; text: string }[];
+  deletedNotes: string[];
   ideas: unknown[];
   created: Record<string, unknown>[];
   heads: Record<string, number>;
@@ -117,6 +118,7 @@ export function fakeBuffer(over: Partial<FakeBuffer> = {}): FakeBuffer {
     tags: [],
     postTags: {},
     notes: [],
+    deletedNotes: [],
     ideas: [],
     created: [],
     heads: {},
@@ -149,6 +151,10 @@ export function fakeBuffer(over: Partial<FakeBuffer> = {}): FakeBuffer {
         const note = { id: `note-${fb.notes.length + 1}`, postId: v.input.subject.postId, text: v.input.text };
         fb.notes.push(note);
         return ok({ createCollaborationNote: { __typename: "CreateCollaborationNoteSuccess", edge: { node: { id: note.id } } } });
+      }
+      if (body.query.includes("CameInDeleteNote")) {
+        fb.deletedNotes.push(v.input.noteId);
+        return ok({ deleteCollaborationNote: { __typename: "DeleteCollaborationNoteSuccess" } });
       }
       if (body.query.includes("CameInUpdateNote")) {
         const note = fb.notes.find((n) => n.id === v.input.noteId);

@@ -174,4 +174,7 @@ var again=already();g.classList.add('picked');b.classList.add('on');
 setTimeout(function(){thanks(t,again)},rm?0:320);
 if(!again)send({shop:C.shop,tile:t.id,answer:'post',source:C.src,device:dev})});
 $('none').onclick=function(){if(busy)return;busy=true;last=$('none');var again=already();thanks(null,again);if(!again)send({shop:C.shop,tile:null,answer:'walked_past',source:C.src,device:dev})};
+// Inside the embed, tell the page around us how tall we are (it sizes the frame).
+if(C.mode==='embed'&&parent!==window){var hh=0;function rp(){var h=Math.ceil(document.documentElement.scrollHeight);if(h!==hh){hh=h;parent.postMessage({cameIn:'height',h:h},'*')}}
+rp();addEventListener('load',rp);addEventListener('resize',rp);if(window.ResizeObserver)new ResizeObserver(rp).observe(document.body)}
 })();`;

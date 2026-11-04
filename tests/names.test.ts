@@ -43,7 +43,7 @@ describe("a post's name in sentences (plan 1.7)", () => {
   it("the bell sentence and its sub-lines", () => {
     expect(bellSentence("Tuesday's sourdough post")).toBe("Someone just came in because of Tuesday's sourdough post.");
     expect(whereLine("card")).toBe("From the card · just now");
-    expect(whereLine("counter")).toBe("At the counter · just now");
+    expect(whereLine("counter")).toBe("At the till · just now");
     expect(whereLine("online")).toBe("Online · just now");
   });
 });

@@ -53,10 +53,10 @@ body{background:var(--paper-2)}
 .card .punch{position:absolute;top:calc(12 * var(--u));left:50%;width:calc(9 * var(--u));height:calc(9 * var(--u));border-radius:50%;background:#ECE9E2;box-shadow:inset 0 1px 1px rgba(0,0,0,.15);transform:translateX(-50%)}
 @page{size:${s.page};margin:0}
 @media print{
-  html,body{background:none!important}
+  html,body{background:none!important;margin:0!important;padding:0!important;width:${s.w}mm!important;height:${s.h}mm!important;overflow:hidden!important}
   .bar,.note{display:none!important}
-  .stage{padding:0;display:block}
-  .card{box-shadow:none;border-radius:0;margin:0;color:#000;page-break-inside:avoid}
+  .stage{padding:0!important;display:block!important;overflow:hidden!important;width:${s.w}mm;height:${s.h}mm}
+  .card{box-shadow:none;border-radius:0;margin:0!important;color:#000;width:${s.w}mm!important;height:${s.h}mm!important;zoom:1!important;transform:none!important;page-break-inside:avoid;break-inside:avoid;page-break-after:avoid;break-after:avoid}
   .card .hn,.card .sub,.card .ci{color:#000}
   .card .qr{border-color:#000}
   .card .punch{box-shadow:none;border:.2mm solid #999;background:none}

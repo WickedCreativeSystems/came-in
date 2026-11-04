@@ -141,12 +141,12 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
                   setPostThis(true);
                 }}
               >
-                Post this
+                Post this week's picture
               </button>
             </div>
             {postLine && <p class={`small outcome${postLine === outcomeLine("failed") ? " failed" : ""}`}>{postLine}</p>}
             <div class="wall week-wall">
-              {data.tiles.map((t, i) => (
+              {data.tiles.filter((t) => t.weekPeople > 0).map((t, i) => (
                 <div class="week-tile" key={t.id}>
                   <Tile tile={{ ...t, count: t.weekPeople }} index={i} now={now} tz={wall.shop.timezone} flash={false} href={`${base}/post/${t.id}`} />
                   <div class="tile-actions">
@@ -195,6 +195,11 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
                 </div>
               ))}
             </div>
+            {(() => {
+              const nobody = data.tiles.filter((t) => t.weekPeople === 0).length;
+              const when = range === "last" ? "last week" : range === "month" ? "this month" : "this week";
+              return nobody > 0 ? <p class="caption muted other-posts">{nobody === 1 ? "1 other post had" : `${nobody} other posts had`} nobody {when}.</p> : null;
+            })()}
           </>
         )}
         <footer class="app-foot privacy">
@@ -213,7 +218,7 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
           sample={sample}
           onClose={() => setAgain(null)}
           onDone={(r) => {
-            setLines((l) => ({ ...l, [again]: resultLine(r) }));
+            setLines((l) => ({ ...l, [again]: resultLine(r, true) }));
             setAgain(null);
           }}
         />

@@ -1,4 +1,4 @@
-// The counter screen (plan 3.6, look.md section 4). Always Day, server-rendered.
+// The staff screen, route /c (plan 3.6, look.md "The staff screen"). Always Day, server-rendered.
 import { esc, jsonForScript, page, avatarHtml, AVATAR_CSS } from "./html";
 import type { TapTile } from "./tap";
 
@@ -30,21 +30,26 @@ html{scrollbar-width:none}html::-webkit-scrollbar{display:none}
 .t:active{transform:scale(.97)}
 .bd{position:absolute;top:8px;left:8px;height:22px;padding:0 7px;border-radius:2px;background:var(--label);color:var(--label-ink);font-weight:600;font-size:12px;letter-spacing:.04em;text-transform:uppercase;display:inline-flex;align-items:center;line-height:1}
 .tx{position:absolute;inset:0;padding:38px 14px 14px;font-family:var(--fd);font-weight:700;font-size:22px;line-height:1.02;letter-spacing:-.005em;color:var(--ink);overflow:hidden;overflow-wrap:anywhere}
-.row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:4px 16px 16px;position:sticky;bottom:0;background:var(--paper)}
+.rw{position:sticky;bottom:0;background:var(--paper);padding:4px 16px 16px}
+.or{margin:0 0 8px;font-size:14px;color:var(--ink-2)}
+.row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.t.chk{box-shadow:inset 0 0 0 2px var(--ink)}
+.t.chk::after{content:"";position:absolute;left:50%;top:50%;width:32px;height:32px;margin:-16px 0 0 -16px;border-radius:50%;background:var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23F4F2ED' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E") center/16px no-repeat;animation:chk 200ms var(--settle) 1}
+@keyframes chk{from{transform:scale(.6)}to{transform:scale(1)}}
 .row .btn{height:56px;white-space:normal;text-align:center;line-height:1.15;padding:0 8px}
 .ft{padding:4px 16px 16px;font-size:13px}
 .ft button,.ft>a{color:var(--ink-2);text-decoration:underline;font-size:13px}
 .menu{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
 .menu[hidden]{display:none}
-.ok{position:fixed;left:16px;right:16px;top:12px;z-index:5;display:flex;align-items:center;gap:12px;background:var(--label);color:var(--label-ink);border:1px solid var(--rule-2);border-radius:4px;padding:10px 14px;font-weight:600;font-size:16px;transform:translateY(-8px);opacity:0;transition:transform 260ms var(--settle),opacity 260ms var(--settle);pointer-events:none}
+.ok{margin:0 16px 12px;height:56px;display:flex;align-items:center;gap:12px;background:var(--paper-2);color:var(--ink);border:1px solid var(--rule);border-radius:3px;padding:0 12px;font-weight:600;font-size:16px;opacity:0;transform:translateY(6px);transition:transform 260ms var(--settle),opacity 260ms var(--settle)}
 .ok.in{transform:none;opacity:1}
-.ok.out{transform:translateY(-6px);opacity:0;transition:transform 320ms var(--fold),opacity 320ms var(--fold)}
-.ok img{width:44px;height:44px;border-radius:3px;object-fit:cover;flex:none}
+.ok.out{transform:translateY(0);opacity:0;transition:opacity 200ms var(--fold)}
+.ok img{width:40px;height:40px;border-radius:3px;object-fit:cover;flex:none}
 .strip{position:fixed;z-index:6;left:16px;right:16px;top:12px;border:1px solid var(--stamp);background:var(--stamp-tint);color:var(--stamp);border-radius:4px;padding:10px 12px;font-size:14px}
 .strip[hidden]{display:none}
 .gone{padding:32px 16px}
 .gone h1{margin:0 0 12px;font-family:var(--fd);font-weight:700;font-size:28px;line-height:1}
-@media (prefers-reduced-motion:reduce){.ok,.ok.in,.ok.out{transition:none;transform:none}.t{transition:none}.t:active{transform:none}}
+@media (prefers-reduced-motion:reduce){.ok,.ok.in,.ok.out{transition:none;transform:none}.t.chk::after{animation:none}.t{transition:none}.t:active{transform:none}}
 `;
 
 function tileHtml(t: TapTile, i: number): string {
@@ -53,26 +58,26 @@ function tileHtml(t: TapTile, i: number): string {
 }
 
 export function renderCounterPage(d: CounterPageData): string {
-  const body = `<header class="hd">${avatarHtml(d.shop.name, d.shop.avatarUrl, 40)}<div><div class="nm">${esc(d.shop.name)}</div>${d.shop.handle ? `<div class="hn">@${esc(d.shop.handle)}</div>` : ""}</div><span class="eyebrow mk">Counter</span></header>
+  const body = `<header class="hd">${avatarHtml(d.shop.name, d.shop.avatarUrl, 40)}<div><div class="nm">${esc(d.shop.name)}</div>${d.shop.handle ? `<div class="hn">@${esc(d.shop.handle)}</div>` : ""}</div><span class="eyebrow mk">Staff screen</span></header>
 <div class="ask"><h1>What brought them in?</h1></div>
+<div class="ok" id="ok" role="status" aria-live="polite"></div>
 <div class="grid" id="g">${d.tiles.map(tileHtml).join("")}</div>
-<div class="row"><button class="btn" data-a="walked_past" data-n="Walked past">Walked past</button><button class="btn" data-a="friend" data-n="A friend told them">A friend told them</button><button class="btn" data-a="google" data-n="Found us on Google">Found us on Google</button></div>
+<div class="rw"><p class="or">Or, if it wasn't a post:</p><div class="row"><button class="btn" data-a="walked_past" data-n="Walked past">Walked past</button><button class="btn" data-a="friend" data-n="A friend told them">A friend told them</button><button class="btn" data-a="google" data-n="Found us on Google">Found us on Google</button></div></div>
 <div class="ft">${
     d.owner
-      ? `<button id="own" aria-expanded="false">Owner</button><div class="menu" id="menu" hidden>${d.closeEndpoint ? `<button class="btn" id="cls">Close the counter on this device</button>` : ""}<a class="btn quiet" href="${esc(d.wallUrl)}">Back to the wall</a></div>`
+      ? `<button id="own" aria-expanded="false">Owner</button><div class="menu" id="menu" hidden>${d.closeEndpoint ? `<button class="btn" id="cls">Close the staff screen on this device</button>` : ""}<a class="btn quiet" href="${esc(d.wallUrl)}">Back to the wall</a></div>`
       : `<a href="/">Owner</a>`
   }</div>
-<div class="ok" id="ok" role="status" aria-live="polite"></div>
 <div class="strip" id="err" hidden role="alert">We couldn't reach the shop. Try again?</div>
 <script type="application/json" id="cfg">${jsonForScript({ token: d.token, ep: d.endpoint, close: d.closeEndpoint, wall: d.wallUrl })}</script>`;
-  return page({ title: `${d.shop.name}: counter`, css: CSS, body, script: COUNTER_SCRIPT, head: `<meta name="robots" content="noindex">` });
+  return page({ title: `${d.shop.name}: staff screen`, css: CSS, body, script: COUNTER_SCRIPT, head: `<meta name="robots" content="noindex">` });
 }
 
 export function renderCounterClosed(): string {
   return page({
-    title: "Came In: counter",
+    title: "Came In: staff screen",
     css: CSS,
-    body: `<div class="gone"><h1>This counter was closed. Open it again from Setup.</h1><a class="btn" href="/setup#counter">Open Setup</a></div>`,
+    body: `<div class="gone"><h1>This staff screen was closed. Open it again from Setup.</h1><a class="btn" href="/setup#staff">Open Setup</a></div>`,
     head: `<meta name="robots" content="noindex">`,
   });
 }
@@ -83,16 +88,16 @@ function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorag
 var dev=ls('ci_device');if(!dev){var a=new Uint8Array(16);crypto.getRandomValues(a);dev=Array.from(a,function(b){return('0'+b.toString(16)).slice(-2)}).join('');ls('ci_device',dev)}
 var ok=$('ok'),err=$('err'),busy=false,t1,t2,rm=matchMedia('(prefers-reduced-motion: reduce)').matches;
 function e(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
-function confirm(text,img){clearTimeout(t1);clearTimeout(t2);ok.style.top=Math.max(12,Math.round($('g').getBoundingClientRect().top))+'px';ok.className='ok';ok.innerHTML=(img?'<img src="'+e(img)+'" alt="">':'')+'<span>'+e(text)+'</span>';
+var mark=null;function confirm(text,img,tileEl){clearTimeout(t1);clearTimeout(t2);if(mark)mark.classList.remove('chk');mark=tileEl||null;if(mark)mark.classList.add('chk');ok.className='ok';ok.innerHTML=(img?'<img src="'+e(img)+'" alt="">':'')+'<span>'+e(text)+'</span>';
 requestAnimationFrame(function(){requestAnimationFrame(function(){ok.classList.add('in')})});
-var at=Date.now();t1=setTimeout(function(){ok.classList.add('out');t2=setTimeout(function(){ok.className='ok';ok.innerHTML='';setTimeout(function(){busy=false},Math.max(0,3050-(Date.now()-at)))},rm?0:320)},2000)}
+var at=Date.now();t1=setTimeout(function(){ok.classList.add('out');if(mark){mark.classList.remove('chk');mark=null}t2=setTimeout(function(){ok.className='ok';ok.innerHTML='';setTimeout(function(){busy=false},Math.max(0,3050-(Date.now()-at)))},rm?0:200)},2000)}
 function send(b,tries){fetch(C.ep,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b),keepalive:true}).then(function(r){
 if(r.status===409||r.status===410){location.reload();return}if(r.status>=500)throw 0;err.hidden=true}).catch(function(){
 if(tries<5)setTimeout(function(){send(b,tries+1)},(tries+1)*2000);else err.hidden=false})}
-function tap(answer,tile,label,img){if(busy)return;busy=true;
-confirm(tile?'Got it. '+label+'.':'Got it. '+label+'.',img);
+function tap(answer,tile,label,img,el){if(busy)return;busy=true;
+confirm('Got it. '+label+'.',img,el);
 send({token:C.token,tile:tile,answer:answer,device:dev},0)}
-$('g').addEventListener('click',function(ev){var b=ev.target.closest('.t');if(!b)return;var n=b.dataset.n;tap('post',b.dataset.i,n.charAt(0).toUpperCase()+n.slice(1),b.dataset.img||null)});
+$('g').addEventListener('click',function(ev){var b=ev.target.closest('.t');if(!b)return;var n=b.dataset.n;tap('post',b.dataset.i,n.charAt(0).toUpperCase()+n.slice(1),b.dataset.img||null,b)});
 document.querySelectorAll('.row .btn').forEach(function(b){b.onclick=function(){tap(b.dataset.a,null,b.dataset.n,null)}});
 var own=$('own');if(own)own.onclick=function(){var m=$('menu');m.hidden=!m.hidden;this.setAttribute('aria-expanded',String(!m.hidden))};
 var cls=$('cls');if(cls)cls.onclick=function(){cls.disabled=true;fetch(C.close,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:C.token}),credentials:'same-origin'}).then(function(){location.href=C.wall})};

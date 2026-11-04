@@ -37,7 +37,8 @@ import { parsePatch, shopSettings, saveShopSettings, sampleSettings, saveSampleS
 import { clearOwnerCookie } from "./lib/cookies";
 import { shopWeek, parseRange } from "./week";
 import { shopPostPage } from "./post";
-import { postAgain, postShare, moreLikeThis, queueWinnerJobs, runJobs, againTargets, refusalFor, type PostTarget, type ChannelResult } from "./writes";
+import { queueVision } from "./vision";
+import { postAgain, postShare, moreLikeThis, queueWinnerJobs, closeDeletedShops, runJobs, againTargets, refusalFor, type PostTarget, type ChannelResult } from "./writes";
 import { sampleWeek, samplePostPage, SAMPLE_CHANNELS } from "./sample";
 import { mondayBody, summarize } from "../shared/week";
 import { zonedParts, shopWeekKey } from "../shared/time";
@@ -353,7 +354,7 @@ function toTapTile(t: WallTile, now: Date, tz: string, sample = false): TapTile 
     name: t.name,
     imageUrl: t.imageUrl,
     // The sample's text-only post shows its name, never a sentence of the post.
-    text: sample && !t.imageUrl ? t.name : firstLine(t.text),
+    text: sample && !t.imageUrl ? t.name.replace(/^the\s+/i, "") : firstLine(t.text),
     badge: dayBadge(new Date(t.firstSentAt), now, tz, t.isLive, "tap"),
     live: t.isLive,
   };
@@ -411,6 +412,42 @@ app.get("/api/sample/wall", async (c) => {
   wall.shop.theme = settings.theme;
   wall.checklist = { connected: true, card: settings.cardPrinted, counter: settings.counterOpened, phone: (subs?.n ?? 0) > 0, thankYou: !!settings.thankYou, review: !!settings.reviewUrl };
   return c.json(wall);
+});
+
+// The embed (plan 3.12, P16): one script line on a booking or thank-you page puts the tap page
+// in a frame, without the header, always Day, and its taps count as "online".
+app.get("/embed.js", (c) => {
+  c.header("Content-Type", "application/javascript; charset=utf-8");
+  c.header("Cache-Control", "public, max-age=3600");
+  c.header("Access-Control-Allow-Origin", "*");
+  return c.body(`(function(){var s=document.currentScript;if(!s)return;var id=s.getAttribute("data-shop");if(!id||!/^([a-z]{10}|sample)$/.test(id))return;
+var o=new URL(s.src).origin,f=document.createElement("iframe");f.src=id==="sample"?o+"/sample/t":o+"/e/"+id;f.title="Saw us online? Tap the post that brought you in.";f.loading="lazy";
+f.style.cssText="display:block;width:100%;max-width:520px;height:560px;border:0;margin:0 auto;background:transparent";f.setAttribute("allow","");
+s.parentNode.insertBefore(f,s.nextSibling);
+addEventListener("message",function(e){if(e.source!==f.contentWindow||!e.data||e.data.cameIn!=="height")return;var h=Math.max(560,Math.min(4000,Number(e.data.h)||0));f.style.height=h+"px"})})();`);
+});
+
+app.get("/e/:shop{[a-z]{10}}", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const shop = await liveShop(c.env, c.req.param("shop"));
+  if (!shop) return c.html(renderGonePage(), 404);
+  const now = new Date();
+  c.executionCtx.waitUntil(wake(c.env, shop.id, now));
+  const { story, tiles } = tapGrid(await wallTiles(c.env, shop, now));
+  return c.html(
+    renderTapPage({
+      mode: "embed",
+      shop: { id: shop.id, name: shop.name, handle: shop.handle, avatarUrl: shop.avatar_key ? `/i/${shop.id}/avatar` : null, timezone: shop.timezone },
+      story: story ? toTapTile(story, now, shop.timezone) : null,
+      tiles: tiles.map((t) => toTapTile(t, now, shop.timezone)),
+      thankYou: shop.thank_you_text,
+      reviewUrl: shop.review_url,
+      tapEndpoint: "/api/tap",
+      source: "online",
+      deviceKey: "ci_device",
+      showHeader: false,
+    }),
+  );
 });
 
 app.get("/sample/t", async (c) => {
@@ -689,7 +726,8 @@ app.post("/api/sample/push/subscribe", async (c) => {
 app.post("/api/shop/delete", async (c) => {
   const shop = await ownerShop(c);
   if (!shop) return c.json({ error: "signed out" }, 401);
-  await deleteShop(c.env, shop.id);
+  // The notes come out of Buffer through jobs that run after this answers.
+  if ((await deleteShop(c.env, shop.id)) > 0) c.executionCtx.waitUntil(room(c.env, shop.id).kickJobs(shop.id));
   clearOwnerCookie(c);
   return c.json({ ok: true, next: "/" });
 });
@@ -932,7 +970,8 @@ export async function mondayPushes(env: Env, now = new Date()): Promise<string[]
   const sent: string[] = [];
   for (const shop of results) {
     const p = zonedParts(now, shop.timezone);
-    if (p.weekday !== 1 || p.hour !== 8 || p.minute >= 15) continue;
+    // The first tick at or after 08:00 on Monday that has not sent this week: a missed tick delays the push, never skips the week.
+    if (p.weekday !== 1 || p.hour < 8) continue;
     const week = shopWeekKey(now, shop.timezone);
     if (shop.monday_push_week === week) continue;
     await env.DB.prepare(`UPDATE shops SET monday_push_week = ?2 WHERE id = ?1`).bind(shop.id, week).run();
@@ -951,6 +990,7 @@ export async function daily(env: Env, token: (shopId: string) => Promise<string 
   await deleteOldSampleTaps(env, now);
   await pruneSample(env, now);
   await retryMissingImages(env, token);
+  await closeDeletedShops(env);
   const { results } = await env.DB.prepare(`SELECT s.* FROM shops s JOIN buffer_tokens b ON b.shop_id = s.id WHERE s.deleted_at IS NULL AND s.revoked_at IS NULL`).all<ShopRow>();
   for (const shop of results) {
     try {
@@ -986,6 +1026,7 @@ async function scheduled(controller: ScheduledController, env: Env): Promise<voi
     return;
   }
   await pollDue(env, deps, now);
+  await queueVision(env);
   await runJobs(env, null, now);
   await mondayPushes(env, now);
 }

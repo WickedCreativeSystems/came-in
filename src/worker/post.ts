@@ -37,7 +37,7 @@ export function sourceLines(taps: { source: string }[]): { label: string; n: num
   const n = (s: string[]) => taps.filter((t) => s.includes(t.source)).length;
   return [
     { label: "From the card", n: n(["card", "sample"]) },
-    { label: "At the counter", n: n(["counter"]) },
+    { label: "At the till", n: n(["counter"]) },
     { label: "Online", n: n(["online"]) },
   ];
 }

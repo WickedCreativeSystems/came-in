@@ -52,7 +52,7 @@ describe("the counter (P7, plan 3.6)", () => {
     const id = await shopWithPosts({ thankYou: "Free cookie today" });
     const token = await openCounterFor(id);
     const html = await (await call(`/c/${token}`)).text();
-    for (const w of ["What brought them in?", "Walked past", "A friend told them", "Found us on Google", "Counter", "Owner"]) expect(html).toContain(w);
+    for (const w of ["What brought them in?", "Walked past", "A friend told them", "Found us on Google", "Staff screen", "Or, if it wasn't a post:", "Owner"]) expect(html).toContain(w);
     expect(html).not.toContain("prefers-color-scheme:dark"); // always Day
     let t = Date.now();
     for (const answer of ["walked_past", "friend", "google"]) {
@@ -70,7 +70,7 @@ describe("the counter (P7, plan 3.6)", () => {
     ]);
   });
 
-  it("has no per-device limit, only one tap per 3 seconds; a post tap rings 'At the counter', not on the counter", async () => {
+  it("has no per-device limit, only one tap per 3 seconds; a post tap rings 'At the till', not on the staff screen", async () => {
     const id = await shopWithPosts();
     const token = await openCounterFor(id);
     const wall = await openSocket(id, "laptop");
@@ -87,7 +87,7 @@ describe("the counter (P7, plan 3.6)", () => {
     vi.useRealTimers();
     await settle();
     const ring = wall.got.find((m) => m.type === "ring");
-    expect(ring).toMatchObject({ where: "At the counter · just now", tileId: `sour-${id}` });
+    expect(ring).toMatchObject({ where: "At the till · just now", tileId: `sour-${id}` });
     expect(counterScreen.got.some((m) => m.type === "ring")).toBe(false);
     const n = await env.DB.prepare(`SELECT COUNT(*) AS n FROM taps WHERE shop_id = ?1 AND tile_id = ?2`).bind(id, `sour-${id}`).first<{ n: number }>();
     expect(n!.n).toBe(2);
@@ -103,16 +103,16 @@ describe("the counter (P7, plan 3.6)", () => {
     expect((await call("/api/counter/close", { ...json({ token }), cookie: await ownerCookie(id) })).status).toBe(200);
     const page = await call(`/c/${token}`);
     expect(page.status).toBe(410);
-    expect(await page.text()).toContain("This counter was closed. Open it again from Setup.");
+    expect(await page.text()).toContain("This staff screen was closed. Open it again from Setup.");
     expect((await call("/api/counter/tap", json({ token, tile: null, answer: "walked_past", device: "x" }))).status).toBe(409);
   });
 
   it("shows the owner corner's two buttons only with the owner cookie", async () => {
     const id = await shopWithPosts();
     const token = await openCounterFor(id);
-    expect(await (await call(`/c/${token}`)).text()).not.toContain("Close the counter on this device");
+    expect(await (await call(`/c/${token}`)).text()).not.toContain("Close the staff screen on this device");
     const mine = await (await call(`/c/${token}`, { cookie: await ownerCookie(id) })).text();
-    expect(mine).toContain("Close the counter on this device");
+    expect(mine).toContain("Close the staff screen on this device");
     expect(mine).toContain("Back to the wall");
   });
 

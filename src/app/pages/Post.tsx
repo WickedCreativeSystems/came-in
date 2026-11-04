@@ -110,7 +110,9 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
                 <span class="count-big">{t.count}</span>
                 <span class="h2">{t.count === 1 ? "person came in because of this post." : "people came in because of this post."}</span>
               </div>
+              {data.byDay.length > 0 && <div class="caption muted receipt-h">Days they came in</div>}
               <Receipt rows={data.byDay} />
+              {data.bySource.length > 0 && <div class="caption muted receipt-h">How they came in</div>}
               <Receipt rows={data.bySource} />
 
               <div class="field nick">
@@ -124,7 +126,7 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
                     class={`input${nickErr ? " error" : ""}`}
                     value={nick}
                     maxLength={24}
-                    placeholder="the sourdough post"
+                    placeholder={data.tile.name}
                     onInput={(e) => {
                       setNick((e.target as HTMLInputElement).value);
                       setNickState("rest");
@@ -211,7 +213,7 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
           sample={apiBase.includes("/sample")}
           onClose={() => setAgain(false)}
           onDone={(r) => {
-            setLine(resultLine(r));
+            setLine(resultLine(r, true));
             setAgain(false);
           }}
         />

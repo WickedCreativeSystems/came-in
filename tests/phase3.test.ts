@@ -332,7 +332,7 @@ describe("nickname and hide from the card (P17)", () => {
     expect(p.byDay.reduce((a, b) => a + b.n, 0)).toBe(2);
     expect(p.bySource).toEqual([
       { label: "From the card", n: 1 },
-      { label: "At the counter", n: 1 },
+      { label: "At the till", n: 1 },
       { label: "Online", n: 0 },
     ]);
     expect(p.sent).toMatch(/^Sent \w+, \d+:\d\d (am|pm)$/);
@@ -374,6 +374,30 @@ describe("the Monday push (P11)", () => {
     expect(await mondayPushes(env, new Date("2026-11-09T14:05:00Z"))).not.toContain(id);
     expect(bodies).toHaveLength(1);
     void sent;
+  });
+
+  it("catches up: if the 08:00 tick was missed, the first tick after it sends, once, and Tuesday does not", async () => {
+    const id = await shopWithPosts();
+    const lastWeek = new Date("2026-11-04T18:00:00Z");
+    for (let i = 0; i < 11; i++)
+      await env.DB.prepare(`INSERT INTO taps (id, shop_id, tile_id, answer, source, device_hash, rewarded, created_at) VALUES (?1, ?2, ?3, 'post', 'card', ?4, 0, ?5)`)
+        .bind(`mc-${id}-${i}`, id, i % 2 ? `sour-${id}` : `hours-${id}`, `d${i}`, lastWeek.toISOString())
+        .run();
+    await call("/api/push/subscribe", { ...json({ device: "p2", subscription: await subscription() }), cookie: await ownerCookie(id) });
+    let pushes = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const req = input instanceof Request ? input : new Request(String(input), init);
+      if (new URL(req.url).host === "push.test") {
+        pushes++;
+        return new Response(null, { status: 201 });
+      }
+      return new Response("no", { status: 404 });
+    });
+    // 08:00 to 08:59 ticks never ran; 9:30 am Monday is the first tick.
+    expect(await mondayPushes(env, new Date("2026-11-09T15:30:00Z"))).toContain(id);
+    expect(await mondayPushes(env, new Date("2026-11-09T15:45:00Z"))).not.toContain(id);
+    expect(await mondayPushes(env, new Date("2026-11-10T15:30:00Z"))).not.toContain(id);
+    expect(pushes).toBe(1);
   });
 });
 
@@ -577,4 +601,15 @@ describe("the stranger fixes (EaseBot, Nov 4)", () => {
     expect(html).toContain("beforeprint");
   });
 
+  it("in print the card is exactly its page: its own size, no screen scale, no break after", async () => {
+    const id = await shopWithPosts();
+    for (const [size, w, h] of [["a6", "105mm", "148mm"], ["a5", "148mm", "210mm"], ["4x6", "101.6mm", "152.4mm"]] as const) {
+      const html = await (await call(`/card?size=${size}`, { cookie: await ownerCookie(id) })).text();
+      const print = html.slice(html.indexOf("@media print"));
+      expect(print).toContain(`width:${w}!important;height:${h}!important`);
+      expect(print).toContain("zoom:1!important");
+      expect(print).toContain("break-after:avoid");
+      expect(print).toContain("overflow:hidden!important");
+    }
+  });
 });

@@ -32,6 +32,15 @@ export const UPDATE_NOTE = /* GraphQL */ `
   }
 `;
 
+export const DELETE_NOTE = /* GraphQL */ `
+  mutation CameInDeleteNote($input: DeleteCollaborationNoteInput!) {
+    deleteCollaborationNote(input: $input) {
+      __typename
+      ... on VoidMutationError { message }
+    }
+  }
+`;
+
 export const CREATE_IDEA = /* GraphQL */ `
   mutation CameInCreateIdea($input: CreateIdeaInput!) {
     createIdea(input: $input) {
