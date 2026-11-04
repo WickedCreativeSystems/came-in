@@ -206,3 +206,47 @@ describe("the pricing page (P21, plan 3.13)", () => {
     expect(html).toContain('href="/pricing"');
   });
 });
+
+describe("Today is one number everywhere (plan 1.3)", () => {
+  it("the header, the Today headline and its rows agree; walked past, a friend and Google are not in it; stickers never feed it", async () => {
+    const id = await makeShop();
+    await addChannel(id, `ig-${id}`, "instagram");
+    await addTile(id, { id: `a-${id}`, text: "A", sentAt: ago(5), channelId: `ig-${id}` });
+    await addTile(id, { id: `b-${id}`, text: "B", sentAt: ago(70), channelId: `ig-${id}` });
+    // Old taps on a post: they count on its 60-day sticker, not today.
+    await env.DB.prepare(`INSERT INTO taps (id, shop_id, tile_id, answer, source, device_hash, rewarded, created_at) VALUES ('old1', ?1, ?2, 'post', 'card', 'o1', 0, ?3)`).bind(id, `b-${id}`, ago(48)).run();
+    await call("/api/tap", json({ shop: id, tile: `a-${id}`, answer: "post", source: "card", device: "d1" }));
+    await call("/api/tap", json({ shop: id, tile: `a-${id}`, answer: "post", source: "card", device: "d2" }));
+    await call("/api/tap", json({ shop: id, tile: `b-${id}`, answer: "post", source: "online", device: "d3" }));
+    await call("/api/tap", json({ shop: id, tile: null, answer: "walked_past", source: "card", device: "d4" }));
+    const cookie = `ci_owner=${await sign(`${id}.${Date.now()}.${id}`, env.COOKIE_SECRET)}`;
+    const wall = (await (await call("/api/wall", { cookie })).json()) as { countToday: number; tiles: { id: string; count: number }[] };
+    const day = (await (await call("/api/week?range=today", { cookie })).json()) as { summary: { headline: string; people: number }; tiles: { weekPeople: number }[] };
+    expect(wall.countToday).toBe(3);
+    expect(wall.tiles.find((t) => t.id === `b-${id}`)!.count).toBe(2); // the sticker is 60 days, the old tap included
+    expect(day.summary.people).toBe(3);
+    expect(day.summary.headline).toBe("3 people came in today because of 2 posts.");
+    expect(day.tiles.reduce((n, t) => n + t.weekPeople, 0)).toBe(wall.countToday);
+  });
+
+  it("in the sample the header and the Today tab agree, before and after a tap", async () => {
+    const first = await call("/api/sample/wall");
+    const cookie = first.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+    const w0 = (await first.json()) as { countToday: number };
+    const d0 = (await (await call("/api/sample/week?range=today", { cookie })).json()) as { summary: { people: number }; tiles: { weekPeople: number }[] };
+    expect(d0.summary.people).toBe(w0.countToday);
+    expect(d0.tiles.reduce((n, t) => n + t.weekPeople, 0)).toBe(w0.countToday);
+    await call("/api/sample/tap", { ...json({ tile: "sour", answer: "post" }), cookie });
+    await call("/api/sample/tap", { ...json({ tile: null, answer: "walked_past" }), cookie });
+    const w1 = (await (await call("/api/sample/wall", { cookie })).json()) as { countToday: number };
+    const d1 = (await (await call("/api/sample/week?range=today", { cookie })).json()) as { summary: { people: number } };
+    expect(w1.countToday).toBe(w0.countToday + 1);
+    expect(d1.summary.people).toBe(w1.countToday);
+  });
+});
+
+describe("the staging-only two-shop page", () => {
+  it("does not exist outside staging", async () => {
+    expect((await call("/staging/shops")).status).toBe(404);
+  });
+});

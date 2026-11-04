@@ -38,6 +38,7 @@ import { clearOwnerCookie } from "./lib/cookies";
 import { shopWeek, parseRange } from "./week";
 import { shopPostPage } from "./post";
 import { queueVision } from "./vision";
+import { seedStagingShops } from "./staging";
 import { postAgain, postShare, moreLikeThis, queueWinnerJobs, closeDeletedShops, runJobs, againTargets, refusalFor, type PostTarget, type ChannelResult } from "./writes";
 import { sampleWeek, samplePostPage, SAMPLE_CHANNELS } from "./sample";
 import { mondayBody, summarize } from "../shared/week";
@@ -102,6 +103,16 @@ async function ownerLocations(c: C): Promise<{ current: string; shops: { id: str
   }
   return { current: st.current, shops };
 }
+
+// Staging only: open two made-up shops in this browser to see the Locations screens (no Buffer involved).
+app.get("/staging/shops", async (c) => {
+  if (c.env.APP_ENV !== "staging") return c.notFound();
+  const ids = await seedStagingShops(c.env);
+  await setOwnerCookie(c, ids[0], { keep: false });
+  for (const id of ids.slice(1)) await setOwnerCookie(c, id);
+  await switchOwnerShop(c, ids[0]);
+  return c.redirect("/wall", 302);
+});
 
 app.get("/setup/add", async (c) => {
   if (!(await ownerState(c))) return c.redirect("/", 302);

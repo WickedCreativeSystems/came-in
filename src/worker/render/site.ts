@@ -26,6 +26,7 @@ const SITE_CSS = `
 @media (max-width:720px){.why{grid-template-columns:1fr}}
 .foot{border-top:1px solid var(--rule);padding:16px 0 32px;font-size:11px;line-height:1.3;color:var(--ink-3);display:flex;gap:8px 16px;flex-wrap:wrap}
 .foot a{color:var(--ink-2)}
+.prose .body{font-size:16px;font-weight:400;margin:0 0 8px}
 .prose .price{font-family:var(--fd);font-weight:700;font-size:22px;line-height:1.2;margin:16px 0}
 .prose{max-width:560px}
 .strip{margin:24px 0 0;border:1px solid var(--rule);border-radius:4px;padding:12px 16px;font-size:14px}
@@ -141,10 +142,10 @@ export function renderPricing(opts: { price: string | null; link: string | null;
     ? `<p class="price">More shops are ${esc(opts.price!)} a month each.</p>
 <p><a class="btn primary" href="${esc(opts.link!)}" target="_blank" rel="noopener">Pay for more shops</a></p>
 <p class="cap">After you pay, add your next shop from Setup, under Locations. We don't check payments, so you won't be locked out.</p>`
-    : `<p><strong>Need more than one shop? Write to us.</strong></p>${opts.contactEmail ? `<p><a href="mailto:${esc(opts.contactEmail)}">${esc(opts.contactEmail)}</a></p>` : ""}`;
+    : `<p class="price">Need more than one shop? Write to us.</p>${opts.contactEmail ? `<p><a href="mailto:${esc(opts.contactEmail)}">${esc(opts.contactEmail)}</a></p>` : ""}`;
   const body = `<div class="wrap">${header()}<article class="prose">
 <h1>Pricing</h1>
-<p><strong>One shop is free.</strong></p>
+<p class="body">One shop is free.</p>
 ${more}
 </article>${footer(opts.contactEmail)}</div>`;
   return page({ title: "Pricing · Came In", css: SITE_CSS, body, followSystem: true });

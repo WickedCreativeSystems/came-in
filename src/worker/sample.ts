@@ -13,7 +13,6 @@ import { sentCaption } from "../shared/names";
 
 
 // Baseline header and week counts, as the sample shows them (look.md section 10).
-const BASE_TODAY = 3;
 
 export async function sampleSessionTaps(env: Env, session: string): Promise<{ tile_id: string | null; answer: string; created_at: string; source: string }[]> {
   const { results } = await env.DB.prepare(`SELECT tile_id, answer, created_at, source FROM sample_taps WHERE session_id = ?1`).bind(session).all<{ tile_id: string | null; answer: string; created_at: string; source: string }>();
@@ -63,7 +62,8 @@ export async function sampleWall(env: Env, session: string, now = new Date()): P
   const [taps, own] = await Promise.all([sampleSessionTaps(env, session), sampleTileSettings(env, session)]);
   const extra = new Map<string, number>();
   const dayStart = startOfShopDay(now, SAMPLE_SHOP.timezone).toISOString();
-  let today = 0;
+  // Today's count is today's taps in the same history This week reads, plus this browser's own, so the header and the Today tab agree.
+  let today = sampleHistory(now).filter((t) => t.answer === "post" && t.at >= dayStart).length;
   for (const t of taps) {
     if (t.answer !== "post" || !t.tile_id) continue;
     extra.set(t.tile_id, (extra.get(t.tile_id) ?? 0) + 1);
@@ -86,7 +86,7 @@ export async function sampleWall(env: Env, session: string, now = new Date()): P
       createdAt: now.toISOString(),
     },
     tiles: sampleTiles(now, extra, own),
-    countToday: BASE_TODAY + today,
+    countToday: today,
     countThisWeek: weekTaps,
     hasTapped: taps.length > 0,
     sync: { status: "idle", count: SAMPLE_POSTS.length, startedAt: null },

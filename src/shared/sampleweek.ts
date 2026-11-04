@@ -4,7 +4,7 @@
 // the counter, and the counter heard 6 "walked past", 4 "a friend" and 2
 // "Google" this week, so the honest ratio line shows.
 import { SAMPLE_POSTS, SAMPLE_SHOP, samplePostSentAt } from "./sample";
-import { startOfShopWeek } from "./time";
+import { startOfShopWeek, startOfShopDay } from "./time";
 import type { WeekTap } from "./week";
 
 export function sampleHistory(now: Date): WeekTap[] {
@@ -20,7 +20,9 @@ export function sampleHistory(now: Date): WeekTap[] {
   };
   for (const p of SAMPLE_POSTS) {
     const sent = samplePostSentAt(p, now, tz).getTime();
-    const end = Math.max(sent + 60000, now.getTime() - 60000);
+    // A post sent before today earned its taps before today, so today's count is only today's posts.
+    const dayStart = startOfShopDay(now, tz).getTime();
+    const end = sent < dayStart ? Math.max(sent + 60000, dayStart - 60000) : Math.max(sent + 60000, now.getTime() - 60000);
     for (let i = 0; i < p.count; i++) taps.push({ tileId: p.id, answer: "post", source: i % 4 === 1 ? "counter" : "card", at: spread(sent, end, i, p.count) });
   }
   const span = Math.max(60000, now.getTime() - weekStart);
