@@ -96,7 +96,6 @@ export interface FakeBuffer {
   status429?: boolean;
   images: Record<string, { type: string; body: Uint8Array<ArrayBuffer> } | number>;
   /** Write-back switches. */
-  tagLimit?: boolean;
   tags: { id: string; name: string }[];
   postTags: Record<string, string[]>;
   approval?: boolean;
@@ -145,18 +144,6 @@ export function fakeBuffer(over: Partial<FakeBuffer> = {}): FakeBuffer {
         fb.created.push(v.input);
         const status = v.input.saveToDraft ? "draft" : fb.approval ? "needs_approval" : "scheduled";
         return ok({ createPost: { __typename: "PostActionSuccess", post: { id: `new-${fb.created.length}`, status } } });
-      }
-      if (body.query.includes("CameInPostTags")) return ok({ post: { id: v.id, tags: (fb.postTags[v.id] ?? []).map((id) => ({ id, name: id })) } });
-      if (body.query.includes("CameInEditPostTags")) {
-        fb.postTags[v.input.id] = v.input.tagIds;
-        return ok({ editPost: { __typename: "PostActionSuccess", post: { id: v.input.id, tags: v.input.tagIds.map((id: string) => ({ id })) } } });
-      }
-      if (body.query.includes("CameInTags")) return ok({ tagsV2: { edges: fb.tags.map((t) => ({ node: { ...t, color: "#000000", isLocked: false } })) } });
-      if (body.query.includes("CameInCreateTag")) {
-        if (fb.tagLimit || fb.tags.length >= 3) return ok({ createTag: { __typename: "LimitReachedError", message: "Your plan allows 3 tags." } });
-        const tag = { id: `tag-${fb.tags.length + 1}`, name: v.input.tag.name };
-        fb.tags.push(tag);
-        return ok({ createTag: { __typename: "TagActionSuccess", tag } });
       }
       if (body.query.includes("CameInCreateNote")) {
         const note = { id: `note-${fb.notes.length + 1}`, postId: v.input.subject.postId, text: v.input.text };

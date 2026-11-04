@@ -28,9 +28,9 @@ export function Tile({ tile, index, now, tz, flash, href }: { tile: WallTile; in
         {tile.hidden ? <span class="day off-badge">Off the card</span> : <Marks services={tile.services} />}
       </div>
       <Sticker count={tile.count} index={index} flash={flash} onPaper={!showImage} />
-      {tile.tagged && (
-        <span class="tagged" title={`Tagged "Came in" in Buffer`}>
-          <Icon name="tag" size={12} />
+      {tile.noted && (
+        <span class="noted" title="Note left in Buffer">
+          <Icon name="note" size={12} />
           <span class="lbl">In Buffer</span>
         </span>
       )}

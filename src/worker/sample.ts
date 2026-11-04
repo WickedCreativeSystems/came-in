@@ -53,7 +53,7 @@ export function sampleTiles(now: Date, extra: Map<string, number>, own: { nick: 
       services: p.services,
       links: [],
       count: p.count + (extra.get(p.id) ?? 0),
-      tagged: p.tagged,
+      noted: p.noted,
       hidden: own.hidden.has(p.id),
     } satisfies WallTile;
   });
@@ -149,7 +149,7 @@ export async function samplePostPage(env: Env, session: string, tileId: string, 
     sent: sentCaption(new Date(tile.firstSentAt), now, tz),
     byDay: groupByDay(taps, now, tz),
     bySource: sourceLines(taps),
-    noteLeft: p.tagged,
+    noteLeft: p.noted,
     media: p.textOnly ? "none" : p.id === "hands" ? "video" : "image",
     channels: SAMPLE_CHANNELS.map((c) => ({ ...c, needsPhoto: c.service === "instagram" && !!p.textOnly, needsBoard: false })),
   };

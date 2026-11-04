@@ -124,7 +124,7 @@ export class ShopRoom extends DurableObject<Env> {
     return { running: !!s, count: s?.count ?? 0, startedAt: s?.startedAt ?? null, failures: s?.failures ?? 0 };
   }
 
-  /** A tile just reached a winner's count: run its tag and note soon, off the tap's request (plan 1.7). */
+  /** A tile just reached a winner's count: run its note soon, off the tap's request (plan 1.7). */
   async kickJobs(shopId: string): Promise<void> {
     await this.ctx.storage.put("jobs", shopId);
     const at = await this.ctx.storage.getAlarm();

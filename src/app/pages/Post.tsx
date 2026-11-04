@@ -192,10 +192,10 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
               </div>
               {line && <p class={`small outcome${line === outcomeLine("failed") ? " failed" : ""}`}>{line}</p>}
               {ideaLine && <p class={`small outcome${ideaLine === outcomeLine("failed") ? " failed" : ""}`}>{ideaLine}</p>}
-              {(t.tagged || data.noteLeft) && (
+              {data.noteLeft && (
                 <p class="caption status-lines">
-                  <Icon name="tag" size={14} />
-                  {[t.tagged ? 'Tagged "Came in" in Buffer' : null, data.noteLeft ? "Note left in Buffer" : null].filter(Boolean).join(" · ")}
+                  <Icon name="note" size={14} />
+                  Note left in Buffer
                 </p>
               )}
             </div>

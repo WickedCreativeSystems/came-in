@@ -12,40 +12,6 @@ export const CREATE_POST = /* GraphQL */ `
   }
 `;
 
-export const EDIT_POST_TAGS = /* GraphQL */ `
-  mutation CameInEditPostTags($input: EditPostInput!) {
-    editPost(input: $input) {
-      __typename
-      ... on PostActionSuccess { post { id tags { id } } }
-      ${MUTATION_ERROR}
-    }
-  }
-`;
-
-export const POST_TAGS = /* GraphQL */ `
-  query CameInPostTags($id: PostId!) {
-    post(input: { id: $id }) { id tags { id name } }
-  }
-`;
-
-export const TAGS = /* GraphQL */ `
-  query CameInTags($organizationId: OrganizationId!) {
-    tagsV2(first: 100, input: { organizationId: $organizationId }) {
-      edges { node { id name color isLocked } }
-    }
-  }
-`;
-
-export const CREATE_TAG = /* GraphQL */ `
-  mutation CameInCreateTag($input: CreateTagInput!) {
-    createTag(input: $input) {
-      __typename
-      ... on TagActionSuccess { tag { id name } }
-      ${MUTATION_ERROR}
-    }
-  }
-`;
-
 export const CREATE_NOTE = /* GraphQL */ `
   mutation CameInCreateNote($input: CreateCollaborationNoteInput!) {
     createCollaborationNote(input: $input) {
@@ -83,5 +49,3 @@ export interface UnionResult {
   message?: string;
 }
 
-export const TAG_NAME = "Came in";
-export const TAG_COLOR = "#C4912C"; // brass; the one place Came In's brass goes into Buffer (plan 1.2)

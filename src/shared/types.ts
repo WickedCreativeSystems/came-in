@@ -32,7 +32,8 @@ export interface WallTile {
   services: string[];
   links: { service: string; url: string }[];
   count: number;
-  tagged: boolean;
+  /** Our note is on the post in Buffer. */
+  noted: boolean;
   hidden: boolean;
 }
 

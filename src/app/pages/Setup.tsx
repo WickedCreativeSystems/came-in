@@ -117,7 +117,7 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
               aria-labelledby="mark-winners"
               onClick={() => void save({ markWinners: !data.settings.markWinners })}
             />
-            <span id="mark-winners">Once 3 people say a post brought them in, we tag it "Came in" in Buffer and leave a note on it.</span>
+            <span id="mark-winners">Once 3 people say a post brought them in, we leave a note on it in Buffer.</span>
           </label>
         </Section>
 
@@ -450,7 +450,7 @@ function DeleteShop(): JSX.Element {
         <div class="scrim" role="presentation" onClick={(e) => e.target === e.currentTarget && setOpen(false)}>
           <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="del-h">
             <h2 class="h2" id="del-h">
-              This deletes your wall, your taps and your card, and removes Came In's tags and notes from your Buffer posts.
+              This deletes your wall, your taps and your card, and removes Came In's notes from your Buffer posts.
             </h2>
             <div class="btn-row">
               <button

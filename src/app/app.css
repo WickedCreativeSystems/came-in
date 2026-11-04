@@ -90,8 +90,8 @@ nav.bottombar { display: none; }
 .sticker.zero { color: #6E665D; }
 .sticker.zero.on-paper { background: transparent; color: var(--ink-2); box-shadow: 0 0 0 1px var(--rule-2); text-shadow: none; }
 .sticker.flash { background: var(--brass); color: #231F1B; box-shadow: 0 0 0 1px rgba(35, 31, 27, .12); text-shadow: none; transition: none; }
-.tile .tagged { position: absolute; right: 10px; bottom: 12px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #FFFFFF; text-shadow: 0 1px 2px rgba(0, 0, 0, .4); display: flex; align-items: center; gap: 4px; animation: fadein var(--t-fade) ease 1; }
-.tile .text-only ~ .tagged { color: var(--ink-2); text-shadow: none; }
+.tile .noted { position: absolute; right: 10px; bottom: 12px; font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #FFFFFF; text-shadow: 0 1px 2px rgba(0, 0, 0, .4); display: flex; align-items: center; gap: 4px; animation: fadein var(--t-fade) ease 1; }
+.tile .text-only ~ .noted { color: var(--ink-2); text-shadow: none; }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 
 /* The tick (look.md section 6) */
@@ -176,7 +176,7 @@ nav.bottombar { display: none; }
   .sticker .n { font-size: 22px; height: 19px; }
   .tile .text-only { padding: 40px 12px 60px; }
   .tile .text-only .first { font-size: 20px; }
-  .tile .tagged .lbl { display: none; }
+  .tile .noted .lbl { display: none; }
   .wall-head { flex-wrap: wrap; row-gap: 2px; }
   .wall-head .range { flex-basis: 100%; order: 3; }
 }

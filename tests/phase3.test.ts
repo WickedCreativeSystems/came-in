@@ -1,4 +1,4 @@
-// Phase 3: P11 This week, P12 write-backs, P13 tag and note, P14 share image, P15 check, P17 nickname and hide.
+// Phase 3: P11 This week, P12 write-backs, P13 note, P14 share image, P15 check, P17 nickname and hide.
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { env } from "cloudflare:workers";
 import { runDurableObjectAlarm } from "cloudflare:test";
@@ -209,41 +209,46 @@ describe("Post it again, More like this, Post this (P12)", () => {
   });
 });
 
-describe("the tag and the note in Buffer (P13)", () => {
-  it("at the 3rd person: the tag on each post, keeping its tags, and the note; the tile shows In Buffer", async () => {
+describe("the note in Buffer (P13)", () => {
+  it("at the 3rd person: a note on the post, and the tile shows In Buffer; no tag is ever made or applied", async () => {
     const id = await shopWithPosts();
     const fb = fakeBuffer({ postTags: { [`p-sour-${id}`]: ["existing"] } });
     for (const d of ["a", "b", "c"]) await call("/api/tap", json({ shop: id, tile: `sour-${id}`, answer: "post", source: "card", device: d }));
     const stub = env.SHOP_ROOM.get(env.SHOP_ROOM.idFromName(id));
     await runDurableObjectAlarm(stub);
-    expect(fb.tags).toEqual([{ id: "tag-1", name: "Came in" }]);
-    expect(fb.postTags[`p-sour-${id}`]).toEqual(["existing", "tag-1"]);
     expect(fb.notes).toEqual([{ id: "note-1", postId: `p-sour-${id}`, text: "3 people came in because of this post. — Came In" }]);
-    const wall = (await (await call("/api/wall", { cookie: await ownerCookie(id) })).json()) as { tiles: { id: string; tagged: boolean }[] };
-    expect(wall.tiles.find((t) => t.id === `sour-${id}`)!.tagged).toBe(true);
+    expect(fb.tags).toEqual([]);
+    expect(fb.postTags[`p-sour-${id}`]).toEqual(["existing"]);
+    expect(fb.calls.some((c) => /CameIn(Edit)?(Post)?(Create)?Tags?\b/.test(c.query))).toBe(false);
+    const wall = (await (await call("/api/wall", { cookie: await ownerCookie(id) })).json()) as { tiles: { id: string; noted: boolean }[] };
+    expect(wall.tiles.find((t) => t.id === `sour-${id}`)!.noted).toBe(true);
     const page = (await (await call(`/api/post/sour-${id}`, { cookie: await ownerCookie(id) })).json()) as { noteLeft: boolean };
     expect(page.noteLeft).toBe(true);
-    // A tap never calls Buffer: the three taps made no Buffer call themselves.
-    const createTag = fb.calls.findIndex((c) => c.query.includes("CameInCreateTag"));
-    expect(createTag).toBeGreaterThanOrEqual(0);
+  });
+
+  it("the tile shows nothing before the note has landed", async () => {
+    const id = await shopWithPosts();
+    fakeBuffer();
+    for (const d of ["a", "b"]) await call("/api/tap", json({ shop: id, tile: `sour-${id}`, answer: "post", source: "card", device: d }));
+    const wall = (await (await call("/api/wall", { cookie: await ownerCookie(id) })).json()) as { tiles: { id: string; noted: boolean }[] };
+    expect(wall.tiles.find((t) => t.id === `sour-${id}`)!.noted).toBe(false);
+  });
+
+  it("a tag job left over from before ends without calling Buffer", async () => {
+    const id = await shopWithPosts();
+    const fb = fakeBuffer();
+    await env.DB.prepare(`INSERT INTO buffer_jobs (id, shop_id, kind, payload, next_at) VALUES ('old-tag', ?1, 'tag', ?2, ?3)`).bind(id, JSON.stringify({ tileId: `sour-${id}` }), new Date(Date.now() - 1000).toISOString()).run();
+    await runJobs(env, id);
+    expect(fb.calls).toHaveLength(0);
+    const job = await env.DB.prepare(`SELECT done_at, error FROM buffer_jobs WHERE id = 'old-tag'`).first<{ done_at: string | null; error: string }>();
+    expect(job).toMatchObject({ error: "tags dropped" });
+    expect(job!.done_at).toBeTruthy();
   });
 
   it("updates the note at 10, 25, 50, 100 and every 100 after", () => {
     expect([3, 10, 25, 50, 100, 200, 300].every(isNoteStep)).toBe(true);
     expect([1, 2, 4, 9, 11, 26, 150].some(isNoteStep)).toBe(false);
     expect(noteText(10)).toBe("10 people came in because of this post. — Came In");
-  });
-
-  it("a free plan at its tag limit: tagging goes silently off, the note still goes, the tile shows nothing", async () => {
-    const id = await shopWithPosts();
-    const fb = fakeBuffer({ tags: [{ id: "t1", name: "A" }, { id: "t2", name: "B" }, { id: "t3", name: "C" }] });
-    for (const d of ["a", "b", "c"]) await call("/api/tap", json({ shop: id, tile: `sour-${id}`, answer: "post", source: "card", device: d }));
-    await runDurableObjectAlarm(env.SHOP_ROOM.get(env.SHOP_ROOM.idFromName(id)));
-    expect((await getShop(env, id))!.tag_state).toBe("off");
-    expect(Object.keys(fb.postTags)).toHaveLength(0);
-    expect(fb.notes).toHaveLength(1);
-    const wall = (await (await call("/api/wall", { cookie: await ownerCookie(id) })).json()) as { tiles: { id: string; tagged: boolean }[] };
-    expect(wall.tiles.find((t) => t.id === `sour-${id}`)!.tagged).toBe(false);
   });
 
   it("with Mark winners off, nothing is written", async () => {

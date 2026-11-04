@@ -1,15 +1,15 @@
 // Write-backs to Buffer (plan 1.2, 1.7; P12, P13). The owner's buttons call
 // Buffer at once; a 429 goes to buffer_jobs and retries on the next tick.
-// The tag and the note are always jobs, run by the shop's ShopRoom, so a
+// The note is always a job, run by the shop's ShopRoom, so a
 // customer's tap never waits on Buffer.
 import type { Env } from "./env";
 import type { ShopRow } from "./db";
 import { getShop } from "./db";
 import { graphql, BufferError } from "./buffer/client";
-import { CREATE_POST, EDIT_POST_TAGS, POST_TAGS, TAGS, CREATE_TAG, CREATE_NOTE, UPDATE_NOTE, CREATE_IDEA, TAG_NAME, TAG_COLOR, type UnionResult } from "./buffer/mutations";
+import { CREATE_POST, CREATE_NOTE, UPDATE_NOTE, CREATE_IDEA, type UnionResult } from "./buffer/mutations";
 import { uuid } from "./lib/crypto";
 
-export type JobKind = "tag" | "note" | "post_again" | "idea" | "post_share";
+export type JobKind = "note" | "post_again" | "idea" | "post_share";
 
 export interface PostTarget {
   channelId: string;
@@ -253,30 +253,22 @@ export async function enqueue(env: Env, shopId: string, kind: JobKind, payload: 
 }
 
 /**
- * After a counted tap: when a tile reaches 3 people, tag each of its posts
- * and leave a note; update the note at 10, 25, 50, 100 and every 100 after
+ * After a counted tap: when a tile reaches 3 people, leave a note on its post
+ * (Came In never tags: Buffer refuses it on sent posts); update the note at 10, 25, 50, 100 and every 100 after
  * (plan 1.7). Returns true when there is work for the ShopRoom.
  */
 export async function queueWinnerJobs(env: Env, shop: ShopRow, tileId: string, people: number): Promise<boolean> {
   if (!shop.mark_winners || people < 3) return false;
-  const tile = await env.DB.prepare(`SELECT tagged_at, note_count FROM tiles WHERE id = ?1 AND shop_id = ?2`).bind(tileId, shop.id).first<{ tagged_at: string | null; note_count: number }>();
+  const tile = await env.DB.prepare(`SELECT note_count FROM tiles WHERE id = ?1 AND shop_id = ?2`).bind(tileId, shop.id).first<{ note_count: number }>();
   if (!tile) return false;
+  // A job that gave up (MAX_TRIES) is dead: it doesn't count, so it never blocks a fresh one.
   const pending = await env.DB.prepare(
-    `SELECT kind, MAX(CAST(json_extract(payload, '$.people') AS INTEGER)) AS people FROM buffer_jobs WHERE shop_id = ?1 AND done_at IS NULL AND tries < ?3 AND kind IN ('tag','note') AND json_extract(payload, '$.tileId') = ?2 GROUP BY kind`,
-  ).bind(shop.id, tileId, MAX_TRIES).all<{ kind: string; people: number | null }>();
-  const pendingTag = pending.results.some((r) => r.kind === "tag");
-  const pendingNote = pending.results.find((r) => r.kind === "note")?.people ?? 0;
-  let queued = false;
+    `SELECT MAX(CAST(json_extract(payload, '$.people') AS INTEGER)) AS people FROM buffer_jobs WHERE shop_id = ?1 AND done_at IS NULL AND tries < ?3 AND kind = 'note' AND json_extract(payload, '$.tileId') = ?2`,
+  ).bind(shop.id, tileId, MAX_TRIES).first<{ people: number | null }>();
   // Taps that land together can step past a threshold; compare with the step above what's written.
-  if (!tile.tagged_at && shop.tag_state !== "off" && !pendingTag) {
-    await enqueue(env, shop.id, "tag", { tileId });
-    queued = true;
-  }
-  if (people >= nextNoteStep(Math.max(tile.note_count, pendingNote))) {
-    await enqueue(env, shop.id, "note", { tileId, people });
-    queued = true;
-  }
-  return queued;
+  if (people < nextNoteStep(Math.max(tile.note_count, pending?.people ?? 0))) return false;
+  await enqueue(env, shop.id, "note", { tileId, people });
+  return true;
 }
 
 const MAX_TRIES = 5;
@@ -330,12 +322,12 @@ type Outcome = "done" | "retry" | string;
 
 async function runJob(env: Env, shop: ShopRow, kind: JobKind, p: Record<string, unknown>): Promise<Outcome> {
   // Mark winners switched off after the job was queued: nothing is written.
-  if ((kind === "tag" || kind === "note") && !shop.mark_winners) return "mark winners off";
+  // Tags were dropped (Buffer refuses them on sent posts); a leftover tag job just ends.
+  if ((kind as string) === "tag") return "tags dropped";
+  if (kind === "note" && !shop.mark_winners) return "mark winners off";
   const token = await shopToken(env, shop.id);
   if (!token) return "reconnect";
   switch (kind) {
-    case "tag":
-      return tagTile(env, shop, token, String(p.tileId));
     case "note":
       return noteTile(env, shop, token, String(p.tileId), Number(p.people));
     case "post_again":
@@ -348,46 +340,6 @@ async function runJob(env: Env, shop: ShopRow, kind: JobKind, p: Record<string, 
       return data.createIdea.__typename === "Idea" || data.createIdea.__typename === "IdeaResponse" ? "done" : data.createIdea.message ?? "failed";
     }
   }
-}
-
-/** The shop's "Came in" tag: found or made once; a refusal turns tagging silently off (plan 1.2). */
-async function ensureTag(env: Env, shop: ShopRow, token: string): Promise<string | null> {
-  if (shop.tag_state === "off") return null;
-  if (shop.tag_state === "ok" && shop.tag_id) return shop.tag_id;
-  const { data } = await graphql<{ tagsV2: { edges: { node: { id: string; name: string; isLocked: boolean } }[] } }>(env, token, TAGS, { organizationId: shop.buffer_org_id });
-  let id = data.tagsV2.edges.map((e) => e.node).find((t) => t.name === TAG_NAME)?.id ?? null;
-  if (!id) {
-    const r = await graphql<{ createTag: UnionResult & { tag?: { id: string } } }>(env, token, CREATE_TAG, { input: { organizationId: shop.buffer_org_id, tag: { name: TAG_NAME, color: TAG_COLOR } } });
-    if (r.data.createTag.__typename === "TagActionSuccess") id = r.data.createTag.tag?.id ?? null;
-    // Only Buffer refusing the tag (a free plan's limit) turns tagging off; a failed lookup just retries.
-    else if (r.data.createTag.__typename === "LimitReachedError" || r.data.createTag.__typename === "InvalidInputError") {
-      await env.DB.prepare(`UPDATE shops SET tag_state = 'off' WHERE id = ?1`).bind(shop.id).run();
-      return null;
-    } else throw new BufferError(r.data.createTag.message ?? "createTag failed", "graphql");
-  }
-  await env.DB.prepare(`UPDATE shops SET tag_id = ?2, tag_state = 'ok' WHERE id = ?1`).bind(shop.id, id).run();
-  return id;
-}
-
-async function tagTile(env: Env, shop: ShopRow, token: string, tileId: string): Promise<Outcome> {
-  // Free plans allow 3 tags: if Buffer won't make it, tagging is silently off for this shop.
-  const tag = await ensureTag(env, shop, token);
-  if (!tag) return "tagging off";
-  const { results } = await env.DB.prepare(`SELECT id FROM posts WHERE tile_id = ?1 AND shop_id = ?2`).bind(tileId, shop.id).all<{ id: string }>();
-  let tagged = 0;
-  for (const post of results) {
-    const { data } = await graphql<{ post: { tags: { id: string }[] } }>(env, token, POST_TAGS, { id: post.id });
-    const existing = data.post.tags.map((t) => t.id);
-    if (existing.includes(tag)) {
-      tagged++;
-      continue;
-    }
-    // Keep the post's existing tags (plan 1.2).
-    const r = await graphql<{ editPost: UnionResult }>(env, token, EDIT_POST_TAGS, { input: { id: post.id, tagIds: [...existing, tag] } });
-    if (r.data.editPost.__typename === "PostActionSuccess") tagged++;
-  }
-  if (tagged) await env.DB.prepare(`UPDATE tiles SET tagged_at = ?2 WHERE id = ?1`).bind(tileId, new Date().toISOString()).run();
-  return tagged ? "done" : "not tagged";
 }
 
 async function noteTile(env: Env, shop: ShopRow, token: string, tileId: string, people: number): Promise<Outcome> {
