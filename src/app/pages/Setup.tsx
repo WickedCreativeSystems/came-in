@@ -330,12 +330,12 @@ function RingMyPhone({ sample, pushKey, onDone }: { sample: boolean; pushKey: st
       setState(s);
       if (s === "ok") onDone();
     } catch {
-      setState("unsupported");
+      setState("refused");
     }
   }
   return (
     <div>
-      {state !== "ios" && state !== "unsupported" && (
+      {state !== "ios" && state !== "unsupported" && state !== "refused" && (
         <button class="btn" disabled={state === "working"} onClick={go}>
           {state === "working" && <span class="spin" aria-hidden="true" />}
           Ring my phone
@@ -352,6 +352,11 @@ function RingMyPhone({ sample, pushKey, onDone }: { sample: boolean; pushKey: st
         <div class="note">
           <p class="small">This phone can't ring. The bell still rings wherever Came In is open.</p>
           {isIOS() && <IOSSteps />}
+        </div>
+      )}
+      {state === "refused" && (
+        <div class="note">
+          <p class="small">Came In couldn't turn on the bell in this browser. The bell still rings wherever Came In is open.</p>
         </div>
       )}
     </div>

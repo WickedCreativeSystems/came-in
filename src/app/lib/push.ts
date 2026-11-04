@@ -3,7 +3,7 @@
 import { api } from "./api";
 import { deviceId } from "./device";
 
-export type PhoneState = "idle" | "working" | "ok" | "denied" | "unsupported" | "ios";
+export type PhoneState = "idle" | "working" | "ok" | "denied" | "unsupported" | "ios" | "refused";
 
 export function isIOS(): boolean {
   const ua = navigator.userAgent;
@@ -57,6 +57,10 @@ export async function ringMyPhone(sample: boolean, publicKey: string | null): Pr
   await navigator.serviceWorker.ready;
   let sub = await reg.pushManager.getSubscription();
   if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(publicKey) });
-  await api(sample ? "/api/sample/push/subscribe" : "/api/push/subscribe", { json: { device: deviceId(), subscription: sub.toJSON() } });
+  try {
+    await api(sample ? "/api/sample/push/subscribe" : "/api/push/subscribe", { json: { device: deviceId(), subscription: sub.toJSON() } });
+  } catch {
+    return "refused";
+  }
   return "ok";
 }

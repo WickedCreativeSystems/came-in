@@ -467,7 +467,7 @@ describe("Chrome's real push hosts (regression on 13acc64)", () => {
       "https://wns2-par02p.notify.windows.com/w/?token=BQYAAAB",
     ])
       expect(pushHostAllowed(ok, undefined), ok).toBe(true);
-    for (const bad of ["https://storage.googleapis.com/bucket/o", "https://evil.com/fcm/send/x", "https://google.com.evil.com/x", "http://fcm.googleapis.com/fcm/send/x", "https://jmt17.google.com.evil.com/x"])
+    for (const bad of ["https://storage.googleapis.com/bucket/o", "https://evil.com/fcm/send/x", "https://google.com.evil.com/x", "http://fcm.googleapis.com/fcm/send/x", "https://jmt17.google.com.evil.com/x", "https://mail.google.com/x", "https://push.apple.com.evil.com/x"])
       expect(pushHostAllowed(bad, undefined), bad).toBe(false);
   });
 
