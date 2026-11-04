@@ -353,7 +353,7 @@ function toTapTile(t: WallTile, now: Date, tz: string, sample = false): TapTile 
     name: t.name,
     imageUrl: t.imageUrl,
     // The sample's text-only post shows its name, never a sentence of the post.
-    text: sample && !t.imageUrl ? t.name : firstLine(t.text),
+    text: sample && !t.imageUrl ? t.name.replace(/^the\s+/i, "") : firstLine(t.text),
     badge: dayBadge(new Date(t.firstSentAt), now, tz, t.isLive, "tap"),
     live: t.isLive,
   };

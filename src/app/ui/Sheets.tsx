@@ -34,9 +34,9 @@ function and(names: string[]): string {
  * channel took it; "Added on Instagram and TikTok. YouTube didn't take it."
  * when some didn't; the failure line when none did.
  */
-export function resultLine(r: SheetResult): string {
+export function resultLine(r: SheetResult, slot = false): string {
   if (r.outcome === "failed" || !r.ok.length) return outcomeLine("failed");
-  if (!r.failed.length) return outcomeLine(r.outcome);
+  if (!r.failed.length) return slot && r.outcome === "queued" ? `${outcomeLine("queued")} It goes out at your next slot.` : outcomeLine(r.outcome);
   const lead = r.outcome === "draft" ? `Saved as a draft on ${and(r.ok)} (staging).` : `Added on ${and(r.ok)}.`;
   return `${lead} ${and(r.failed)} didn't take it.`;
 }

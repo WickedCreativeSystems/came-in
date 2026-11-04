@@ -60,7 +60,14 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
   }
 
   if (!wall || !data) {
-    return <main class="page">{error && <div class="strip stamp" role="alert">Something's wrong on our side. Try again in a minute.</div>}</main>;
+    // Hold the page's place while the shop's data loads, so a section link never opens on a blank screen.
+    return (
+      <main class="page setup">
+        {error && <div class="strip stamp" role="alert">Something's wrong on our side. Try again in a minute.</div>}
+        <h1 class="h1">Setup</h1>
+        {!error && <div class="setup-hold" aria-hidden="true" />}
+      </main>
+    );
   }
 
   return (
@@ -84,7 +91,7 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
           </a>
         </Section>
 
-        <Section id="counter" eyebrow="Counter">
+        <Section id="staff" eyebrow="Staff screen">
           <p>A screen for your staff, not something to print.</p>
           <p>This turns this phone or tablet into the counter. It stays signed in until you close it.</p>
           <OpenCounter sample={sample} />
@@ -270,7 +277,7 @@ function OpenCounter({ sample }: { sample: boolean }): JSX.Element {
   if (sample)
     return (
       <a class="btn" href="/sample/c">
-        Open the counter on this device
+        Open the staff screen on this device
       </a>
     );
   return (
@@ -288,7 +295,7 @@ function OpenCounter({ sample }: { sample: boolean }): JSX.Element {
       }}
     >
       {busy && <span class="spin" aria-hidden="true" />}
-      Open the counter on this device
+      Open the staff screen on this device
     </button>
   );
 }
@@ -321,11 +328,17 @@ function IOSSteps(): JSX.Element {
 }
 
 function RingMyPhone({ sample, pushKey, onDone }: { sample: boolean; pushKey: string | null; phones: number; onDone: () => void }): JSX.Element {
-  const [state, setState] = useState<PhoneState>(() => initialPhoneState());
+  // In the sample the button never asks for or reads notification permission: the bell rings in this page.
+  const [state, setState] = useState<PhoneState>(() => (sample ? "idle" : initialPhoneState()));
   useEffect(() => {
+    if (sample) return;
     void thisPhoneRings().then((yes) => yes && setState((s) => (s === "idle" ? "ok" : s)));
   }, []);
   async function go() {
+    if (sample) {
+      setState("ok");
+      return;
+    }
     setState("working");
     try {
       const s = await ringMyPhone(sample, pushKey);
@@ -337,7 +350,7 @@ function RingMyPhone({ sample, pushKey, onDone }: { sample: boolean; pushKey: st
   }
   return (
     <div>
-      <p class="small">Your phone rings when someone taps. Open Came In on your phone, then tap Ring my phone.</p>
+      <p class="small">{sample ? "In this sample the bell rings in this browser." : "Your phone rings when someone taps. Open Came In on your phone, then tap Ring my phone."}</p>
       {state !== "ios" && state !== "unsupported" && state !== "refused" && (
         <button class="btn" disabled={state === "working"} onClick={go}>
           {state === "working" && <span class="spin" aria-hidden="true" />}

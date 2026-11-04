@@ -52,7 +52,7 @@ describe("the counter (P7, plan 3.6)", () => {
     const id = await shopWithPosts({ thankYou: "Free cookie today" });
     const token = await openCounterFor(id);
     const html = await (await call(`/c/${token}`)).text();
-    for (const w of ["What brought them in?", "Walked past", "A friend told them", "Found us on Google", "Counter", "Owner"]) expect(html).toContain(w);
+    for (const w of ["What brought them in?", "Walked past", "A friend told them", "Found us on Google", "Staff screen", "Or, if it wasn't a post:", "Owner"]) expect(html).toContain(w);
     expect(html).not.toContain("prefers-color-scheme:dark"); // always Day
     let t = Date.now();
     for (const answer of ["walked_past", "friend", "google"]) {
@@ -110,9 +110,9 @@ describe("the counter (P7, plan 3.6)", () => {
   it("shows the owner corner's two buttons only with the owner cookie", async () => {
     const id = await shopWithPosts();
     const token = await openCounterFor(id);
-    expect(await (await call(`/c/${token}`)).text()).not.toContain("Close the counter on this device");
+    expect(await (await call(`/c/${token}`)).text()).not.toContain("Close the staff screen on this device");
     const mine = await (await call(`/c/${token}`, { cookie: await ownerCookie(id) })).text();
-    expect(mine).toContain("Close the counter on this device");
+    expect(mine).toContain("Close the staff screen on this device");
     expect(mine).toContain("Back to the wall");
   });
 

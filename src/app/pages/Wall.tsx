@@ -136,8 +136,8 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
               <a
                 class="btn"
                 href={tapUrl}
-                target="_blank"
-                rel="noopener"
+                target={sample ? undefined : "_blank"}
+                rel={sample ? undefined : "noopener"}
               >
                 <Icon name="phone" size={18} />
                 Open the tap page
@@ -145,7 +145,7 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
               {sample && (
                 <div class="counter-link">
                   <a class="btn quiet" href="/sample/c">
-                    Open the counter
+                    Open the staff screen
                   </a>
                   <span class="small muted">At the till, staff tap here for a customer.</span>
                 </div>
@@ -158,7 +158,7 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
             <span class="eyebrow">Setup</span>
             <Chip done={data.checklist.connected} label="Connected Buffer" href={`${base}/setup#buffer`} />
             <Chip done={data.checklist.card} label="Print your card" href={`${base}/setup#card`} />
-            <Chip done={data.checklist.counter} label="Open the counter" href={`${base}/setup#counter`} />
+            <Chip done={data.checklist.counter} label="Open the staff screen" href={`${base}/setup#staff`} />
             <Chip done={data.checklist.phone} label="Ring my phone" href={`${base}/setup#phone`} />
             <Chip done={data.checklist.thankYou} label="Thank-you after a tap" href={`${base}/setup#thank-you`} />
             <Chip done={data.checklist.review} label="Ask for a review" href={`${base}/setup#review`} />
@@ -177,7 +177,7 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
         <div class="wall-head">
           <h1 class="h1">Your posts</h1>
           <span class="range">
-            Last 60 days · {data.countThisWeek === 1 ? "1 person" : `${data.countThisWeek} people`} this week
+            Counts on each post cover the last 60 days · <b>{data.countThisWeek === 1 ? "1 person" : `${data.countThisWeek} people`}</b> came in this week
           </span>
           <button class="btn quiet sm refresh" onClick={doRefresh} disabled={refresh === "checking"}>
             {refresh === "checking" ? <span class="spin" aria-hidden="true" /> : <Icon name="refresh" size={18} />}

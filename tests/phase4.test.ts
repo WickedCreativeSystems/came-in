@@ -92,3 +92,24 @@ describe("the receipt tip and the embed (P16)", () => {
     expect((await call("/e/zzzzzzzzzz")).status).toBe(404);
   });
 });
+
+describe("the second round of strangers (Nov 4)", () => {
+  it("the staff screen has its reserved row, the 'or' line and the staff words", async () => {
+    const html = await (await call("/sample/c")).text();
+    expect(html).toContain("Staff screen");
+    expect(html).toContain("Or, if it wasn't a post:");
+    expect(html).toContain('id="ok"');
+    expect(html).not.toMatch(/\.ok\{position:fixed/);
+    expect(html).toContain(".t.chk");
+  });
+
+  it("This week lists only posts with people, and counts the others", async () => {
+    const week = (await (await call("/api/sample/week")).json()) as { summary: { posts: number }; tiles: { weekPeople: number }[] };
+    expect(week.tiles.filter((t) => t.weekPeople > 0)).toHaveLength(week.summary.posts);
+  });
+
+  it("the sample's text-only post is shown by name without a leading 'the'", async () => {
+    const html = await (await call("/sample/t")).text();
+    expect(html).not.toMatch(/class="tx">the /i);
+  });
+});
