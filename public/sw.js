@@ -1,6 +1,6 @@
 // Came In's service worker (plan section 2): the app shell for offline
 // starts, and the bell's notification on the owner's phone (P9).
-const SHELL = "came-in-shell-v1";
+const SHELL = "came-in-shell-v2";
 const APP_PATHS = ["/wall", "/week", "/setup", "/sample", "/sample/week", "/sample/setup"];
 
 self.addEventListener("install", (event) => {
@@ -46,8 +46,14 @@ self.addEventListener("push", (event) => {
       body: note.body,
       icon: note.icon,
       badge: "/icons/icon-192.png",
-      tag: note.tag,
-      renotify: !!note.tag,
+      // A bell, not a quiet update: not silent, a vibration pattern, and a tag with renotify so a second
+      // tap on the same post still alerts. The sound itself is the phone's: Chrome on Android plays the
+      // notification channel's sound for this site, which a page cannot set (see Setup's hint).
+      silent: false,
+      vibrate: [200, 100, 200, 100, 300],
+      tag: note.tag || "came-in",
+      renotify: true,
+      requireInteraction: false,
       data: { url: note.url },
     }),
   );

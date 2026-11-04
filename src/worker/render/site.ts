@@ -81,7 +81,7 @@ export function renderPrivacy(contactEmail: string | null): string {
 <h1>Privacy</h1>
 <p>Came In reads the posts you've already sent through Buffer, and the name and logo of your channels, and keeps a copy so your card works.</p>
 <p>A customer's tap stores the post, the time, where the tap came from (the card, the counter or your booking page) and a random id their phone keeps so the thank-you shows once a day. No name, no number, no email, no location.</p>
-<p>To sort and name your photo posts, each post's picture and words are sent once to Anthropic's Claude, and nothing else is.</p>
+<p>For a post with a picture or video, its picture and words are sent once to Anthropic, only to give the post a short name. Nothing else is sent, and nothing about a customer.</p>
 <p>We write to your Buffer only when you press a button or when the "Mark winners in Buffer" switch is on.</p>
 <p>"Disconnect and delete everything" removes all of it, including Came In's notes in Buffer.</p>
 <p>Questions: the contact line below.</p>

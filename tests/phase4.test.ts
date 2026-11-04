@@ -201,3 +201,36 @@ describe("the vision sort on a video post", () => {
     expect(tile!.subject).toBe("dungeon map");
   });
 });
+
+describe("Ring my phone sounds like a bell (P9)", () => {
+  it("the notification is not silent, vibrates, and re-alerts on the same post; the push is high urgency", async () => {
+    const sw = await (await call("/sw.js")).text();
+    expect(sw).toContain("silent: false");
+    expect(sw).toMatch(/vibrate: \[\d+(, \d+)+\]/);
+    expect(sw).toContain("renotify: true");
+    expect(sw).toMatch(/tag: note\.tag \|\| "came-in"/);
+  });
+
+  it("the push goes out with high urgency", async () => {
+    const { sendAll } = await import("../src/worker/push");
+    const kp = (await crypto.subtle.generateKey({ name: "ECDH", namedCurve: "P-256" }, true, ["deriveBits"])) as CryptoKeyPair;
+    const raw = new Uint8Array((await crypto.subtle.exportKey("raw", kp.publicKey)) as ArrayBuffer);
+    const b64 = (b: Uint8Array) => btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const seen: Headers[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const req = input instanceof Request ? input : new Request(String(input), init);
+      seen.push(req.headers);
+      return new Response(null, { status: 201 });
+    });
+    const r = await sendAll(env, [{ id: "s1", device_id: "d", endpoint: "https://push.test/x", p256dh: b64(raw), auth: b64(crypto.getRandomValues(new Uint8Array(16))) }], { title: "Came In", body: "x", icon: null, url: "/wall", tag: "t1" });
+    expect(r.sent).toBe(1);
+    expect(seen[0].get("urgency")).toBe("high");
+  });
+});
+
+describe("the privacy page says what goes to Anthropic", () => {
+  it("in the plan's words", async () => {
+    const html = await (await call("/privacy")).text();
+    expect(html).toContain("For a post with a picture or video, its picture and words are sent once to Anthropic, only to give the post a short name. Nothing else is sent, and nothing about a customer.");
+  });
+});
