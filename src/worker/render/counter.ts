@@ -77,7 +77,7 @@ export function renderCounterClosed(): string {
   return page({
     title: "Came In: staff screen",
     css: CSS,
-    body: `<div class="gone"><h1>This counter was closed. Open it again from Setup.</h1><a class="btn" href="/setup#staff">Open Setup</a></div>`,
+    body: `<div class="gone"><h1>This staff screen was closed. Open it again from Setup.</h1><a class="btn" href="/setup#staff">Open Setup</a></div>`,
     head: `<meta name="robots" content="noindex">`,
   });
 }

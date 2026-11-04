@@ -103,7 +103,7 @@ describe("the counter (P7, plan 3.6)", () => {
     expect((await call("/api/counter/close", { ...json({ token }), cookie: await ownerCookie(id) })).status).toBe(200);
     const page = await call(`/c/${token}`);
     expect(page.status).toBe(410);
-    expect(await page.text()).toContain("This counter was closed. Open it again from Setup.");
+    expect(await page.text()).toContain("This staff screen was closed. Open it again from Setup.");
     expect((await call("/api/counter/tap", json({ token, tile: null, answer: "walked_past", device: "x" }))).status).toBe(409);
   });
 
