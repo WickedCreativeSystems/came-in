@@ -1,0 +1,32 @@
+{
+  "name": "came-in",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Came In: find out which of your posts bring people through the door. Built for Buffer Commit 2026.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "vite build",
+    "check": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.app.json --noEmit",
+    "test": "vitest run",
+    "deploy:staging": "npm run build && wrangler deploy --env staging",
+    "deploy": "npm run build && wrangler deploy",
+    "migrate:staging": "wrangler d1 migrations apply DB --env staging --remote",
+    "migrate": "wrangler d1 migrations apply DB --remote"
+  },
+  "dependencies": {
+    "hono": "^4",
+    "preact": "^10",
+    "qrcode": "^1.5"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.5.1",
+    "@cloudflare/workers-types": "^5",
+    "@preact/preset-vite": "^2",
+    "@types/qrcode": "^1.5",
+    "typescript": "^5",
+    "vite": "^7",
+    "vitest": "^4.1",
+    "wrangler": "^4"
+  }
+}
