@@ -9,7 +9,7 @@ import { Header } from "../ui/Header";
 import { Tile } from "../ui/Tile";
 import { PostAgainSheet, PostThisSheet, Sheet, outcomeLine, resultLine, type Channel, type Outcome } from "../ui/Sheets";
 
-type Range = "this" | "last" | "month";
+type Range = "today" | "this" | "last" | "month";
 
 interface WeekData {
   range: Range;
@@ -21,7 +21,7 @@ interface WeekData {
 
 function rangeFromUrl(): Range {
   const r = new URLSearchParams(location.search).get("range");
-  return r === "last" || r === "month" ? r : "this";
+  return r === "today" || r === "last" || r === "month" ? r : "this";
 }
 
 export function Week({ sample }: { sample: boolean }): JSX.Element {
@@ -87,6 +87,7 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
   }
 
   const tabs: [Range, string][] = [
+    ["today", "Today"],
     ["this", "This week"],
     ["last", "Last week"],
     ["month", "This month"],
@@ -118,6 +119,8 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
         ) : (
           <>
             <h1 class="h1 week-headline">{data.summary.headline}</h1>
+            {range !== "today" && (
+              <>
             {data.summary.patterns.map((p) => (
               <p key={p} class="pattern">
                 {p}
@@ -150,6 +153,8 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
                 Post this week's picture
               </button>
             </div>
+              </>
+            )}
             {postLine && <p class={`small outcome${postLine === outcomeLine("failed") ? " failed" : ""}`}>{postLine}</p>}
             <div class="wall week-wall">
               {data.tiles.filter((t) => t.weekPeople > 0).map((t, i) => (
@@ -204,7 +209,7 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
             {(() => {
               const nobody = data.tiles.filter((t) => t.weekPeople === 0).length;
               const when = range === "last" ? "last week" : range === "month" ? "this month" : "this week";
-              return nobody > 0 ? <p class="caption muted other-posts">{nobody === 1 ? "1 other post had" : `${nobody} other posts had`} nobody {when}.</p> : null;
+              return range !== "today" && nobody > 0 ? <p class="caption muted other-posts">{nobody === 1 ? "1 other post had" : `${nobody} other posts had`} nobody {when}.</p> : null;
             })()}
           </>
         )}

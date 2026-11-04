@@ -25,7 +25,7 @@ import { renderLanding, renderPrivacy, renderCredits } from "./render/site";
 import { SAMPLE_SHOP, SAMPLE_POSTS } from "../shared/sample";
 
 const SAMPLE_POSTS_BY_ID = new Map(SAMPLE_POSTS.map((p) => [p.id, p]));
-import { dayBadge, bellSentence, whereLine, firstLine } from "../shared/names";
+import { dayBadge, dayBadgeShort, bellSentence, whereLine, firstLine } from "../shared/names";
 import { isValidTimeZone } from "../shared/time";
 import type { WallData, WallTile, ChannelRow } from "../shared/types";
 import type { TokenResponse } from "./buffer/client";
@@ -33,7 +33,7 @@ import { pushShop, pushSample, parseSubscription, saveShopSub, saveSampleSub, pu
 import { openCounter, getCounter, closeCounter, parseCounterTap, recordCounterTap } from "./counter";
 import { renderCounterPage, renderCounterClosed } from "./render/counter";
 import { renderCard, cardSize, type CardSize } from "./render/card";
-import { parsePatch, shopSettings, saveShopSettings, sampleSettings, saveSampleSettings, setSample, deleteShop } from "./settings";
+import { parsePatch, shopSettings, saveShopSettings, sampleSettings, saveSampleSettings, setSample, sampleFlag, deleteShop } from "./settings";
 import { clearOwnerCookie } from "./lib/cookies";
 import { shopWeek, parseRange } from "./week";
 import { shopPostPage } from "./post";
@@ -356,6 +356,7 @@ function toTapTile(t: WallTile, now: Date, tz: string, sample = false): TapTile 
     // The sample's text-only post shows its name, never a sentence of the post.
     text: sample && !t.imageUrl ? t.name.replace(/^the\s+/i, "") : firstLine(t.text),
     badge: dayBadge(new Date(t.firstSentAt), now, tz, t.isLive, "tap"),
+    badgeShort: dayBadgeShort(new Date(t.firstSentAt), now, tz, t.isLive),
     live: t.isLive,
   };
 }
@@ -404,13 +405,14 @@ app.post("/api/tap", async (c) => {
 app.get("/api/sample/wall", async (c) => {
   noStore(c);
   const session = sampleSession(c, () => randomToken(32));
-  const [wall, settings, subs] = await Promise.all([
+  const [wall, settings, subs, phoneOn] = await Promise.all([
     sampleWall(c.env, session),
     sampleSettings(c.env, session),
     c.env.DB.prepare(`SELECT COUNT(*) AS n FROM sample_push_subs WHERE session_id = ?1 AND failed_at IS NULL`).bind(session).first<{ n: number }>(),
+    sampleFlag(c.env, session, "phone_on"),
   ]);
   wall.shop.theme = settings.theme;
-  wall.checklist = { connected: true, card: settings.cardPrinted, counter: settings.counterOpened, phone: (subs?.n ?? 0) > 0, thankYou: !!settings.thankYou, review: !!settings.reviewUrl };
+  wall.checklist = { connected: true, card: settings.cardPrinted, counter: settings.counterOpened, phone: (subs?.n ?? 0) > 0 || phoneOn, thankYou: !!settings.thankYou, review: !!settings.reviewUrl };
   return c.json(wall);
 });
 
@@ -710,6 +712,13 @@ app.post("/api/push/subscribe", async (c) => {
   const device = typeof b.device === "string" ? b.device.slice(0, 64) : "";
   if (!sub || !device) return c.json({ error: "bad subscription" }, 400);
   await saveShopSub(c.env, shop.id, device, sub, c.req.header("user-agent") ?? null);
+  return c.json({ ok: true });
+});
+
+// In the sample, pressing Ring my phone ticks its chip: the bell rings in this browser.
+app.post("/api/sample/phone", async (c) => {
+  const session = sampleSession(c, () => randomToken(32));
+  await setSample(c.env, session, "phone_on", "1");
   return c.json({ ok: true });
 });
 

@@ -37,13 +37,13 @@ export function Header({ shop, today, tab, base }: { shop: ShopSummary; today: n
         {nav("tabs")}
         <div class="tools">
           {today !== null && (
-            <div class="today" title="People who came in because of a post today">
+            <a class="today" href={`${base}/week?range=today`} title="People who came in because of a post today">
               <BellMono size={18} />
               <TickNumber value={today} class="n" />
               <span class="lbl">
                 came in<span class="lbl-day"> today</span>
               </span>
-            </div>
+            </a>
           )}
           <button
             class="btn quiet"

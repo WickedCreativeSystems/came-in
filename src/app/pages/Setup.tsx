@@ -337,6 +337,8 @@ function RingMyPhone({ sample, pushKey, onDone }: { sample: boolean; pushKey: st
   async function go() {
     if (sample) {
       setState("ok");
+      await api("/api/sample/phone", { method: "POST" }).catch(() => undefined);
+      onDone();
       return;
     }
     setState("working");

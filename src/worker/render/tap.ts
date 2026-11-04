@@ -8,7 +8,8 @@ export interface TapTile {
   name: string; // "Tuesday's sourdough post"
   imageUrl: string | null;
   text: string; // first line, for text tiles
-  badge: string; // "TUE", "OCT 28", "TODAY"
+  badge: string; // "TUE", "OCT 28", "SENT TODAY"
+  badgeShort: string; // on a tile under 180px: "NEW", "LIVE"
   live: boolean;
 }
 
@@ -41,6 +42,9 @@ html,.th{scrollbar-width:none}html::-webkit-scrollbar,.th::-webkit-scrollbar{dis
 .t:active{transform:scale(.97)}
 .bd{position:absolute;top:8px;left:8px;height:20px;padding:0 6px;border-radius:2px;background:var(--label);color:var(--label-ink);font-weight:600;font-size:11px;letter-spacing:.04em;text-transform:uppercase;display:inline-flex;align-items:center;line-height:1}
 .bd.lv{background:var(--brass)}
+.t{container-type:inline-size}
+.bs{display:none}
+@container (max-width:179px){.bl{display:none}.bs{display:inline}}
 .tx{position:absolute;inset:0;padding:34px 12px 12px;font-family:var(--fd);font-weight:700;font-size:19px;line-height:1.02;letter-spacing:-.005em;color:var(--ink);overflow:hidden;overflow-wrap:anywhere}
 .picked .t{opacity:.35}
 .picked .t.on{opacity:1;transform:scale(1.04);z-index:1}
@@ -87,7 +91,7 @@ function tileHtml(t: TapTile, i: number, story: boolean): string {
   const inner = t.imageUrl
     ? `<img src="${esc(t.imageUrl)}" alt="" ${eager} decoding="async">`
     : `<span class="tx">${esc(t.text)}</span>`;
-  return `<button class="t${story ? " st" : ""}" data-i="${esc(t.id)}" data-n="${esc(t.name)}"${t.imageUrl ? ` data-img="${esc(t.imageUrl)}"` : ""} aria-label="${esc(t.name)}">${inner}<span class="bd${t.live ? " lv" : ""}">${esc(t.badge)}</span></button>`;
+  return `<button class="t${story ? " st" : ""}" data-i="${esc(t.id)}" data-n="${esc(t.name)}"${t.imageUrl ? ` data-img="${esc(t.imageUrl)}"` : ""} aria-label="${esc(t.name)}">${inner}<span class="bd${t.live ? " lv" : ""}"><span class="bl">${esc(t.badge)}</span><span class="bs">${esc(t.badgeShort)}</span></span></button>`;
 }
 
 export function renderTapPage(d: TapPageData): string {
@@ -155,7 +159,7 @@ function show(html,plain){th.className='th'+(plain?' plain':'');th.innerHTML=htm
 function close(){th.classList.remove('in');pg.inert=false;if(EMB)pg.classList.remove('away');setTimeout(function(){th.hidden=true;th.innerHTML='';if(EMB&&window.rp)window.rp(false)},rm?0:(EMB?0:320));g.classList.remove('picked');var o=g.querySelector('.on');if(o)o.classList.remove('on');busy=false;if(last&&last.focus)last.focus({preventScroll:true});
 if(window.parent!==window){try{window.parent.postMessage({ci:'closed'},location.origin)}catch(x){}}}
 function done(){if(C.rv){review()}else close()}
-function review(){show('<div class="bo rv"><div class="who">'+(C.avatar?'<img class="av" src="'+e(C.avatar)+'" alt="" width="40" height="40" style="width:40px;height:40px">':'<span class="av av-f" aria-hidden="true" style="width:40px;height:40px;font-size:18px">'+e(C.ini)+'</span>')+'<span class="nm">'+e(C.name)+'</span></div><div><h2>Would you leave us a review?</h2><p>A line from you helps more than you\\'d think.</p></div><div class="bs"><a class="btn primary" id="lv" href="'+e(C.rv)+'" target="_blank" rel="noopener">Leave us a review</a><button class="btn" id="nn">Not now</button></div></div>',true);
+function review(){show('<div class="bo rv"><div class="who">'+(C.avatar?'<img class="av" src="'+e(C.avatar)+'" alt="" width="40" height="40" style="width:40px;height:40px">':'<span class="av av-f" aria-hidden="true" style="width:40px;height:40px;font-size:18px">'+e(C.ini)+'</span>')+'<span class="nm">'+e(C.name)+'</span></div><div><h2>Would you leave us a review?</h2><p>A line from you helps more than you\\'d think.</p></div><div class="bs"><a class="btn primary" id="lv" href="'+e(C.rv)+'" target="_blank" rel="noopener">Leave us a review</a><button class="btn" id="nn">Not now</button></div>'+(C.mode==='sample'?'<p>Sample review ask. You paste your own link in Setup.</p>':'')+'</div>',true);
 $('nn').onclick=close;$('lv').addEventListener('click',function(){setTimeout(close,400)})}
 function thanks(t,again){var ph=t?(t.img?'<div class="ph"><img src="'+e(t.img)+'" alt=""></div>':'<div class="ph"><span class="tx">'+e(t.text)+'</span></div>'):'';
 var tick=(!again&&C.ty)?ticket():'';

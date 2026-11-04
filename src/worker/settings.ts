@@ -117,6 +117,12 @@ export async function setSample(env: Env, session: string, key: string, value: s
   ).bind(session, key, value, new Date().toISOString()).run();
 }
 
+/** A one-off flag the sample keeps for this browser (for example, that Ring my phone was pressed). */
+export async function sampleFlag(env: Env, session: string, key: string): Promise<boolean> {
+  const r = await env.DB.prepare(`SELECT value FROM sample_settings WHERE session_id = ?1 AND key = ?2`).bind(session, key).first<{ value: string | null }>();
+  return r?.value === "1";
+}
+
 export async function saveSampleSettings(env: Env, session: string, p: SettingsPatch): Promise<void> {
   if ("thankYou" in p) await setSample(env, session, "thank_you", p.thankYou ?? null);
   if ("reviewUrl" in p) await setSample(env, session, "review_url", p.reviewUrl ?? null);

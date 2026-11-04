@@ -131,7 +131,7 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
             </div>
             <div>
               <h2 class="h2">This is what your customers will tap.</h2>
-              <p class="small muted">Try it: scan this with your phone, tap a post, and this page rings.</p>
+              <p class="small muted">Try it: open the tap page, tap a post, and this page rings. On a computer, scan the code with your phone.</p>
             </div>
             <div class="try-actions">
               <a
@@ -151,6 +151,9 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
                   <span class="small muted">At the till, staff tap here for a customer.</span>
                 </div>
               )}
+              <span class="small muted print-card">
+                Put this code on your counter: <a href={`${base}/card`}>Print your card</a>.
+              </span>
             </div>
           </section>
         ) : null}
@@ -178,7 +181,7 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
         <div class="wall-head">
           <h1 class="h1">Your posts</h1>
           <span class="range">
-            Counts on each post cover the last 60 days · <b>{data.countThisWeek === 1 ? "1 person" : `${data.countThisWeek} people`}</b> came in this week
+            Counts on each post cover the last 60 days
           </span>
           <button class="btn quiet sm refresh" onClick={doRefresh} disabled={refresh === "checking"}>
             {refresh === "checking" ? <span class="spin" aria-hidden="true" /> : <Icon name="refresh" size={18} />}

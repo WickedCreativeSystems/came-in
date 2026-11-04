@@ -52,7 +52,7 @@ export function renderLanding(opts: { error?: "denied" | "exchange" | null; cont
         : "";
   const body = `<div class="wrap">${header()}${strip}
 <section class="hero"><h1>Find out which of your posts bring people through the door.</h1>
-<p>Came In reads the posts you've already sent through Buffer. Customers (or your staff) tap the one that brought them in. Your phone rings.</p>
+<p>Came In reads the posts you've already sent through Buffer, the app many shops use to schedule posts. Customers (or your staff) tap the one that brought them in. Your phone rings.</p>
 <div class="bs"><a class="btn primary" href="/sample">Try the sample bakery</a><a class="btn" href="/auth/start">Connect Buffer</a></div>
 <div class="cap">Connect Buffer takes you to Buffer to sign in. Came In only reads your posts and channels.</div>
 <div class="cap free">Free for one shop.</div></section>

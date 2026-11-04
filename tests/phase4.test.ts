@@ -249,3 +249,41 @@ describe("the embed's thanks screen (plan 3.12)", () => {
     expect(js).toContain("e.data.thanks");
   });
 });
+
+describe("the third round of strangers (Nov 4)", () => {
+  it("Today is a range: its own headline, and only today's taps", async () => {
+    const { summarize } = await import("../src/shared/week");
+    const t = (id: string) => ({ id, firstSentAt: "2026-11-04T12:00:00Z", kind: "photo" as const, kindDetail: null, isStory: false });
+    const tap = (tileId: string) => ({ tileId, answer: "post" as const, source: "card", at: "2026-11-04T15:00:00Z" });
+    expect(summarize([tap("a"), tap("a"), tap("b")], [t("a"), t("b")], "America/Chicago", "today").headline).toBe("3 people came in today because of 2 posts.");
+    expect(summarize([tap("a")], [t("a")], "America/Chicago", "today").headline).toBe("1 person came in today because of 1 post.");
+    expect(summarize([], [t("a")], "America/Chicago", "today").headline).toBe("Nobody has tapped yet today.");
+    const day = (await (await call("/api/sample/week?range=today")).json()) as { range: string };
+    expect(day.range).toBe("today");
+  });
+
+  it("the sample's Ring my phone ticks its chip, for that browser only", async () => {
+    const first = await call("/api/sample/wall");
+    const cookie = first.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+    expect(((await first.json()) as { checklist: { phone: boolean } }).checklist.phone).toBe(false);
+    await call("/api/sample/phone", { method: "POST", cookie });
+    expect(((await (await call("/api/sample/wall", { cookie })).json()) as { checklist: { phone: boolean } }).checklist.phone).toBe(true);
+    expect(((await (await call("/api/sample/wall")).json()) as { checklist: { phone: boolean } }).checklist.phone).toBe(false);
+  });
+
+  it("the staff screen names each post and keeps the 'Got it' row sticky; the sample's review screen says so", async () => {
+    const html = await (await call("/sample/c")).text();
+    expect(html).toContain('class="cn"');
+    expect(html).toMatch(/\.ok\{position:sticky;top:0/);
+    expect(html).not.toMatch(/class="cn">the /i);
+    const tap = await (await call("/sample/t")).text();
+    expect(tap).toContain("Sample review ask. You paste your own link in Setup.");
+    expect(tap).toContain('class="bl"');
+  });
+
+  it("a tile label drops its leading 'the' and starts with a capital", async () => {
+    const { tileLabel } = await import("../src/shared/names");
+    expect(tileLabel("the Oct 27 morning bun post")).toBe("Oct 27 morning bun post");
+    expect(tileLabel("Saturday's croissant post")).toBe("Saturday's croissant post");
+  });
+});

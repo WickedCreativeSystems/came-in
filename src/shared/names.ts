@@ -48,6 +48,12 @@ export function postName(tile: NameableTile, now: Date, tz: string): string {
   return `${possessive} photo`;
 }
 
+/** A tile's name where it is shown on its own: no leading "the", first letter up ("Oct 27 morning bun post"). The bell keeps the sentence form. */
+export function tileLabel(name: string): string {
+  const s = name.replace(/^the\s+/i, "");
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export function bellSentence(name: string): string {
   return `Someone just came in because of ${name}.`;
 }
@@ -68,10 +74,17 @@ export function whereLine(source: TapSource): string {
 /** Day badge text on a tile. The wall says "TODAY · LIVE" on a live story; the tap page "TODAY". */
 export function dayBadge(sentAt: Date, now: Date, tz: string, live: boolean, where: "wall" | "tap" = "wall"): string {
   if (live) return where === "wall" ? "TODAY · LIVE" : "TODAY";
-  // Every post sent today says TODAY, not the weekday.
-  if (shopDaysBetween(sentAt, now, tz) === 0) return "TODAY";
+  // Every post sent today says SENT TODAY, not the weekday (plain TODAY was read as visits today).
+  if (shopDaysBetween(sentAt, now, tz) === 0) return "SENT TODAY";
   const recent = Math.abs(shopDaysBetween(sentAt, now, tz)) <= 6;
   return recent ? weekdayAbbrev(sentAt, tz) : shortDate(sentAt, tz).toUpperCase();
+}
+
+/** The same badge on a tile narrower than 180px: NEW for a post sent today, LIVE (brass) for a live story. */
+export function dayBadgeShort(sentAt: Date, now: Date, tz: string, live: boolean): string {
+  if (live) return "LIVE";
+  if (shopDaysBetween(sentAt, now, tz) === 0) return "NEW";
+  return dayBadge(sentAt, now, tz, false);
 }
 
 /** A story is live for 24 hours after it was sent. */

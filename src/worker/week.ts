@@ -2,15 +2,16 @@
 import type { Env } from "./env";
 import type { ShopRow } from "./db";
 import { wallTiles } from "./db";
-import { startOfShopWeek, startOfShopMonth } from "../shared/time";
+import { startOfShopWeek, startOfShopMonth, startOfShopDay } from "../shared/time";
 import { summarize, type Range, type WeekTap, type WeekTile, type WeekSummary } from "../shared/week";
 import type { WallTile } from "../shared/types";
 
 export function parseRange(v: string | undefined | null): Range {
-  return v === "last" || v === "month" ? v : "this";
+  return v === "today" || v === "last" || v === "month" ? v : "this";
 }
 
 export function rangeWindow(range: Range, now: Date, tz: string): { from: Date; to: Date } {
+  if (range === "today") return { from: startOfShopDay(now, tz), to: now };
   const week = startOfShopWeek(now, tz);
   if (range === "last") return { from: startOfShopWeek(new Date(week.getTime() - 3 * 86400000), tz), to: week };
   if (range === "month") return { from: startOfShopMonth(now, tz), to: now };
