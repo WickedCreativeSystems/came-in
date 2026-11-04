@@ -8,8 +8,9 @@ import { getShop } from "./db";
 import { graphql, BufferError } from "./buffer/client";
 import { CREATE_POST, CREATE_NOTE, UPDATE_NOTE, DELETE_NOTE, CREATE_IDEA, type UnionResult } from "./buffer/mutations";
 import { uuid } from "./lib/crypto";
+import { classifyPost } from "./vision";
 
-export type JobKind = "note" | "post_again" | "idea" | "post_share" | "delete_note";
+export type JobKind = "note" | "post_again" | "idea" | "post_share" | "delete_note" | "vision";
 
 export interface PostTarget {
   channelId: string;
@@ -347,6 +348,11 @@ async function runJob(env: Env, shop: ShopRow, kind: JobKind, p: Record<string, 
   // Tags were dropped (Buffer refuses them on sent posts); a leftover tag job just ends.
   if ((kind as string) === "tag") return "tags dropped";
   if (kind === "note" && !shop.mark_winners) return "mark winners off";
+  // The vision sort calls Anthropic, not Buffer: it needs no Buffer sign-in.
+  if (kind === "vision") {
+    const r = await classifyPost(env, String(p.postId));
+    return r === "done" ? "done" : r === "skip" ? "skipped" : "retry";
+  }
   const token = await shopToken(env, shop.id);
   if (!token) return "reconnect";
   switch (kind) {

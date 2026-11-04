@@ -37,6 +37,7 @@ import { parsePatch, shopSettings, saveShopSettings, sampleSettings, saveSampleS
 import { clearOwnerCookie } from "./lib/cookies";
 import { shopWeek, parseRange } from "./week";
 import { shopPostPage } from "./post";
+import { queueVision } from "./vision";
 import { postAgain, postShare, moreLikeThis, queueWinnerJobs, closeDeletedShops, runJobs, againTargets, refusalFor, type PostTarget, type ChannelResult } from "./writes";
 import { sampleWeek, samplePostPage, SAMPLE_CHANNELS } from "./sample";
 import { mondayBody, summarize } from "../shared/week";
@@ -1025,6 +1026,7 @@ async function scheduled(controller: ScheduledController, env: Env): Promise<voi
     return;
   }
   await pollDue(env, deps, now);
+  await queueVision(env);
   await runJobs(env, null, now);
   await mondayPushes(env, now);
 }

@@ -113,3 +113,69 @@ describe("the second round of strangers (Nov 4)", () => {
     expect(html).not.toMatch(/class="tx">the /i);
   });
 });
+
+describe("the vision sort (P20)", () => {
+  const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 16, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0]);
+  const e = env as unknown as { ANTHROPIC_API_KEY?: string };
+  afterEach(() => {
+    delete e.ANTHROPIC_API_KEY;
+  });
+
+  async function photoShop() {
+    const id = await makeShop();
+    await addChannel(id, `ig-${id}`, "instagram");
+    await addTile(id, { id: `sour-${id}`, text: "Sourdough is out of the oven.", sentAt: ago(30), channelId: `ig-${id}`, image: true });
+    await env.DB.prepare(`UPDATE posts SET kind = 'photo', thumb_status = 'ok', thumb_key = ?2 WHERE id = ?1`).bind(`p-sour-${id}`, `thumbs/${id}/p-sour-${id}`).run();
+    await env.MEDIA.put(`thumbs/${id}/p-sour-${id}`, JPEG, { httpMetadata: { contentType: "image/jpeg" } });
+    return id;
+  }
+  const answer = (text: string, status = 200) => vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url.startsWith("https://api.anthropic.com/")) return new Response(JSON.stringify({ content: [{ type: "text", text }] }), { status });
+    return new Response("no", { status: 404 });
+  });
+
+  it("sorts the picture and names the post, once, and the name reaches the bell sentence", async () => {
+    const { queueVision, parseVision, cleanSubject } = await import("../src/worker/vision");
+    const id = await photoShop();
+    e.ANTHROPIC_API_KEY = "test-key";
+    const spy = answer('Here you go: {"kind":"real_photo","subject":"Sourdough!"}');
+    expect(await queueVision(env)).toBeGreaterThanOrEqual(1);
+    await runJobs(env, id);
+    const row = await env.DB.prepare(`SELECT kind_detail FROM posts WHERE id = ?1`).bind(`p-sour-${id}`).first<{ kind_detail: string }>();
+    expect(row!.kind_detail).toBe("real_photo");
+    const tile = await env.DB.prepare(`SELECT subject FROM tiles WHERE id = ?1`).bind(`sour-${id}`).first<{ subject: string }>();
+    expect(tile!.subject).toBe("sourdough");
+    const call1 = spy.mock.calls.find((c) => String(c[0]).startsWith("https://api.anthropic.com/"))!;
+    const sent = JSON.parse(String((call1[1] as RequestInit).body));
+    expect(sent.model).toBe("claude-haiku-5-5");
+    expect((call1[1] as RequestInit).headers).toMatchObject({ "x-api-key": "test-key" });
+    // Never re-run.
+    expect(await queueVision(env)).toBe(0);
+    const before = spy.mock.calls.length;
+    await runJobs(env, id);
+    expect(spy.mock.calls.length).toBe(before);
+    expect(parseVision('{"kind":"nope"}')).toBeNull();
+    expect(cleanSubject("one two three four")).toBeNull();
+    expect(cleanSubject("Winter Hours.")).toBe("winter hours");
+  });
+
+  it("without the key nothing is queued or sent; with a failing call nothing is stored and the job retries", async () => {
+    const { queueVision } = await import("../src/worker/vision");
+    const id = await photoShop();
+    const spy = answer("{}");
+    expect(await queueVision(env)).toBe(0);
+    expect(spy).not.toHaveBeenCalled();
+    e.ANTHROPIC_API_KEY = "test-key";
+    answer("I could not tell.", 200);
+    await queueVision(env);
+    await runJobs(env, id);
+    const row = await env.DB.prepare(`SELECT kind_detail FROM posts WHERE id = ?1`).bind(`p-sour-${id}`).first<{ kind_detail: string | null }>();
+    expect(row!.kind_detail).toBeNull();
+    const job = await env.DB.prepare(`SELECT tries, done_at FROM buffer_jobs WHERE shop_id = ?1 AND kind = 'vision'`).bind(id).first<{ tries: number; done_at: string | null }>();
+    expect(job).toMatchObject({ tries: 1, done_at: null });
+    // The wall still names the post the plain way.
+    const wall = (await (await call("/api/wall", { cookie: await ownerCookie(id) })).json()) as { tiles: { name: string }[] };
+    expect(wall.tiles[0].name).toMatch(/post/);
+  });
+});
