@@ -66,6 +66,7 @@ describe("the receipt tip and the embed (P16)", () => {
     expect(res.headers.get("access-control-allow-origin")).toBe("*");
     const js = await res.text();
     expect(js).toContain('"/e/"');
+    expect(js).toContain("/sample/t");
     expect(js).toContain("data-shop");
   });
 

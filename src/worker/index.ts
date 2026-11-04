@@ -420,8 +420,8 @@ app.get("/embed.js", (c) => {
   c.header("Content-Type", "application/javascript; charset=utf-8");
   c.header("Cache-Control", "public, max-age=3600");
   c.header("Access-Control-Allow-Origin", "*");
-  return c.body(`(function(){var s=document.currentScript;if(!s)return;var id=s.getAttribute("data-shop");if(!id||!/^[a-z]{10}$/.test(id))return;
-var o=new URL(s.src).origin,f=document.createElement("iframe");f.src=o+"/e/"+id;f.title="Saw us online? Tap the post that brought you in.";f.loading="lazy";
+  return c.body(`(function(){var s=document.currentScript;if(!s)return;var id=s.getAttribute("data-shop");if(!id||!/^([a-z]{10}|sample)$/.test(id))return;
+var o=new URL(s.src).origin,f=document.createElement("iframe");f.src=id==="sample"?o+"/sample/t":o+"/e/"+id;f.title="Saw us online? Tap the post that brought you in.";f.loading="lazy";
 f.style.cssText="display:block;width:100%;max-width:520px;height:560px;border:0;margin:0 auto;background:transparent";f.setAttribute("allow","");
 s.parentNode.insertBefore(f,s.nextSibling);
 addEventListener("message",function(e){if(e.source!==f.contentWindow||!e.data||e.data.cameIn!=="height")return;var h=Math.max(560,Math.min(4000,Number(e.data.h)||0));f.style.height=h+"px"})})();`);
