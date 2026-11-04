@@ -95,6 +95,14 @@ export interface FakeBuffer {
   tokenCalls: URLSearchParams[];
   status429?: boolean;
   images: Record<string, { type: string; body: Uint8Array<ArrayBuffer> } | number>;
+  /** Write-back switches. */
+  tags: { id: string; name: string }[];
+  postTags: Record<string, string[]>;
+  approval?: boolean;
+  notes: { id: string; postId: string | null; text: string }[];
+  ideas: unknown[];
+  created: Record<string, unknown>[];
+  heads: Record<string, number>;
 }
 
 /** Stand in for Buffer, its auth server and image hosts, at the fetch layer. */
@@ -106,6 +114,12 @@ export function fakeBuffer(over: Partial<FakeBuffer> = {}): FakeBuffer {
     calls: [],
     tokenCalls: [],
     images: {},
+    tags: [],
+    postTags: {},
+    notes: [],
+    ideas: [],
+    created: [],
+    heads: {},
     ...over,
   };
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -124,6 +138,27 @@ export function fakeBuffer(over: Partial<FakeBuffer> = {}): FakeBuffer {
       const h = { "content-type": "application/json", ...RATE_HEADERS };
       if (body.query.includes("CameInAccount")) return new Response(JSON.stringify({ data: { account: fb.account } }), { headers: h });
       if (body.query.includes("CameInChannels")) return new Response(JSON.stringify({ data: { channels: fb.channels } }), { headers: h });
+      const v = body.variables as Record<string, any>;
+      const ok = (data: unknown) => new Response(JSON.stringify({ data }), { headers: h });
+      if (body.query.includes("CameInCreatePost")) {
+        fb.created.push(v.input);
+        const status = v.input.saveToDraft ? "draft" : fb.approval ? "needs_approval" : "scheduled";
+        return ok({ createPost: { __typename: "PostActionSuccess", post: { id: `new-${fb.created.length}`, status } } });
+      }
+      if (body.query.includes("CameInCreateNote")) {
+        const note = { id: `note-${fb.notes.length + 1}`, postId: v.input.subject.postId, text: v.input.text };
+        fb.notes.push(note);
+        return ok({ createCollaborationNote: { __typename: "CreateCollaborationNoteSuccess", edge: { node: { id: note.id } } } });
+      }
+      if (body.query.includes("CameInUpdateNote")) {
+        const note = fb.notes.find((n) => n.id === v.input.noteId);
+        if (note) note.text = v.input.text;
+        return ok({ updateCollaborationNote: { __typename: "UpdateCollaborationNoteSuccess", note: { id: v.input.noteId } } });
+      }
+      if (body.query.includes("CameInCreateIdea")) {
+        fb.ideas.push(v.input);
+        return ok({ createIdea: { __typename: "Idea", id: `idea-${fb.ideas.length}` } });
+      }
       if (body.query.includes("CameInSentPosts")) {
         const since = body.variables.since ? new Date(String(body.variables.since)).getTime() : 0;
         const ids = (body.variables.channelIds as string[]) ?? [];
@@ -136,6 +171,7 @@ export function fakeBuffer(over: Partial<FakeBuffer> = {}): FakeBuffer {
       }
       return new Response(JSON.stringify({ errors: [{ message: "unknown query" }] }), { headers: h });
     }
+    if (req.method === "HEAD") return new Response(null, { status: fb.heads[req.url] ?? 404 });
     const img = fb.images[req.url];
     if (typeof img === "number") return new Response("no", { status: img });
     if (img) return new Response(img.body, { headers: { "content-type": img.type, "content-length": String(img.body.byteLength) } });

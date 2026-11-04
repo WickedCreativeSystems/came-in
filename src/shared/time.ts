@@ -138,3 +138,15 @@ export function isValidTimeZone(tz: string): boolean {
     return false;
   }
 }
+
+/** The first instant of the shop's calendar month. */
+export function startOfShopMonth(date: Date, tz: string): Date {
+  const p = zonedParts(date, tz);
+  const guess = new Date(Date.UTC(p.year, p.month - 1, 1, 12));
+  return startOfShopDay(guess, tz);
+}
+
+/** "YYYY-Www": the shop's week, Monday first, for "sent once a week" marks. */
+export function shopWeekKey(date: Date, tz: string): string {
+  return shopDayKey(startOfShopWeek(date, tz), tz);
+}

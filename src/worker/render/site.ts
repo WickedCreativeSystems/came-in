@@ -78,7 +78,7 @@ export function renderPrivacy(contactEmail: string | null): string {
 <p>Came In reads the posts you've already sent through Buffer, and the name and logo of your channels, and keeps a copy so your card works.</p>
 <p>A customer's tap stores the post, the time, where the tap came from (the card, the counter or your booking page) and a random id their phone keeps so the thank-you shows once a day. No name, no number, no email, no location.</p>
 <p>We write to your Buffer only when you press a button or when the "Mark winners in Buffer" switch is on.</p>
-<p>"Disconnect and delete everything" removes all of it, including Came In's tags and notes in Buffer.</p>
+<p>"Disconnect and delete everything" removes all of it, including Came In's notes in Buffer.</p>
 <p>Questions: the contact line below.</p>
 </article>${footer(contactEmail)}</div>`;
   return page({ title: "Privacy · Came In", css: SITE_CSS, body, followSystem: true });

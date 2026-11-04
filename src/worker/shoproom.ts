@@ -8,6 +8,7 @@ import { BufferError, refreshToken } from "./buffer/client";
 import { loadTokens, storeTokens } from "./tokens";
 import { getShop } from "./db";
 import { syncChannels, syncPostsPage, FIRST_SYNC_DAYS } from "./sync";
+import { runJobs } from "./writes";
 
 interface SyncState {
   shopId: string;
@@ -123,7 +124,24 @@ export class ShopRoom extends DurableObject<Env> {
     return { running: !!s, count: s?.count ?? 0, startedAt: s?.startedAt ?? null, failures: s?.failures ?? 0 };
   }
 
+  /** A tile just reached a winner's count: run its note soon, off the tap's request (plan 1.7). */
+  async kickJobs(shopId: string): Promise<void> {
+    await this.ctx.storage.put("jobs", shopId);
+    const at = await this.ctx.storage.getAlarm();
+    if (!at || at > Date.now() + 1000) await this.ctx.storage.setAlarm(Date.now() + 500);
+  }
+
   async alarm(): Promise<void> {
+    const jobsFor = await this.ctx.storage.get<string>("jobs");
+    if (jobsFor) {
+      await this.ctx.storage.delete("jobs");
+      try {
+        const n = await runJobs(this.env, jobsFor);
+        if (n) await this.broadcast({ type: "posts", reason: "refresh" });
+      } catch (e) {
+        console.error("jobs failed", jobsFor, (e as Error)?.message);
+      }
+    }
     const state = await this.ctx.storage.get<SyncState>("sync");
     if (!state) return;
     const shop = await getShop(this.env, state.shopId);

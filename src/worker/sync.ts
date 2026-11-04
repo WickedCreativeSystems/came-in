@@ -123,15 +123,15 @@ export async function upsertPost(env: Env, shop: ShopRow, post: BufferPost): Pro
   const existing = await env.DB.prepare(`SELECT tile_id FROM posts WHERE id = ?1`).bind(post.id).first<{ tile_id: string }>();
   if (existing) {
     await env.DB.prepare(
-      `UPDATE posts SET text = ?2, sent_at = ?3, external_link = ?4, is_story = ?5, kind = ?6, source_url = ?7, channel_id = ?8, updated_at = ?9 WHERE id = ?1`,
-    ).bind(post.id, post.text ?? "", sentAt, post.externalLink, story, kind, sourceUrl, post.channelId, now).run();
+      `UPDATE posts SET text = ?2, sent_at = ?3, external_link = ?4, is_story = ?5, kind = ?6, source_url = ?7, channel_id = ?8, updated_at = ?9, meta_type = ?10 WHERE id = ?1`,
+    ).bind(post.id, post.text ?? "", sentAt, post.externalLink, story, kind, sourceUrl, post.channelId, now, post.metadata?.type ?? null).run();
     return false;
   }
   const tileId = await findOrMakeTile(env, shop, post.text ?? "", sentAt);
   await env.DB.prepare(
-    `INSERT INTO posts (id, shop_id, tile_id, channel_id, text, sent_at, external_link, is_story, kind, thumb_status, source_url, created_at, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?12)`,
-  ).bind(post.id, shop.id, tileId, post.channelId, post.text ?? "", sentAt, post.externalLink, story, kind, anyAsset ? "pending" : "missing", sourceUrl, now).run();
+    `INSERT INTO posts (id, shop_id, tile_id, channel_id, text, sent_at, external_link, is_story, kind, thumb_status, source_url, created_at, updated_at, meta_type)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?12, ?13)`,
+  ).bind(post.id, shop.id, tileId, post.channelId, post.text ?? "", sentAt, post.externalLink, story, kind, anyAsset ? "pending" : "missing", sourceUrl, now, post.metadata?.type ?? null).run();
   return true;
 }
 

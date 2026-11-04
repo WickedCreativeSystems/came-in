@@ -25,6 +25,7 @@ export interface ShopRow {
   revoked_at: string | null;
   deleted_at: string | null;
   card_printed_at: string | null;
+  monday_push_week: string | null;
 }
 
 export interface TileRow {
@@ -35,7 +36,6 @@ export interface TileRow {
   text_hash: string;
   first_sent_at: string;
   hidden: number;
-  tagged_at: string | null;
 }
 
 export async function getShop(env: Env, id: string): Promise<ShopRow | null> {
@@ -58,7 +58,7 @@ interface WallQueryRow {
   subject: string | null;
   first_sent_at: string;
   hidden: number;
-  tagged_at: string | null;
+  note_id: string | null;
   text: string;
   thumb_post: string | null;
   kind: string;
@@ -75,7 +75,7 @@ interface WallQueryRow {
 export async function wallTiles(env: Env, shop: ShopRow, now = new Date(), opts: { includeHidden?: boolean; limit?: number } = {}): Promise<WallTile[]> {
   const since = new Date(now.getTime() - 60 * 86400000).toISOString();
   const { results } = await env.DB.prepare(
-    `SELECT t.id AS tile_id, t.nickname, t.subject, t.first_sent_at, t.hidden, t.tagged_at,
+    `SELECT t.id AS tile_id, t.nickname, t.subject, t.first_sent_at, t.hidden, t.note_id,
             (SELECT p.text FROM posts p WHERE p.tile_id = t.id ORDER BY length(p.text) DESC LIMIT 1) AS text,
             (SELECT p.id FROM posts p WHERE p.tile_id = t.id AND p.thumb_status = 'ok' ORDER BY p.sent_at LIMIT 1) AS thumb_post,
             (SELECT p.kind FROM posts p WHERE p.tile_id = t.id ORDER BY CASE p.kind WHEN 'photo' THEN 0 WHEN 'video' THEN 1 WHEN 'link' THEN 2 ELSE 3 END LIMIT 1) AS kind,
@@ -112,7 +112,7 @@ function toWallTile(r: WallQueryRow, shop: ShopRow, now: Date): WallTile {
     services,
     links,
     count: r.people ?? 0,
-    tagged: !!r.tagged_at,
+    noted: !!r.note_id && r.note_id !== "making",
     hidden: !!r.hidden,
   };
 }

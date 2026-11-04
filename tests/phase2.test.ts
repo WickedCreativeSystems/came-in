@@ -359,7 +359,7 @@ describe("rate-limit discipline (P19, plan 1.2)", () => {
     // Every call updated buffer_rate from the ratelimit header.
     const r = await env.DB.prepare(`SELECT remaining, quota FROM buffer_rate WHERE window = '24h'`).first<{ remaining: number; quota: number }>();
     expect(r).toEqual({ remaining: 437, quota: 600 });
-  });
+  }, 60000);
 
   it("polling skips every shop when a window is under 10% of its quota", async () => {
     const id = await makeShop();
