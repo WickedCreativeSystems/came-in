@@ -139,16 +139,23 @@ function useTargets(url: string): Channel[] | null {
   return channels;
 }
 
-export function PostAgainSheet({ endpoint, targets, onClose, onDone }: { endpoint: string; targets: string; onClose: () => void; onDone: (r: SheetResult) => void }): JSX.Element {
+export function PostAgainSheet({ endpoint, targets, postName, imageUrl, sample, onClose, onDone }: { endpoint: string; targets: string; postName?: string; imageUrl?: string | null; sample?: boolean; onClose: () => void; onDone: (r: SheetResult) => void }): JSX.Element {
   const channels = useTargets(targets);
-  return channels ? <PostAgainReady endpoint={endpoint} channels={channels} onClose={onClose} onDone={onDone} /> : <Sheet title="Post it again to:" onClose={onClose}><p class="small muted"><span class="spin" aria-hidden="true" /></p></Sheet>;
+  return channels ? <PostAgainReady endpoint={endpoint} channels={channels} postName={postName} imageUrl={imageUrl} sample={sample} onClose={onClose} onDone={onDone} /> : <Sheet title="Post it again to:" onClose={onClose}><p class="small muted"><span class="spin" aria-hidden="true" /></p></Sheet>;
 }
 
-function PostAgainReady({ endpoint, channels, onClose, onDone }: { endpoint: string; channels: Channel[]; onClose: () => void; onDone: (r: SheetResult) => void }): JSX.Element {
+function PostAgainReady({ endpoint, channels, postName, imageUrl, sample, onClose, onDone }: { endpoint: string; channels: Channel[]; postName?: string; imageUrl?: string | null; sample?: boolean; onClose: () => void; onDone: (r: SheetResult) => void }): JSX.Element {
   const [on, setOn] = useState(() => new Set(channels.filter((c) => !blocked(c)).map((c) => c.id)));
   const [busy, setBusy] = useState(false);
   return (
     <Sheet title="Post it again to:" onClose={onClose}>
+      {postName ? (
+        <div class="sheet-post">
+          {imageUrl ? <img src={imageUrl} alt="" width="48" height="48" /> : null}
+          <strong>{postName}</strong>
+        </div>
+      ) : null}
+      <p class="small muted">{sample ? "Sample bakery: nothing is sent to any real account." : "Goes into your Buffer queue and out at your next slot."}</p>
       <ChannelToggles channels={channels} on={on} setOn={setOn} />
       <div class="btn-row">
         <button

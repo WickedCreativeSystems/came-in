@@ -154,7 +154,7 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
                     {nickErr}
                   </div>
                 )}
-                <p class="small muted">Used in the bell: Someone just came in because of {nick.trim() || "the sourdough post"}.</p>
+                <p class="small muted">Used in the bell: Someone just came in because of {nick.trim() || t.name}.</p>
               </div>
 
               <div class="btn-row">
@@ -206,6 +206,9 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
         <PostAgainSheet
           endpoint={`${apiBase}/again`}
           targets={`${apiBase}/targets`}
+          postName={data.tile.name}
+          imageUrl={data.tile.imageUrl}
+          sample={apiBase.includes("/sample")}
           onClose={() => setAgain(false)}
           onDone={(r) => {
             setLine(resultLine(r));

@@ -84,6 +84,9 @@ ${d.shop.handle ? `<div class="hn">@${esc(d.shop.handle)}</div>` : `<div class="
 <script type="application/json" id="cfg">${jsonForScript({ ep: d.printedEndpoint })}</script>`;
   const script = `(function(){var C=JSON.parse(document.getElementById('cfg').textContent);
 function go(){try{fetch(C.ep,{method:'POST',credentials:'same-origin',keepalive:true})}catch(e){}window.print()}
-document.getElementById('print').onclick=go;document.getElementById('pdf').onclick=go;})();`;
+document.getElementById('print').onclick=go;document.getElementById('pdf').onclick=go;
+// On a phone the card is wider than the screen: show it scaled to fit, and print it at full size.
+var card=document.querySelector('.card');function fit(){card.style.zoom='';var w=card.getBoundingClientRect().width,a=document.documentElement.clientWidth-32;if(w>a)card.style.zoom=a/w}
+fit();addEventListener('resize',fit);addEventListener('beforeprint',function(){card.style.zoom=''});addEventListener('afterprint',fit);})();`;
   return page({ title: `${d.shop.name}: your card`, css: css(d.size), body, script, head: `<meta name="robots" content="noindex">` });
 }

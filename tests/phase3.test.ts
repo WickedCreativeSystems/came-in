@@ -535,3 +535,45 @@ describe("dead jobs (NerdCider, phase-3-tag)", () => {
     expect(live!.n).toBe(1);
   });
 });
+
+describe("the stranger fixes (EaseBot, Nov 4)", () => {
+  it("every post sent today says TODAY; only a live story is TODAY · LIVE on the wall", async () => {
+    const { dayBadge } = await import("../src/shared/names");
+    const tz = "America/Chicago";
+    const now = new Date("2026-11-04T14:30:00Z");
+    expect(dayBadge(new Date("2026-11-04T11:48:00Z"), now, tz, false)).toBe("TODAY");
+    expect(dayBadge(new Date("2026-11-04T14:14:00Z"), now, tz, true)).toBe("TODAY · LIVE");
+    expect(dayBadge(new Date("2026-11-03T18:10:00Z"), now, tz, false)).toBe("TUE");
+    expect(dayBadge(new Date("2026-10-27T12:55:00Z"), now, tz, false)).toBe("OCT 27");
+  });
+
+  it("the sample's wall heading and This week are one number", async () => {
+    const wall = (await (await call("/api/sample/wall")).json()) as { countThisWeek: number };
+    const week = (await (await call("/api/sample/week")).json()) as { summary: { people: number; posts: number }; tiles: { weekPeople: number }[] };
+    expect(wall.countThisWeek).toBe(week.summary.people);
+    expect(week.tiles.reduce((n, t) => n + t.weekPeople, 0)).toBe(week.summary.people);
+    expect(week.tiles.filter((t) => t.weekPeople > 0).length).toBe(week.summary.posts);
+  });
+
+  it("the sample's tap page names the text-only post instead of quoting it, and its thank-you says it is a sample", async () => {
+    const html = await (await call("/sample/t")).text();
+    expect(html).not.toContain("Winter hours start Monday");
+    expect(html).toMatch(/winter hours post/);
+    expect(html).toContain("Sample thank-you. You write your own.");
+  });
+
+  it("the landing leads with the sample, explains Connect Buffer, and says EVERY WEEK", async () => {
+    const html = await (await call("/")).text();
+    expect(html.indexOf("Try the sample bakery")).toBeLessThan(html.indexOf('class="btn" href="/auth/start">Connect Buffer'));
+    expect(html).toContain("Connect Buffer takes you to Buffer to sign in. Came In only reads your posts and channels.");
+    expect(html).toContain("Every week");
+    expect(html).not.toContain(">Monday<");
+  });
+
+  it("the printed card scales to fit on screen and prints at full size", async () => {
+    const id = await shopWithPosts();
+    const html = await (await call("/card", { cookie: await ownerCookie(id) })).text();
+    expect(html).toContain("style.zoom");
+    expect(html).toContain("beforeprint");
+  });
+});

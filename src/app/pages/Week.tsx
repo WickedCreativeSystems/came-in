@@ -92,7 +92,7 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
       <main class="page week">
         {sample && (
           <div class="strip">
-            <span>Sample bakery. Taps here only ring this browser.</span>
+            <span>Sample bakery. Nothing here reaches a real shop. Tap a post and this page rings.</span>
             <a class="btn primary sm" href="/auth/start">
               Connect your own Buffer
             </a>
@@ -152,7 +152,7 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
                   <div class="tile-actions">
                     <button class="tile-action" aria-label="Post it again" onClick={() => setAgain(t.id)}>
                       <span class="long">Post it again</span>
-                      <span class="short" aria-hidden="true">Again</span>
+                      <span class="short" aria-hidden="true">Post again</span>
                     </button>
                     <span class="tile-divider" aria-hidden="true" />
                     <button
@@ -171,8 +171,8 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
                         setBusyIdea((b) => ({ ...b, [t.id]: false }));
                       }}
                     >
-                      <span class="long">More like this</span>
-                      <span class="short" aria-hidden="true">More like it</span>
+                      <span class="long">More like it</span>
+                      <span class="short" aria-hidden="true">More like this</span>
                     </button>
                     {t.hidden && (
                       <>
@@ -208,6 +208,9 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
         <PostAgainSheet
           endpoint={`${sample ? "/api/sample/post" : "/api/post"}/${again}/again`}
           targets={`${sample ? "/api/sample/post" : "/api/post"}/${again}/targets`}
+          postName={data.tiles.find((x) => x.id === again)?.name}
+          imageUrl={data.tiles.find((x) => x.id === again)?.imageUrl}
+          sample={sample}
           onClose={() => setAgain(null)}
           onDone={(r) => {
             setLines((l) => ({ ...l, [again]: resultLine(r) }));

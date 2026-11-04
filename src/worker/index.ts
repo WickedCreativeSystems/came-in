@@ -347,12 +347,13 @@ app.get("/i/:shop{[a-z]{10}}/:post", (c) => serveR2(c, `thumbs/${c.req.param("sh
 
 // ---------- The tap page (plan 3.5) ----------
 
-function toTapTile(t: WallTile, now: Date, tz: string): TapTile {
+function toTapTile(t: WallTile, now: Date, tz: string, sample = false): TapTile {
   return {
     id: t.id,
     name: t.name,
     imageUrl: t.imageUrl,
-    text: firstLine(t.text),
+    // The sample's text-only post shows its name, never a sentence of the post.
+    text: sample && !t.imageUrl ? t.name : firstLine(t.text),
     badge: dayBadge(new Date(t.firstSentAt), now, tz, t.isLive, "tap"),
     live: t.isLive,
   };
@@ -424,8 +425,8 @@ app.get("/sample/t", async (c) => {
     renderTapPage({
       mode: "sample",
       shop: { id: SAMPLE_SHOP.id, name: SAMPLE_SHOP.name, handle: SAMPLE_SHOP.handle, avatarUrl: null, timezone: SAMPLE_SHOP.timezone },
-      story: story ? toTapTile(story, now, SAMPLE_SHOP.timezone) : null,
-      tiles: tiles.map((t) => toTapTile(t, now, SAMPLE_SHOP.timezone)),
+      story: story ? toTapTile(story, now, SAMPLE_SHOP.timezone, true) : null,
+      tiles: tiles.map((t) => toTapTile(t, now, SAMPLE_SHOP.timezone, true)),
       thankYou: settings.thankYou,
       reviewUrl: settings.reviewUrl,
       tapEndpoint: "/api/sample/tap",
@@ -633,7 +634,7 @@ app.get("/sample/c", async (c) => {
   return c.html(
     renderCounterPage({
       shop: { name: SAMPLE_SHOP.name, handle: SAMPLE_SHOP.handle, avatarUrl: null },
-      tiles: wall.tiles.filter((t) => !t.hidden).slice(0, 12).map((t) => toTapTile(t, now, SAMPLE_SHOP.timezone)),
+      tiles: wall.tiles.filter((t) => !t.hidden).slice(0, 12).map((t) => toTapTile(t, now, SAMPLE_SHOP.timezone, true)),
       token: "sample",
       endpoint: "/api/sample/counter/tap",
       owner: true,

@@ -14,7 +14,6 @@ import { sentCaption } from "../shared/names";
 
 // Baseline header and week counts, as the sample shows them (look.md section 10).
 const BASE_TODAY = 3;
-const BASE_WEEK = 11;
 
 export async function sampleSessionTaps(env: Env, session: string): Promise<{ tile_id: string | null; answer: string; created_at: string; source: string }[]> {
   const { results } = await env.DB.prepare(`SELECT tile_id, answer, created_at, source FROM sample_taps WHERE session_id = ?1`).bind(session).all<{ tile_id: string | null; answer: string; created_at: string; source: string }>();
@@ -70,7 +69,9 @@ export async function sampleWall(env: Env, session: string, now = new Date()): P
     extra.set(t.tile_id, (extra.get(t.tile_id) ?? 0) + 1);
     if (t.created_at >= dayStart) today++;
   }
-  const postTaps = taps.filter((t) => t.answer === "post").length;
+  // This week's post taps, from the same taps This week counts, so the two never disagree.
+  const { from, to } = rangeWindow("this", now, SAMPLE_SHOP.timezone);
+  const weekTaps = (await sampleAllTaps(env, session, now)).filter((t) => t.answer === "post" && t.at >= from.toISOString() && t.at < to.toISOString()).length;
   return {
     shop: {
       id: SAMPLE_SHOP.id,
@@ -86,7 +87,7 @@ export async function sampleWall(env: Env, session: string, now = new Date()): P
     },
     tiles: sampleTiles(now, extra, own),
     countToday: BASE_TODAY + today,
-    countThisWeek: BASE_WEEK + postTaps,
+    countThisWeek: weekTaps,
     hasTapped: taps.length > 0,
     sync: { status: "idle", count: SAMPLE_POSTS.length, startedAt: null },
     strips: { rateLimited: false, reconnect: false },

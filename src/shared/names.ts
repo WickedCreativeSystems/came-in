@@ -68,6 +68,8 @@ export function whereLine(source: TapSource): string {
 /** Day badge text on a tile. The wall says "TODAY · LIVE" on a live story; the tap page "TODAY". */
 export function dayBadge(sentAt: Date, now: Date, tz: string, live: boolean, where: "wall" | "tap" = "wall"): string {
   if (live) return where === "wall" ? "TODAY · LIVE" : "TODAY";
+  // Every post sent today says TODAY, not the weekday.
+  if (shopDaysBetween(sentAt, now, tz) === 0) return "TODAY";
   const recent = Math.abs(shopDaysBetween(sentAt, now, tz)) <= 6;
   return recent ? weekdayAbbrev(sentAt, tz) : shortDate(sentAt, tz).toUpperCase();
 }
