@@ -52,6 +52,7 @@ html,.th{scrollbar-width:none}html::-webkit-scrollbar,.th::-webkit-scrollbar{dis
 .th{position:fixed;inset:0;z-index:5;background:var(--paper);display:flex;flex-direction:column;transform:translateY(100%);transition:transform 320ms var(--settle);overflow:auto}
 .th.in{transform:none}
 .th[hidden]{display:none}
+html.emb body{min-height:0}
 html.emb .th{position:static;inset:auto;transform:none;transition:none;min-height:320px;overflow:visible}
 html.emb #pg.away{display:none}
 .ph{height:46%;min-height:180px;position:relative;overflow:hidden;background:var(--paper-2);flex:none}
@@ -178,6 +179,6 @@ setTimeout(function(){thanks(t,again)},rm?0:320);
 if(!again)send({shop:C.shop,tile:t.id,answer:'post',source:C.src,device:dev})});
 $('none').onclick=function(){if(busy)return;busy=true;last=$('none');var again=already();thanks(null,again);if(!again)send({shop:C.shop,tile:null,answer:'walked_past',source:C.src,device:dev})};
 // Inside the embed, tell the page around us how tall we are (it sizes the frame).
-if(EMB){var hh=0;window.rp=function(thanks){var h=Math.ceil(document.documentElement.scrollHeight);if(h!==hh||thanks){hh=h;parent.postMessage({cameIn:'height',h:h,thanks:!!thanks},'*')}};
+if(EMB){var hh=0;window.rp=function(thanks){var h=Math.ceil(document.body.getBoundingClientRect().height);if(h!==hh||thanks){hh=h;parent.postMessage({cameIn:'height',h:h,thanks:!!thanks},'*')}};
 var rp=window.rp;rp();addEventListener('load',function(){rp()});addEventListener('resize',function(){rp()});if(window.ResizeObserver)new ResizeObserver(function(){rp()}).observe(document.body)}
 })();`;
