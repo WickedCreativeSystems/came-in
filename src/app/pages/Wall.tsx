@@ -7,6 +7,7 @@ import { connectRoom } from "../lib/room";
 import { deviceId } from "../lib/device";
 import { ringSound } from "../lib/bell";
 import { applyTheme } from "../lib/theme";
+import { HeaderSkeleton, TilesSkeleton } from "../ui/Skeleton";
 import { Header } from "../ui/Header";
 import { Tile } from "../ui/Tile";
 import { BellBanner, type Ring } from "../ui/BellBanner";
@@ -97,10 +98,13 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
 
   if (!data) {
     return (
-      <main class="page">
-        {error && <div class="strip stamp" role="alert">Something's wrong on our side. Try again in a minute.</div>}
-        {!error && <div class="setup-hold" aria-hidden="true" />}
-      </main>
+      <>
+        <HeaderSkeleton />
+        <main class="page">
+          {error && <div class="strip stamp" role="alert">Something's wrong on our side. Try again in a minute.</div>}
+          {!error && <TilesSkeleton />}
+        </main>
+      </>
     );
   }
 

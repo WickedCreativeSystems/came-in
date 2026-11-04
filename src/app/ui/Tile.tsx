@@ -1,7 +1,7 @@
 import type { JSX } from "preact";
 import { useState } from "preact/hooks";
 import type { WallTile } from "@shared/types";
-import { dayBadge, dayBadgeShort, textOnlyCaption, firstLine } from "@shared/names";
+import { dayBadge, dayBadgeShort, tileLabel, textOnlyCaption, firstLine } from "@shared/names";
 import { Marks } from "./marks";
 import { Sticker } from "./Count";
 import { Icon } from "./icons";
@@ -10,7 +10,7 @@ export function Tile({ tile, index, now, tz, flash, href }: { tile: WallTile; in
   const [broken, setBroken] = useState(false);
   const sent = new Date(tile.firstSentAt);
   const showImage = tile.imageUrl && !broken;
-  const label = `${tile.name}. ${tile.count === 1 ? "1 person" : `${tile.count} people`} came in.`;
+  const label = `${tileLabel(tile.name)}. ${tile.count === 1 ? "1 person" : `${tile.count} people`} came in.`;
   const Tag = (href ? "a" : "div") as "a";
   return (
     <Tag class={`tile${tile.isLive ? " live" : ""}${tile.hidden ? " off-card" : ""}`} data-id={tile.id} href={href} aria-label={tile.hidden ? `${label} Hidden from the card.` : label} title={tile.hidden ? "Hidden from the card" : undefined}>

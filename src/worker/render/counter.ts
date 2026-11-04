@@ -60,7 +60,7 @@ html{scrollbar-width:none}html::-webkit-scrollbar{display:none}
 
 function tileHtml(t: TapTile, i: number): string {
   const inner = t.imageUrl ? `<img src="${esc(t.imageUrl)}" alt="" ${i < 8 ? "" : 'loading="lazy"'} decoding="async">` : `<span class="tx">${esc(t.text)}</span>`;
-  return `<button class="t" data-i="${esc(t.id)}" data-n="${esc(t.name)}"${t.imageUrl ? ` data-img="${esc(t.imageUrl)}"` : ""} aria-label="${esc(t.name)}"><span class="pic">${inner}<span class="bd"><span class="bl">${esc(t.badge)}</span><span class="bs">${esc(t.badgeShort)}</span></span></span><span class="cn">${esc(tileLabel(t.name))}</span></button>`;
+  return `<button class="t" data-i="${esc(t.id)}" data-n="${esc(t.name)}"${t.imageUrl ? ` data-img="${esc(t.imageUrl)}"` : ""} aria-label="${esc(tileLabel(t.name))}"><span class="pic">${inner}<span class="bd"><span class="bl">${esc(t.badge)}</span><span class="bs">${esc(t.badgeShort)}</span></span></span><span class="cn">${esc(tileLabel(t.name))}</span></button>`;
 }
 
 export function renderCounterPage(d: CounterPageData): string {

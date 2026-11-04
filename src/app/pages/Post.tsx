@@ -5,6 +5,8 @@ import type { WallData, WallTile } from "@shared/types";
 import { seeItOn } from "@shared/marks";
 import { api, ApiError } from "../lib/api";
 import { applyTheme } from "../lib/theme";
+import { HeaderSkeleton, TilesSkeleton } from "../ui/Skeleton";
+import { tileLabel } from "@shared/names";
 import { Header } from "../ui/Header";
 import { Marks } from "../ui/marks";
 import { Icon } from "../ui/icons";
@@ -71,9 +73,12 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
 
   if (!wall)
     return (
-      <main class="page">
-        <div class="setup-hold" aria-hidden="true" />
-      </main>
+      <>
+        <HeaderSkeleton />
+        <main class="page">
+          <div class="setup-hold" aria-hidden="true" />
+        </main>
+      </>
     );
   const t = data?.tile;
   return (
@@ -131,7 +136,7 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
                     class={`input${nickErr ? " error" : ""}`}
                     value={nick}
                     maxLength={24}
-                    placeholder={data.tile.name}
+                    placeholder={tileLabel(data.tile.name)}
                     onInput={(e) => {
                       setNick((e.target as HTMLInputElement).value);
                       setNickState("rest");

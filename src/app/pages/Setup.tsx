@@ -7,6 +7,7 @@ import { serviceName } from "@shared/marks";
 import { api, ApiError } from "../lib/api";
 import { applyTheme } from "../lib/theme";
 import { ringMyPhone, initialPhoneState, thisPhoneRings, isIOS, type PhoneState } from "../lib/push";
+import { HeaderSkeleton, TilesSkeleton } from "../ui/Skeleton";
 import { Header } from "../ui/Header";
 import { Bell, Avatar } from "../ui/glyphs";
 import { fetchLocations, switchTo, type Locations } from "../lib/locations";
@@ -63,11 +64,14 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
   if (!wall || !data) {
     // Hold the page's place while the shop's data loads, so a section link never opens on a blank screen.
     return (
-      <main class="page setup">
-        {error && <div class="strip stamp" role="alert">Something's wrong on our side. Try again in a minute.</div>}
-        <h1 class="h1">Setup</h1>
-        {!error && <div class="setup-hold" aria-hidden="true" />}
-      </main>
+      <>
+        <HeaderSkeleton />
+        <main class="page setup">
+          {error && <div class="strip stamp" role="alert">Something's wrong on our side. Try again in a minute.</div>}
+          <h1 class="h1">Setup</h1>
+          {!error && <div class="setup-hold" aria-hidden="true" />}
+        </main>
+      </>
     );
   }
 

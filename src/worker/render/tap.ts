@@ -1,6 +1,7 @@
 // The tap page (plan 3.5, look.md sections 4, 5, 6 and 9). Server-rendered,
 // always Day, inline CSS and one small script, under 30 KB before images.
 // The tap is answered on the phone before the network replies.
+import { tileLabel } from "../../shared/names";
 import { esc, jsonForScript, page, avatarHtml, initials, AVATAR_CSS, BELL_MONO_SVG } from "./html";
 
 export interface TapTile {
@@ -92,7 +93,7 @@ function tileHtml(t: TapTile, i: number, story: boolean): string {
   const inner = t.imageUrl
     ? `<img src="${esc(t.imageUrl)}" alt="" ${eager} decoding="async">`
     : `<span class="tx">${esc(t.text)}</span>`;
-  return `<button class="t${story ? " st" : ""}" data-i="${esc(t.id)}" data-n="${esc(t.name)}"${t.imageUrl ? ` data-img="${esc(t.imageUrl)}"` : ""} aria-label="${esc(t.name)}">${inner}<span class="bd${t.live ? " lv" : ""}"><span class="bl">${esc(t.badge)}</span><span class="bs">${esc(t.badgeShort)}</span></span></button>`;
+  return `<button class="t${story ? " st" : ""}" data-i="${esc(t.id)}" data-n="${esc(t.name)}"${t.imageUrl ? ` data-img="${esc(t.imageUrl)}"` : ""} aria-label="${esc(tileLabel(t.name))}">${inner}<span class="bd${t.live ? " lv" : ""}"><span class="bl">${esc(t.badge)}</span><span class="bs">${esc(t.badgeShort)}</span></span></button>`;
 }
 
 export function renderTapPage(d: TapPageData): string {

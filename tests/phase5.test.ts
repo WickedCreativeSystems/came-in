@@ -247,6 +247,23 @@ describe("Today is one number everywhere (plan 1.3)", () => {
 
 describe("the staging-only two-shop page", () => {
   it("does not exist outside staging", async () => {
-    expect((await call("/staging/shops")).status).toBe(404);
+    const res = await call("/staging/shops");
+    expect(res.status).toBe(404);
+    expect(res.headers.getSetCookie()).toEqual([]);
+  });
+});
+
+describe("screens paint a frame at once (plan 3.4)", () => {
+  it("the page the browser first gets already holds the header and tile placeholders", async () => {
+    const html = await (await call("/wall")).text();
+    expect(html).toContain('class="sk-h"');
+    expect(html).toContain('class="sk-t"');
+  });
+
+  it("tile names read without a leading 'the' for screen readers", async () => {
+    const tap = await (await call("/sample/t")).text();
+    expect(tap).not.toMatch(/aria-label="the /i);
+    const staff = await (await call("/sample/c")).text();
+    expect(staff).not.toMatch(/aria-label="the /i);
   });
 });
