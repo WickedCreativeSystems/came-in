@@ -576,4 +576,5 @@ describe("the stranger fixes (EaseBot, Nov 4)", () => {
     expect(html).toContain("style.zoom");
     expect(html).toContain("beforeprint");
   });
+
 });

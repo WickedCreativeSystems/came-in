@@ -138,14 +138,6 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
                 href={tapUrl}
                 target="_blank"
                 rel="noopener"
-                onClick={(e) => {
-                  if (sample) {
-                    e.preventDefault();
-                    if (window.innerWidth < 1024) setSheet(true);
-                    else
-                      document.querySelector(".phone-wrap")?.animate([{ transform: "translateY(0)" }, { transform: "translateY(-10px)" }, { transform: "translateY(0)" }], { duration: 400, easing: "cubic-bezier(.2,.8,.2,1)" });
-                  }
-                }}
               >
                 <Icon name="phone" size={18} />
                 Open the tap page
