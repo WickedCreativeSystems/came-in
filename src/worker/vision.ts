@@ -1,4 +1,4 @@
-// The vision sort (plan 1.7; P20): once per photo post, with ANTHROPIC_API_KEY, the
+// The vision sort (plan 1.7; P20): once per photo post (a video post's frame only names it), with ANTHROPIC_API_KEY, the
 // stored thumbnail and the post's words go to Claude Haiku, which sorts the picture
 // (real photo, graphic, text image) and names what the post is about in one to three
 // words. Without the key, or if the call fails, nothing is stored and the fallbacks hold.
@@ -48,8 +48,8 @@ export function parseVision(text: string): { kind: VisionKind; subject: string |
 /** Run the call for one post. "done" and "skip" end the job; "retry" tries again later. */
 export async function classifyPost(env: Env, postId: string): Promise<"done" | "skip" | "retry"> {
   if (!env.ANTHROPIC_API_KEY) return "skip";
-  const post = await env.DB.prepare(`SELECT id, shop_id, tile_id, text, kind_detail, thumb_key, thumb_status FROM posts WHERE id = ?1`).bind(postId).first<{
-    id: string; shop_id: string; tile_id: string; text: string; kind_detail: string | null; thumb_key: string | null; thumb_status: string;
+  const post = await env.DB.prepare(`SELECT id, shop_id, tile_id, kind, text, kind_detail, thumb_key, thumb_status FROM posts WHERE id = ?1`).bind(postId).first<{
+    id: string; shop_id: string; tile_id: string; kind: string; text: string; kind_detail: string | null; thumb_key: string | null; thumb_status: string;
   }>();
   if (!post || post.kind_detail || post.thumb_status !== "ok" || !post.thumb_key) return "skip"; // never re-run
   const obj = await env.MEDIA.get(post.thumb_key);
@@ -86,15 +86,16 @@ export async function classifyPost(env: Env, postId: string): Promise<"done" | "
   const body = (await res.json().catch(() => null)) as { content?: { type: string; text?: string }[] } | null;
   const out = parseVision(body?.content?.find((c) => c.type === "text")?.text ?? "");
   if (!out) return "retry";
+  // A video's thumbnail is one frame: it names the post, but doesn't sort it as a photo or a graphic.
   await env.DB.batch([
-    env.DB.prepare(`UPDATE posts SET kind_detail = ?2 WHERE id = ?1 AND kind_detail IS NULL`).bind(post.id, out.kind),
+    ...(post.kind === "photo" ? [env.DB.prepare(`UPDATE posts SET kind_detail = ?2 WHERE id = ?1 AND kind_detail IS NULL`).bind(post.id, out.kind)] : []),
     ...(out.subject ? [env.DB.prepare(`UPDATE tiles SET subject = ?2 WHERE id = ?1 AND subject IS NULL`).bind(post.tile_id, out.subject)] : []),
   ]);
   return "done";
 }
 
 /**
- * Queue the sort for photo posts that have a stored picture and no job yet (a post is
+ * Queue the sort for photo and video posts that have a stored picture and no job yet (a post is
  * tried once: a dead or finished job stops a second). A few per tick, so the first
  * sync's backlog trickles through. Returns how many were queued.
  */
@@ -102,7 +103,7 @@ export async function queueVision(env: Env, limit = 20): Promise<number> {
   if (!env.ANTHROPIC_API_KEY) return 0;
   const { results } = await env.DB.prepare(
     `SELECT p.id, p.shop_id FROM posts p JOIN shops s ON s.id = p.shop_id
-      WHERE p.kind = 'photo' AND p.thumb_status = 'ok' AND p.kind_detail IS NULL AND s.deleted_at IS NULL
+      WHERE p.kind IN ('photo', 'video') AND p.thumb_status = 'ok' AND p.kind_detail IS NULL AND s.deleted_at IS NULL
         AND NOT EXISTS (SELECT 1 FROM buffer_jobs j WHERE j.kind = 'vision' AND json_extract(j.payload, '$.postId') = p.id)
       ORDER BY p.sent_at DESC LIMIT ?1`,
   ).bind(limit).all<{ id: string; shop_id: string }>();

@@ -180,3 +180,24 @@ describe("the vision sort (P20)", () => {
     expect(wall.tiles[0].name).toMatch(/post/);
   });
 });
+
+describe("the vision sort on a video post", () => {
+  it("names the post from its thumbnail but doesn't sort it as a photo", async () => {
+    const e = env as unknown as { ANTHROPIC_API_KEY?: string };
+    const { queueVision } = await import("../src/worker/vision");
+    const id = await makeShop();
+    await addChannel(id, `yt-${id}`, "youtube");
+    await addTile(id, { id: `vid-${id}`, text: "A dungeon from a seed.", sentAt: ago(30), channelId: `yt-${id}`, image: true });
+    await env.DB.prepare(`UPDATE posts SET kind = 'video', thumb_status = 'ok', thumb_key = ?2 WHERE id = ?1`).bind(`p-vid-${id}`, `thumbs/${id}/p-vid-${id}`).run();
+    await env.MEDIA.put(`thumbs/${id}/p-vid-${id}`, new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 16, 0x4a, 0x46, 0x49, 0x46, 0, 1]), { httpMetadata: { contentType: "image/jpeg" } });
+    e.ANTHROPIC_API_KEY = "test-key";
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response(JSON.stringify({ content: [{ type: "text", text: '{"kind":"graphic","subject":"dungeon map"}' }] })));
+    await queueVision(env);
+    await runJobs(env, id);
+    delete e.ANTHROPIC_API_KEY;
+    const post = await env.DB.prepare(`SELECT kind_detail FROM posts WHERE id = ?1`).bind(`p-vid-${id}`).first<{ kind_detail: string | null }>();
+    const tile = await env.DB.prepare(`SELECT subject FROM tiles WHERE id = ?1`).bind(`vid-${id}`).first<{ subject: string }>();
+    expect(post!.kind_detail).toBeNull();
+    expect(tile!.subject).toBe("dungeon map");
+  });
+});
