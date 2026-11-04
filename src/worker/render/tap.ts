@@ -27,6 +27,7 @@ export interface TapPageData {
 
 const CSS = `${AVATAR_CSS}
 body{min-height:100dvh;display:flex;flex-direction:column}
+html,.th{scrollbar-width:none}html::-webkit-scrollbar,.th::-webkit-scrollbar{display:none}
 .hd{display:flex;align-items:center;gap:10px;padding:18px 16px 10px}
 .nm{font-family:var(--fd);font-weight:700;font-size:22px;line-height:1;letter-spacing:.005em}
 .hn{font-size:13px;color:var(--ink-2);line-height:1.3;margin-top:3px}
@@ -62,7 +63,8 @@ body{min-height:100dvh;display:flex;flex-direction:column}
 .tk .eyebrow{color:#6E665D;margin-bottom:4px}
 .tk .w{font-family:var(--fd);font-weight:700;font-size:22px;line-height:1}
 .tk .c{font-size:13px;color:#6E665D;margin-top:4px;line-height:1.3}
-.tk .d{font-size:11px;color:#6E665D;text-align:right;line-height:1.3}
+.tk>div:first-child{min-width:0}
+.tk .d{font-size:11px;color:#6E665D;text-align:right;line-height:1.3;white-space:nowrap}
 .tk .d b{display:block;font-family:var(--fd);font-weight:800;font-size:18px;color:#231F1B;letter-spacing:.02em}
 .bs{display:flex;gap:8px}
 .bs .btn{flex:1}
@@ -142,7 +144,7 @@ function day(){try{return new Intl.DateTimeFormat('en-CA',{timeZone:C.tz,year:'n
 var tk='ci_t:'+C.shop;
 function already(){return C.mode!=='sample'&&ls(tk)===day()}
 function e(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
-function ticket(){if(!C.ty)return'';var d=new Date(),dd,tt;try{dd=d.toLocaleDateString('en-US',{timeZone:C.tz,weekday:'short',month:'short',day:'numeric'});tt=d.toLocaleTimeString('en-US',{timeZone:C.tz,hour:'numeric',minute:'2-digit'})}catch(x){dd=d.toDateString();tt=d.toTimeString().slice(0,5)}
+function ticket(){if(!C.ty)return'';var d=new Date(),dd,tt;try{dd=d.toLocaleDateString('en-GB',{timeZone:C.tz,weekday:'short',day:'numeric',month:'short'}).replace(/,/g,'');tt=d.toLocaleTimeString('en-US',{timeZone:C.tz,hour:'numeric',minute:'2-digit'}).replace(/\s?([AP]M)$/i,function(m,a){return' '+a.toLowerCase()})}catch(x){dd=d.toDateString();tt=d.toTimeString().slice(0,5)}
 return'<div class="tk"><div><div class="eyebrow">Today\\'s thank-you</div><div class="w">'+e(C.ty)+'</div><div class="c">Show this at the till.</div></div><div class="d">'+e(dd)+'<b>'+e(tt)+'</b></div></div>'}
 function show(html,plain){th.className='th'+(plain?' plain':'');th.innerHTML=html;th.hidden=false;if(rm){th.classList.add('in')}else{requestAnimationFrame(function(){requestAnimationFrame(function(){th.classList.add('in')})})}}
 function close(){th.classList.remove('in');setTimeout(function(){th.hidden=true;th.innerHTML=''},rm?0:320);g.classList.remove('picked');var o=g.querySelector('.on');if(o)o.classList.remove('on');busy=false;

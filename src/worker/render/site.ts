@@ -1,4 +1,4 @@
-// The landing page (plan 3.1), the privacy page and the photo credits. Always Day.
+// The landing page (plan 3.1), the privacy page and the photo credits. They follow the system, Day or After close.
 import { esc, page, BELL_SVG } from "./html";
 
 const SITE_CSS = `
@@ -68,6 +68,7 @@ ${footer(opts.contactEmail, { photoCredits: true })}</div>`;
     description: "Find out which of your posts bring people through the door. Built on Buffer.",
     css: SITE_CSS,
     body,
+    followSystem: true,
   });
 }
 
@@ -80,7 +81,7 @@ export function renderPrivacy(contactEmail: string | null): string {
 <p>"Disconnect and delete everything" removes all of it, including Came In's tags and notes in Buffer.</p>
 <p>Questions: the contact line below.</p>
 </article>${footer(contactEmail)}</div>`;
-  return page({ title: "Privacy · Came In", css: SITE_CSS, body });
+  return page({ title: "Privacy · Came In", css: SITE_CSS, body, followSystem: true });
 }
 
 /** The sample bakery's photo credits, as credited in LookieBot's sample.html (plan section 0). */
@@ -105,5 +106,5 @@ export function renderCredits(contactEmail: string | null): string {
 <p><strong>CC BY 2.0</strong> (<a href="https://creativecommons.org/licenses/by/2.0/">license</a>)</p><ul>${ccby.map(li).join("")}</ul>
 <p>Fonts: Big Shoulders and Libre Franklin, from Google Fonts, under the SIL Open Font License.</p>
 </article>${footer(contactEmail)}</div>`;
-  return page({ title: "Photo credits · Came In", css: SITE_CSS, body });
+  return page({ title: "Photo credits · Came In", css: SITE_CSS, body, followSystem: true });
 }

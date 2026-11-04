@@ -251,3 +251,23 @@ describe("the try strip's QR code (plan 3.4)", () => {
     expect((await call("/qr/nosuchshop.svg")).status).toBe(404);
   });
 });
+
+describe("look check on c82e7ef (LookieBot)", () => {
+  it("the landing, privacy and credits follow the system into After close; the tap page stays Day", async () => {
+    for (const path of ["/", "/privacy", "/credits"]) {
+      const html = await (await call(path)).text();
+      expect(html).toContain("@media (prefers-color-scheme:dark){:root{--paper:#17140F");
+    }
+    const id = await makeShop();
+    const tapHtml = await (await call(`/t/${id}`)).text();
+    expect(tapHtml).not.toContain("prefers-color-scheme:dark");
+  });
+  it("the tap page hides its scrollbar and gives the thank-you the ticket's width", async () => {
+    const id = await makeShop();
+    const html = await (await call(`/t/${id}`)).text();
+    expect(html).toContain("scrollbar-width:none");
+    expect(html).toContain("::-webkit-scrollbar,.th::-webkit-scrollbar{display:none}");
+    expect(html).toContain(".tk>div:first-child{min-width:0}");
+    expect(html).toContain("weekday:'short',day:'numeric',month:'short'");
+  });
+});
