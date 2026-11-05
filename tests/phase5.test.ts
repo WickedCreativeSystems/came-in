@@ -192,6 +192,17 @@ describe("the pricing page (P21, plan 3.13)", () => {
     expect(await (await call("/pricing")).text()).not.toContain("evil.example.com");
   });
 
+  it("with a price and no Payment Link it says the price and to write to us, with no button", async () => {
+    e.PRICE_TEXT = "$9";
+    const html = await (await call("/pricing")).text();
+    expect(html).toContain("More locations are $9 a month each.");
+    expect(html).toContain("A location is a store with its own card, whether it shares your posts or has its own.");
+    expect(html).toContain("To pay, write to us.");
+    expect(html).not.toContain("Pay for more locations");
+    expect(html).not.toContain("Need more than one location?");
+    expect((html.match(/<main[\s>]/g) ?? []).length).toBe(1);
+  });
+
   it("is linked from the landing and the footer", async () => {
     const html = await (await call("/")).text();
     expect(html).toContain('href="/pricing"');

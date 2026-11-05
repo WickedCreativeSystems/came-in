@@ -140,13 +140,21 @@ export function paymentLink(v: string | undefined | null): string | null {
 
 /** /pricing (plan 3.13): One location is free; with a price and a Payment Link, what more cost and where to pay. We don't check payments. */
 export function renderPricing(opts: { price: string | null; link: string | null; contactEmail: string | null }): string {
-  const paid = !!(opts.price && opts.link);
-  const more = paid
-    ? `<p class="price">More locations are ${esc(opts.price!)} a month each.</p>
+  const mail = opts.contactEmail ? `<p><a href="mailto:${esc(opts.contactEmail)}">${esc(opts.contactEmail)}</a></p>` : "";
+  let more: string;
+  if (opts.price && opts.link) {
+    more = `<p class="price">More locations are ${esc(opts.price)} a month each.</p>
 <p class="body">A location is a store with its own card, whether it shares your posts or has its own.</p>
-<p><a class="btn primary" href="${esc(opts.link!)}" target="_blank" rel="noopener">Pay for more locations</a></p>
-<p class="cap">After you pay, add your next location from Setup, under Locations. We don't check payments, so you won't be locked out.</p>`
-    : `<p class="price">Need more than one location? Write to us.</p>${opts.contactEmail ? `<p><a href="mailto:${esc(opts.contactEmail)}">${esc(opts.contactEmail)}</a></p>` : ""}`;
+<p><a class="btn primary" href="${esc(opts.link)}" target="_blank" rel="noopener">Pay for more locations</a></p>
+<p class="cap">After you pay, add your next location from Setup, under Locations. We don't check payments, so you won't be locked out.</p>`;
+  } else if (opts.price) {
+    // A price but no Payment Link yet: say what it costs and how to pay, with no button.
+    more = `<p class="price">More locations are ${esc(opts.price)} a month each.</p>
+<p class="body">A location is a store with its own card, whether it shares your posts or has its own.</p>
+<p class="body">To pay, write to us.</p>${mail}`;
+  } else {
+    more = `<p class="price">Need more than one location? Write to us.</p>${mail}`;
+  }
   const body = `<div class="wrap">${header()}<main><article class="prose">
 <h1>Pricing</h1>
 <p class="body">One location is free, with everything in it.</p>
