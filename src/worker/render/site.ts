@@ -46,14 +46,16 @@ export function footer(contactEmail: string | null, opts: { photoCredits?: boole
   return `<footer class="foot"><span>Anonymous. A post, a time, nothing else.</span><a href="/privacy">Privacy</a><a href="/pricing">Pricing</a>${contact}<span>Built for Buffer Commit 2026</span>${opts.photoCredits ? `<a href="/credits">Photo credits</a>` : ""}</footer>`;
 }
 
-export function renderLanding(opts: { error?: "denied" | "exchange" | null; contactEmail: string | null }): string {
+export function renderLanding(opts: { error?: "denied" | "exchange" | "signedout" | null; contactEmail: string | null }): string {
   const strip =
     opts.error === "denied"
       ? `<div class="strip" role="status">No problem. Nothing was connected.</div>`
       : opts.error === "exchange"
         ? `<div class="strip" role="alert">Buffer didn't finish connecting. Try again.</div>`
-        : "";
-  const body = `<div class="wrap">${header()}${strip}
+        : opts.error === "signedout"
+          ? `<div class="strip" role="status">Signed out. Connect Buffer to come back in.</div>`
+          : "";
+  const body = `<div class="wrap">${header()}<main>${strip}
 <section class="hero"><h1>Find out which of your posts bring people through the door.</h1>
 <p>Came In reads the posts you've already sent through Buffer, the app many shops use to schedule posts. Customers (or your staff) tap the one that brought them in. Your phone rings.</p>
 <div class="bs"><a class="btn primary" href="/sample">Try the sample bakery</a><a class="btn" href="/auth/start">Connect Buffer</a></div>
@@ -68,7 +70,7 @@ export function renderLanding(opts: { error?: "denied" | "exchange" | null; cont
 <div><div class="eyebrow">Every week</div><p>See which posts bring people in, and post more like them.</p></div>
 <div><div class="eyebrow">Honest</div><p>It counts people at the door, not likes.</p></div>
 <div><div class="eyebrow">Private</div><p>Taps are anonymous. A post, a time, nothing else.</p></div>
-</section>
+</section></main>
 ${footer(opts.contactEmail, { photoCredits: true })}</div>`;
   return page({
     title: "Came In",
@@ -80,7 +82,7 @@ ${footer(opts.contactEmail, { photoCredits: true })}</div>`;
 }
 
 export function renderPrivacy(contactEmail: string | null): string {
-  const body = `<div class="wrap">${header()}<article class="prose">
+  const body = `<div class="wrap">${header()}<main><article class="prose">
 <h1>Privacy</h1>
 <p>Came In reads the posts you've already sent through Buffer, and the name and logo of your channels, and keeps a copy so your card works.</p>
 <p>A customer's tap stores the post, the time, where the tap came from (the card, the counter or your booking page) and a random id their phone keeps so the thank-you shows once a day. No name, no number, no email, no location.</p>
@@ -88,7 +90,7 @@ export function renderPrivacy(contactEmail: string | null): string {
 <p>We write to your Buffer only when you press a button or when the "Mark winners in Buffer" switch is on.</p>
 <p>"Disconnect and delete everything" removes all of it, including Came In's notes in Buffer.</p>
 <p>Questions: the contact line below.</p>
-</article>${footer(contactEmail)}</div>`;
+</article></main>${footer(contactEmail)}</div>`;
   return page({ title: "Privacy · Came In", css: SITE_CSS, body, followSystem: true });
 }
 
@@ -107,13 +109,13 @@ export function renderCredits(contactEmail: string | null): string {
   ];
   const ccby = ["Closeup of a cup of latte art with coffee powder", "Baker woman's hands kneading bread dough", "Baguettes - stonesoup"];
   const li = (t: string) => `<li><a href="https://commons.wikimedia.org/w/index.php?search=${encodeURIComponent(t)}&title=Special:MediaSearch&type=image">${esc(t)}</a></li>`;
-  const body = `<div class="wrap">${header()}<article class="prose">
+  const body = `<div class="wrap">${header()}<main><article class="prose">
 <h1>Photo credits</h1>
 <p>The sample bakery's photos are from Wikimedia Commons. They stand in for the sample bakery's posts.</p>
 <p><strong>CC0</strong></p><ul>${cc0.map(li).join("")}</ul>
 <p><strong>CC BY 2.0</strong> (<a href="https://creativecommons.org/licenses/by/2.0/">license</a>)</p><ul>${ccby.map(li).join("")}</ul>
 <p>Fonts: Big Shoulders and Libre Franklin, from Google Fonts, under the SIL Open Font License.</p>
-</article>${footer(contactEmail)}</div>`;
+</article></main>${footer(contactEmail)}</div>`;
   return page({ title: "Photo credits · Came In", css: SITE_CSS, body, followSystem: true });
 }
 
@@ -144,10 +146,10 @@ export function renderPricing(opts: { price: string | null; link: string | null;
 <p><a class="btn primary" href="${esc(opts.link!)}" target="_blank" rel="noopener">Pay for more locations</a></p>
 <p class="cap">After you pay, add your next location from Setup, under Locations. We don't check payments, so you won't be locked out.</p>`
     : `<p class="price">Need more than one location? Write to us.</p>${opts.contactEmail ? `<p><a href="mailto:${esc(opts.contactEmail)}">${esc(opts.contactEmail)}</a></p>` : ""}`;
-  const body = `<div class="wrap">${header()}<article class="prose">
+  const body = `<div class="wrap">${header()}<main><article class="prose">
 <h1>Pricing</h1>
 <p class="body">One location is free, with everything in it.</p>
 ${more}
-</article>${footer(opts.contactEmail)}</div>`;
+</article></main>${footer(opts.contactEmail)}</div>`;
   return page({ title: "Pricing · Came In", css: SITE_CSS, body, followSystem: true });
 }

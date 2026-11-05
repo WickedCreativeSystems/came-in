@@ -107,6 +107,7 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
           }}
         />
         {missing && <p class="muted">This post isn't on your wall any more.</p>}
+        {t && <h1 class="sr">{tileLabel(t.name)}</h1>}
         {t && data && (
           <div class="post-grid">
             <div class="post-photo">

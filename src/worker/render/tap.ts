@@ -103,12 +103,12 @@ export function renderTapPage(d: TapPageData): string {
     ? `<header class="hd">${avatarHtml(d.shop.name, d.shop.avatarUrl, 40)}<div><div class="nm">${esc(d.shop.name)}</div>${d.shop.handle || d.location?.label ? `<div class="hn">${d.shop.handle ? `@${esc(d.shop.handle)}` : ""}${d.shop.handle && d.location?.label ? " · " : ""}${d.location?.label ? esc(d.location.label) : ""}</div>` : ""}</div></header>`
     : "";
   const tiles = [d.story ? tileHtml(d.story, 0, true) : "", ...d.tiles.map((t, i) => tileHtml(t, i + (d.story ? 1 : 0), false))].join("");
-  const body = `<div id="pg">${head}
+  const body = `<main id="pg">${head}
 <div class="ask"><h1>Saw us online?</h1><p>Tap the post that brought you in.</p></div>
 <div class="grid" id="g">${tiles}</div>
 <div class="none"><button class="btn" id="none">I didn't see a post</button></div>
 <footer class="ft"><span>Anonymous. A post, a time, nothing else.</span><span class="ci">${BELL_MONO_SVG}CAME IN</span></footer>
-</div>
+</main>
 <section class="th" id="th" hidden role="dialog" aria-modal="true" aria-label="Thanks"></section>
 <div class="strip" id="err" hidden role="alert"><span>We couldn't reach the shop. Try again?</span><button class="btn" id="retry">Try again</button></div>
 <script type="application/json" id="cfg">${jsonForScript({
@@ -139,7 +139,7 @@ export function renderCardRemoved(): string {
   return page({
     title: "Came In",
     css: CSS,
-    body: `<div class="gone"><h1>This card isn't in use any more. Ask at the till.</h1></div>`,
+    body: `<main class="gone"><h1>This card isn't in use any more. Ask at the till.</h1></main>`,
     head: `<meta name="robots" content="noindex">`,
   });
 }
@@ -148,7 +148,7 @@ export function renderGonePage(): string {
   return page({
     title: "Came In",
     css: CSS,
-    body: `<div class="gone"><h1>This shop isn't using Came In any more.</h1></div>`,
+    body: `<main class="gone"><h1>This shop isn't using Came In any more.</h1></main>`,
     head: `<meta name="robots" content="noindex">`,
   });
 }

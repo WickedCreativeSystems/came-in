@@ -138,7 +138,7 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
   return (
     <div class={sample ? "with-phone" : ""}>
       <Header shop={data.shop} today={data.countToday} tab="wall" base={base} />
-      <main class="page">
+      <main class={`page${sample ? " with-try" : ""}`}>
         {error && <div class="strip stamp" role="alert">Something's wrong on our side. Try again in a minute.</div>}
         {sample && (
           <div class="strip">
@@ -159,8 +159,11 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
         />
         {!data.hasTapped || sample ? (
           <section class="try" aria-label="Try it">
-            <div class="qr">
-              <img src={sample ? "/qr/sample.svg" : `/qr/${data.shop.id}.svg`} alt="QR code for the tap page" width="96" height="96" />
+            <div class="qr-col">
+              <div class="qr">
+                <img src={sample ? "/qr/sample.svg" : `/qr/${data.shop.id}.svg`} alt="QR code for the tap page" width="96" height="96" />
+              </div>
+              <p class="caption muted qr-cap">The same code is on your printed card.</p>
             </div>
             <div>
               <h2 class="h2">This is what your customers will tap.</h2>
@@ -184,9 +187,16 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
                   <span class="small muted">At the till, staff tap here for a customer.</span>
                 </div>
               )}
-              <span class="small muted print-card">
-                Put this code on your counter: <a href={`${base}/card`}>Print your card</a>.
-              </span>
+              <div class="print-card">
+                <span class="small muted">Put this code on your counter:</span>
+                <a class="btn quiet sm card-btn" href={`${base}/card`}>
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="6" y="3" width="12" height="18" rx="2.5" />
+                    <circle cx="12" cy="8" r="1.6" />
+                  </svg>
+                  Print your card
+                </a>
+              </div>
             </div>
           </section>
         ) : null}
@@ -214,7 +224,7 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
         <div class="wall-head">
           <h1 class="h1">Your posts</h1>
           <span class="range">
-            Counts on each post cover the last 60 days
+            Counts on each post cover the last 60 days. Today and this week are in <a class="range-link" href={`${base}/week`}>This week</a>.
           </span>
           <button class="btn quiet sm refresh" onClick={doRefresh} disabled={refresh === "checking"}>
             {refresh === "checking" ? <span class="spin" aria-hidden="true" /> : <Icon name="refresh" size={18} />}

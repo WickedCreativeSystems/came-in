@@ -148,6 +148,7 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
               </p>
             ))}
             {data.summary.ratio && <p class="ratio body-strong">{data.summary.ratio}</p>}
+            {data.summary.receipts.length > 0 && <div class="eyebrow receipt-eyebrow">NOT FROM A POST</div>}
             {data.summary.receipts.length > 0 && (
               <ul class="receipt">
                 {data.summary.receipts.map((r) => (

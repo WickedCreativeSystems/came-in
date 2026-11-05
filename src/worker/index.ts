@@ -96,7 +96,7 @@ app.onError((err, c) => {
 
 app.get("/", (c) => {
   const e = c.req.query("error");
-  return c.html(renderLanding({ error: e === "denied" ? "denied" : e === "exchange" ? "exchange" : null, contactEmail: c.env.CONTACT_EMAIL ?? null }));
+  return c.html(renderLanding({ error: e === "denied" ? "denied" : e === "exchange" ? "exchange" : c.req.query("signedout") === "1" ? "signedout" : null, contactEmail: c.env.CONTACT_EMAIL ?? null }));
 });
 app.get("/privacy", (c) => c.html(renderPrivacy(c.env.CONTACT_EMAIL ?? null)));
 app.get("/credits", (c) => c.html(renderCredits(c.env.CONTACT_EMAIL ?? null)));
@@ -171,6 +171,23 @@ app.delete("/api/shop/locations/:id", async (c) => {
   const r = await removeLocation(c.env, shop.id, c.req.param("id"));
   if (!r.ok) return c.json({ error: problem(r.problem) }, r.problem === "missing" ? 404 : 400);
   return c.json({ ok: true });
+});
+
+// Sign out of this browser (plan 1.5, 3.8): the cookie goes for every shop in it and this browser's phone
+// pushes stop; walls, cards, taps and open staff screens are untouched. Same-origin only.
+app.post("/setup/signout", async (c) => {
+  const here = new URL(c.req.url).origin;
+  const origin = c.req.header("Origin");
+  const site = c.req.header("Sec-Fetch-Site");
+  if ((origin && origin !== here) || (!origin && site && site !== "same-origin")) return c.json({ error: "not allowed" }, 403);
+  const st = await ownerState(c);
+  const b = (await c.req.json().catch(() => ({}))) as { device?: unknown };
+  const device = typeof b.device === "string" ? b.device.slice(0, 64) : "";
+  if (st && device) {
+    for (const shopId of st.shops) await c.env.DB.prepare(`DELETE FROM push_subs WHERE shop_id = ?1 AND device_id = ?2`).bind(shopId, device).run();
+  }
+  clearOwnerCookie(c);
+  return c.json({ ok: true, next: "/?signedout=1" });
 });
 
 // Switch to another shop this browser holds. An id that is not in the signed list is refused and nothing changes.

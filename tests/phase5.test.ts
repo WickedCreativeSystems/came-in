@@ -279,3 +279,46 @@ describe("each day badge puts one text in the accessibility tree (EaseBot round 
     expect(landing).toMatch(/\.foot\{[^}]*color:var\(--ink-2\)/);
   });
 });
+
+describe("round four (EaseBot, Nov 5)", () => {
+  it("the time line names the two biggest times and adds up with 'other times'", async () => {
+    const { summarize } = await import("../src/shared/week");
+    // Posts sent in the evening (5), morning (3), midday (2) and night (1): 11 people.
+    const mk = (id: string, hourUtc: number) => ({ id, firstSentAt: `2026-11-03T${String(hourUtc).padStart(2, "0")}:30:00Z`, kind: "photo" as const, kindDetail: null, isStory: false });
+    const tiles = [mk("ev", 0), mk("mo", 15), mk("mi", 18), mk("ni", 5)]; // 18:30, 09:30, 12:30, 23:30 in Chicago (UTC-6 in Nov)
+    const taps = (id: string, n: number) => Array.from({ length: n }, () => ({ tileId: id, answer: "post" as const, source: "card", at: "2026-11-05T18:00:00Z" }));
+    const s = summarize([...taps("ev", 5), ...taps("mo", 3), ...taps("mi", 2), ...taps("ni", 1)], tiles, "America/Chicago", "this");
+    const line = s.patterns.find((p) => p.startsWith("Posts sent"));
+    expect(line).toBe("Posts sent in the evening brought 5 people; mornings 3; other times 3.");
+  });
+
+  it("Sign out clears the cookie for every shop, stops this browser's pushes, keeps staff screens, and refuses another origin", async () => {
+    const a = await makeShop();
+    const b = await makeShop();
+    const cookie = `ci_owner=${await sign(`${a}.${Date.now()}.${a},${b}`, env.COOKIE_SECRET)}`;
+    const token = (await (await call("/api/counter/open", { ...json({}), cookie })).json()) as { url: string };
+    for (const [shop, dev] of [[a, "mine"], [b, "mine"], [a, "theirs"]] as const) {
+      await env.DB.prepare(`INSERT INTO push_subs (id, shop_id, device_id, endpoint, p256dh, auth, created_at) VALUES (?1, ?2, ?3, ?4, 'p', 'a', ?5)`).bind(`ps-${shop}-${dev}`, shop, dev, `https://push.test/${shop}${dev}`, new Date().toISOString()).run();
+    }
+    // Another origin is refused and nothing changes.
+    const cross = await call("/setup/signout", { ...json({ device: "mine" }), headers: { "content-type": "application/json", Origin: "https://evil.example.com" }, cookie });
+    expect(cross.status).toBe(403);
+    expect((await env.DB.prepare(`SELECT COUNT(*) AS n FROM push_subs WHERE device_id = 'mine'`).first<{ n: number }>())!.n).toBe(2);
+    const res = await call("/setup/signout", { ...json({ device: "mine" }), headers: { "content-type": "application/json", Origin: "https://came-in.test" }, cookie });
+    expect(((await res.json()) as { next: string }).next).toBe("/?signedout=1");
+    expect(res.headers.getSetCookie().some((c) => c.startsWith("ci_owner=") && /Max-Age=0|expires=/i.test(c))).toBe(true);
+    // This browser's phone rows are gone; another device's stay; walls, taps and the staff screen are untouched.
+    expect((await env.DB.prepare(`SELECT COUNT(*) AS n FROM push_subs WHERE device_id = 'mine'`).first<{ n: number }>())!.n).toBe(0);
+    expect((await env.DB.prepare(`SELECT COUNT(*) AS n FROM push_subs WHERE device_id = 'theirs'`).first<{ n: number }>())!.n).toBe(1);
+    expect((await call(token.url)).status).toBe(200);
+    expect((await call("/api/wall", { cookie: "" })).status).toBe(401);
+    expect(await (await call("/?signedout=1")).text()).toContain("Signed out. Connect Buffer to come back in.");
+  });
+
+  it("every page has one main landmark; the post page has a hidden h1", async () => {
+    for (const path of ["/", "/privacy", "/credits", "/pricing", "/sample/t", "/sample/c", "/sample/card"]) {
+      const html = await (await call(path)).text();
+      expect((html.match(/<main[\s>]/g) ?? []).length, path).toBe(1);
+    }
+  });
+});
