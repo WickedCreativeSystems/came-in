@@ -43,4 +43,7 @@ function route() {
   }
 }
 
-render(route(), document.getElementById("app")!);
+// index.html carries a frame that shows before any script runs; the app replaces it (Preact leaves unknown nodes beside its own).
+const root = document.getElementById("app")!;
+root.textContent = "";
+render(route(), root);
