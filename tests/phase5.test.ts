@@ -322,3 +322,19 @@ describe("round four (EaseBot, Nov 5)", () => {
     }
   });
 });
+
+describe("the sample's today count is 3 on every day (plan 3.10)", () => {
+  it("only the posts sent today on any weekday earn today's taps, whatever the weekday or the hour", async () => {
+    const { sampleHistory } = await import("../src/shared/sampleweek");
+    const { startOfShopDay } = await import("../src/shared/time");
+    // Monday 2 to Sunday 8 November 2026, at 1 am, 9 am, 3 pm and 11 pm Chicago time (UTC-6).
+    for (let d = 2; d <= 8; d++) {
+      for (const hourUtc of [7, 15, 21, 29]) {
+        const now = new Date(Date.UTC(2026, 10, d, hourUtc, 10));
+        const dayStart = startOfShopDay(now, "America/Chicago").getTime();
+        const today = sampleHistory(now).filter((t) => t.answer === "post" && Date.parse(t.at) >= dayStart && Date.parse(t.at) <= now.getTime());
+        expect(today.length, `${now.toISOString()}`).toBe(3);
+      }
+    }
+  });
+});
