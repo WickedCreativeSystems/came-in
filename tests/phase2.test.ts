@@ -424,7 +424,7 @@ describe("check fixes on ad8bbf5 (NerdCider)", () => {
     const id = await shopWithPosts();
     const token = await openCounterFor(id);
     const html = await (await call(`/c/${token}`)).text();
-    expect(html).toContain("Math.max(0,3050-(Date.now()-at))");
+    expect(html).toContain("tb=setTimeout(function(){busy=false},3050)");
     expect(html).toContain('<a href="/">Owner</a>');
     expect(html).not.toContain("Back to the wall");
   });

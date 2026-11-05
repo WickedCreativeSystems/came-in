@@ -19,7 +19,7 @@ import { storeTokens } from "./tokens";
 import { syncChannels, setCardChannel, retryMissingImages } from "./sync";
 import { pollDue, pollShop } from "./poll";
 import { parseTapInput, recordTap } from "./taps";
-import { sampleWall, recordSampleTap, isSampleTile, deleteOldSampleTaps } from "./sample";
+import { sampleWall, recordSampleTap, undoSampleTap, isSampleTile, deleteOldSampleTaps } from "./sample";
 import { renderTapPage, renderGonePage, renderCardRemoved, type TapTile } from "./render/tap";
 import { renderLanding, renderPrivacy, renderCredits, renderPricing, priceLabel, paymentLink } from "./render/site";
 import { SAMPLE_SHOP, SAMPLE_POSTS } from "../shared/sample";
@@ -30,7 +30,7 @@ import { isValidTimeZone } from "../shared/time";
 import type { WallData, WallTile, ChannelRow } from "../shared/types";
 import type { TokenResponse } from "./buffer/client";
 import { pushShop, pushSample, parseSubscription, saveShopSub, saveSampleSub, pushConfigured, type PushNote } from "./push";
-import { openCounter, getCounter, closeCounter, parseCounterTap, recordCounterTap } from "./counter";
+import { openCounter, getCounter, closeCounter, parseCounterTap, recordCounterTap, undoCounterTap } from "./counter";
 import { renderCounterPage, renderCounterClosed } from "./render/counter";
 import { renderCard, cardSize, type CardSize } from "./render/card";
 import { parsePatch, shopSettings, saveShopSettings, sampleSettings, saveSampleSettings, setSample, sampleFlag, deleteShop } from "./settings";
@@ -824,6 +824,7 @@ app.get("/c/:token", async (c) => {
       tiles: tiles.map((t) => toTapTile(t, now, shop.timezone)),
       token: counter.token,
       endpoint: "/api/counter/tap",
+      undoBase: `/c/${counter.token}/taps/`,
       owner,
       closeEndpoint: owner ? "/api/counter/close" : null,
       wallUrl: "/wall",
@@ -845,6 +846,23 @@ app.post("/api/counter/tap", async (c) => {
   return c.json(out.body, out.status);
 });
 
+// Undo (plan 3.6, P7): the staff screen takes back its newest tap within 60 s.
+app.delete("/c/:token/taps/:id", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const out = await undoCounterTap(c.env, c.req.param("token"), c.req.param("id"));
+  if (out.status === 200) c.executionCtx.waitUntil(room(c.env, out.undo.shopId).broadcast(out.undo.message));
+  return c.json(out.body, out.status);
+});
+
+app.delete("/api/sample/counter/taps/:id", async (c) => {
+  c.header("Cache-Control", "no-store");
+  const session = sampleSession(c, () => randomToken(32));
+  const out = await undoSampleTap(c.env, session, c.req.param("id"));
+  if (out.status !== 200) return c.json({ ok: false, error: out.status === 410 ? "too late" : "no such tap" }, out.status);
+  c.executionCtx.waitUntil(room(c.env, `sample:${session}`).broadcast({ type: "undo", tapId: c.req.param("id"), tileId: out.tileId ?? null }));
+  return c.json({ ok: true });
+});
+
 app.get("/sample/c", async (c) => {
   c.header("Cache-Control", "no-store");
   const session = sampleSession(c, () => randomToken(32));
@@ -857,6 +875,7 @@ app.get("/sample/c", async (c) => {
       tiles: wall.tiles.filter((t) => !t.hidden).slice(0, 12).map((t) => toTapTile(t, now, SAMPLE_SHOP.timezone, true)),
       token: "sample",
       endpoint: "/api/sample/counter/tap",
+      undoBase: "/api/sample/counter/taps/",
       owner: true,
       closeEndpoint: null,
       wallUrl: "/sample",
@@ -878,7 +897,7 @@ app.post("/api/sample/counter/tap", async (c) => {
     c.executionCtx.waitUntil(room(c.env, `sample:${session}`).ring(message));
     c.executionCtx.waitUntil(pushSample(c.env, session, ringNote(SAMPLE_SHOP.name, null, message.sentence, `/sample/post/${tile}`, tile), null));
   }
-  return c.json({ ok: true, counted: true, name: r.name });
+  return c.json({ ok: true, counted: true, name: r.name, id: r.id });
 });
 
 // Ring my phone (plan 3.8; P9).

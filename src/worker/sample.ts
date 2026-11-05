@@ -100,12 +100,24 @@ export async function sampleWall(env: Env, session: string, now = new Date()): P
   };
 }
 
-export async function recordSampleTap(env: Env, session: string, tile: string | null, answer: "post" | "walked_past" | "friend" | "google", now = new Date(), source: "card" | "counter" = "card"): Promise<{ name: string | null; count: number; countToday: number; imageUrl: string | null }> {
-  await env.DB.prepare(`INSERT INTO sample_taps (session_id, tile_id, answer, created_at, source) VALUES (?1, ?2, ?3, ?4, ?5)`).bind(session, tile, answer, now.toISOString(), source).run();
-  if (!tile) return { name: null, count: 0, countToday: 0, imageUrl: null };
+export async function recordSampleTap(env: Env, session: string, tile: string | null, answer: "post" | "walked_past" | "friend" | "google", now = new Date(), source: "card" | "counter" = "card"): Promise<{ name: string | null; count: number; countToday: number; imageUrl: string | null; id: string }> {
+  const ins = await env.DB.prepare(`INSERT INTO sample_taps (session_id, tile_id, answer, created_at, source) VALUES (?1, ?2, ?3, ?4, ?5)`).bind(session, tile, answer, now.toISOString(), source).run();
+  const id = String(ins.meta.last_row_id);
+  if (!tile) return { name: null, count: 0, countToday: 0, imageUrl: null, id };
   const wall = await sampleWall(env, session, now);
   const t = wall.tiles.find((x) => x.id === tile);
-  return { name: t?.name ?? null, count: t?.count ?? 0, countToday: wall.countToday, imageUrl: t?.imageUrl ?? null };
+  return { name: t?.name ?? null, count: t?.count ?? 0, countToday: wall.countToday, imageUrl: t?.imageUrl ?? null, id };
+}
+
+/** The sample staff screen's Undo: this browser's newest staff-screen tap, within 60 s, as for a real shop (plan 3.6, 3.10). */
+export async function undoSampleTap(env: Env, session: string, id: string, now = new Date()): Promise<{ status: 200 | 404 | 410; tileId?: string | null }> {
+  if (!/^[0-9]{1,15}$/.test(id)) return { status: 404 };
+  const tap = await env.DB.prepare(`SELECT rowid AS id, tile_id, created_at FROM sample_taps WHERE rowid = ?1 AND session_id = ?2 AND source = 'counter'`).bind(Number(id), session).first<{ id: number; tile_id: string | null; created_at: string }>();
+  if (!tap) return { status: 404 };
+  const newest = await env.DB.prepare(`SELECT MAX(rowid) AS id FROM sample_taps WHERE session_id = ?1 AND source = 'counter'`).bind(session).first<{ id: number }>();
+  if (newest?.id !== tap.id || now.getTime() - new Date(tap.created_at).getTime() > 60_000) return { status: 410 };
+  await env.DB.prepare(`DELETE FROM sample_taps WHERE rowid = ?1 AND session_id = ?2`).bind(tap.id, session).run();
+  return { status: 200, tileId: tap.tile_id };
 }
 
 export function isSampleTile(id: string | null): boolean {

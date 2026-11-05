@@ -61,6 +61,8 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
 
   function onRoom(m: RoomMessage) {
     if (m.type === "ring") onRing(m);
+    // A tap taken back from the staff screen: counts and header drop by one (plan 3.6). The bell that rang stays rung.
+    else if (m.type === "undo") void load();
     else if (m.type === "posts" || (m.type === "sync" && m.done)) void load();
   }
 

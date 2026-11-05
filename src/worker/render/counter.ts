@@ -8,6 +8,8 @@ export interface CounterPageData {
   tiles: TapTile[];
   token: string;
   endpoint: string;
+  /** Where Undo goes: the tap's id is added to this path (DELETE). */
+  undoBase: string;
   owner: boolean;
   closeEndpoint: string | null;
   wallUrl: string;
@@ -53,13 +55,19 @@ html{scrollbar-width:none}html::-webkit-scrollbar{display:none}
 .menu[hidden]{display:none}
 .ok{position:sticky;top:0;z-index:4;margin:0 16px 12px;height:56px;display:flex;align-items:center;gap:12px;background:var(--paper-2);color:var(--ink);border:1px solid var(--rule);border-radius:3px;padding:0 12px;font-weight:600;font-size:16px;opacity:0;transform:translateY(6px);transition:transform 260ms var(--settle),opacity 260ms var(--settle)}
 .ok.in{transform:none;opacity:1}
+.cmain .ask{order:1}.cmain .ok{order:2}.cmain .grid{order:3}.cmain .rw{order:4}
+.sn{flex:1 1 auto;min-width:0;line-height:1.2;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.undo{flex:none;margin-left:auto;height:32px;padding:0 12px;border:1px solid var(--rule-2);border-radius:3px;background:none;color:var(--ink);font-weight:600;font-size:14px;line-height:1;display:inline-flex;align-items:center;justify-content:center;transition:background 200ms var(--settle),transform 120ms var(--settle)}
+.undo:hover{background:var(--paper-3)}.undo:active{transform:translateY(1px)}.undo:disabled{cursor:default;background:none;transform:none}
+.sp{width:14px;height:14px;border-radius:50%;border:2px solid var(--rule-2);border-top-color:var(--ink);animation:spin 700ms linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .ok.out{transform:translateY(0);opacity:0;transition:opacity 200ms var(--fold)}
 .ok img{width:40px;height:40px;border-radius:3px;object-fit:cover;flex:none}
 .strip{position:fixed;z-index:6;left:16px;right:16px;top:12px;border:1px solid var(--stamp);background:var(--stamp-tint);color:var(--stamp);border-radius:4px;padding:10px 12px;font-size:14px}
 .strip[hidden]{display:none}
 .gone{padding:32px 16px}
 .gone h1{margin:0 0 12px;font-family:var(--fd);font-weight:700;font-size:28px;line-height:1}
-@media (prefers-reduced-motion:reduce){.ok,.ok.in,.ok.out{transition:none;transform:none}.t.chk::after{animation:none}.t{transition:none}.t:active{transform:none}}
+@media (prefers-reduced-motion:reduce){.sp{animation:none}.undo{transition:none}.undo:active{transform:none}.ok,.ok.in,.ok.out{transition:none;transform:none}.t.chk::after{animation:none}.t{transition:none}.t:active{transform:none}}
 `;
 
 function tileHtml(t: TapTile, i: number): string {
@@ -70,9 +78,9 @@ function tileHtml(t: TapTile, i: number): string {
 export function renderCounterPage(d: CounterPageData): string {
   const body = `<header class="hd">${avatarHtml(d.shop.name, d.shop.avatarUrl, 40)}<div><div class="nm">${esc(d.shop.name)}</div>${d.shop.handle ? `<div class="hn">@${esc(d.shop.handle)}</div>` : ""}</div><span class="eyebrow mk">Staff screen${d.locationLabel ? ` · ${esc(d.locationLabel)}` : ""}</span></header>
 <main class="cmain"><div class="ask"><h1>What brought them in?</h1></div>
-<div class="ok" id="ok" role="status" aria-live="polite"></div>
 <div class="grid" id="g">${d.tiles.map(tileHtml).join("")}</div>
 <div class="rw"><p class="or">Or, if it wasn't a post:</p><div class="row"><button class="btn" data-a="walked_past" data-n="Walked past">Walked past</button><button class="btn" data-a="friend" data-n="A friend told them">A friend told them</button><button class="btn" data-a="google" data-n="Found us on Google">Found us on Google</button></div></div>
+<div class="ok" id="ok" role="status" aria-live="polite"></div>
 </main>
 <div class="ft">${
     d.owner
@@ -80,7 +88,7 @@ export function renderCounterPage(d: CounterPageData): string {
       : `<a href="/">Owner</a>`
   }</div>
 <div class="strip" id="err" hidden role="alert">We couldn't reach the shop. Try again?</div>
-<script type="application/json" id="cfg">${jsonForScript({ token: d.token, ep: d.endpoint, close: d.closeEndpoint, wall: d.wallUrl })}</script>`;
+<script type="application/json" id="cfg">${jsonForScript({ token: d.token, ep: d.endpoint, undo: d.undoBase, close: d.closeEndpoint, wall: d.wallUrl })}</script>`;
   return page({ title: `${d.shop.name}: staff screen`, css: CSS, body, script: COUNTER_SCRIPT, head: `<meta name="robots" content="noindex">` });
 }
 
@@ -97,17 +105,25 @@ const COUNTER_SCRIPT = `(function(){
 var C=JSON.parse(document.getElementById('cfg').textContent),$=function(i){return document.getElementById(i)};
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
 var dev=ls('ci_device');if(!dev){var a=new Uint8Array(16);crypto.getRandomValues(a);dev=Array.from(a,function(b){return('0'+b.toString(16)).slice(-2)}).join('');ls('ci_device',dev)}
-var ok=$('ok'),err=$('err'),busy=false,t1,t2,rm=matchMedia('(prefers-reduced-motion: reduce)').matches;
+var ok=$('ok'),err=$('err'),busy=false,t1,t2,t3,tb,cur=null,mark=null,rm=matchMedia('(prefers-reduced-motion: reduce)').matches;
 function e(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
-var mark=null;function confirm(text,img,tileEl){clearTimeout(t1);clearTimeout(t2);if(mark)mark.classList.remove('chk');mark=tileEl||null;if(mark)mark.classList.add('chk');ok.className='ok';ok.innerHTML=(img?'<img src="'+e(img)+'" alt="">':'')+'<span>'+e(text)+'</span>';
+function unmark(){if(mark){mark.classList.remove('chk');mark=null}}
+function fold(){ok.classList.add('out');t2=setTimeout(function(){ok.className='ok';ok.innerHTML=''},rm?0:200)}
+function say(text,img,undo){ok.className='ok';ok.innerHTML=(img?'<img src="'+e(img)+'" alt="">':'')+'<span class="sn">'+e(text)+'</span>'+(undo?'<button type="button" class="undo">Undo</button>':'')}
+function confirm(text,img,tileEl,rec){clearTimeout(t1);clearTimeout(t2);clearTimeout(t3);unmark();mark=tileEl||null;if(mark)mark.classList.add('chk');
+say(text,img,true);var u=ok.querySelector('.undo');u.onclick=function(){undo(u,rec)};rec.img=img;
 requestAnimationFrame(function(){requestAnimationFrame(function(){ok.classList.add('in')})});
-var at=Date.now();t1=setTimeout(function(){ok.classList.add('out');if(mark){mark.classList.remove('chk');mark=null}t2=setTimeout(function(){ok.className='ok';ok.innerHTML='';setTimeout(function(){busy=false},Math.max(0,3050-(Date.now()-at)))},rm?0:200)},2000)}
-function send(b,tries){fetch(C.ep,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b),keepalive:true}).then(function(r){
-if(r.status===409||r.status===410){location.reload();return}if(r.status>=500)throw 0;err.hidden=true}).catch(function(){
-if(tries<5)setTimeout(function(){send(b,tries+1)},(tries+1)*2000);else err.hidden=false})}
-function tap(answer,tile,label,img,el){if(busy)return;busy=true;
-confirm('Got it. '+label+'.',img,el);
-send({token:C.token,tile:tile,answer:answer,device:dev},0)}
+t3=setTimeout(unmark,2000);t1=setTimeout(fold,5000)}
+function finish(text,undone,rec){if(cur!==rec)return;clearTimeout(t1);clearTimeout(t2);if(undone)unmark();say(text,rec.img,false);ok.classList.add('in');t1=setTimeout(fold,2000)}
+function undo(u,rec){if(u.disabled)return;u.style.width=u.offsetWidth+'px';u.disabled=true;u.innerHTML='<i class="sp" aria-hidden="true"></i>';u.setAttribute('aria-label','Undoing');clearTimeout(t1);
+rec.p.then(function(id){if(!id){finish('Undone.',true,rec);return}
+return fetch(C.undo+encodeURIComponent(id),{method:'DELETE'}).then(function(r){if(r.status===200){err.hidden=true;finish('Undone.',true,rec)}else if(r.status===404||r.status===410){finish('Too late to undo.',false,rec)}else throw 0})}).catch(function(){if(cur!==rec)return;err.hidden=false;u.disabled=false;u.style.width='';u.innerHTML='Undo';u.removeAttribute('aria-label');t1=setTimeout(fold,5000)})}
+function send(b,tries){return fetch(C.ep,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(b),keepalive:true}).then(function(r){
+if(r.status===409||r.status===410){location.reload();return null}if(r.status>=500)throw 0;err.hidden=true;return r.json().then(function(j){return j&&j.counted&&j.id?j.id:null},function(){return null})}).catch(function(){
+if(tries<5)return new Promise(function(res){setTimeout(res,(tries+1)*2000)}).then(function(){return send(b,tries+1)});err.hidden=false;return null})}
+function tap(answer,tile,label,img,el){if(busy)return;busy=true;clearTimeout(tb);tb=setTimeout(function(){busy=false},3050);
+var rec={p:null,img:img};cur=rec;confirm('Got it. '+label+'.',img,el,rec);
+rec.p=send({token:C.token,tile:tile,answer:answer,device:dev},0)}
 $('g').addEventListener('click',function(ev){var b=ev.target.closest('.t');if(!b)return;var n=b.dataset.n;tap('post',b.dataset.i,n.charAt(0).toUpperCase()+n.slice(1),b.dataset.img||null,b)});
 document.querySelectorAll('.row .btn').forEach(function(b){b.onclick=function(){tap(b.dataset.a,null,b.dataset.n,null)}});
 var own=$('own');if(own)own.onclick=function(){var m=$('menu');m.hidden=!m.hidden;this.setAttribute('aria-expanded',String(!m.hidden))};

@@ -128,8 +128,14 @@ nav.bottombar { display: none; }
 /* The sample's phone (sample.html) */
 .phone-wrap { position: fixed; right: 24px; bottom: 24px; z-index: 30; display: none; }
 @media (min-width: 1024px) { .phone-wrap { display: block; } }
+/* A short window (NerdCider, Nov 5): the frame is fixed to the window, so it always fits it: 88px of header room above, 24px below.
+   Under 560px of window height it scales down evenly (to .75) instead of shrinking, and the tap page scrolls inside it. */
+@media (min-width: 1024px) and (max-height: 559px) {
+  .phone-wrap { transform: scale(.75); transform-origin: bottom right; }
+  .phone-wrap .phone { height: min(650px, calc((100vh - 112px) / .75)); }
+}
 .phone-wrap .hint { position: absolute; right: 0; bottom: calc(100% + 10px); font-size: 13px; color: var(--ink-2); white-space: nowrap; display: flex; align-items: center; gap: 6px; }
-.phone { width: 322px; height: 650px; border-radius: 30px; background: #231F1B; padding: 10px; box-shadow: 0 20px 50px -20px rgba(0, 0, 0, .45), 0 0 0 1px rgba(0, 0, 0, .25); }
+.phone { width: 322px; height: min(650px, calc(100vh - 112px)); border-radius: 30px; background: #231F1B; padding: 10px; box-shadow: 0 20px 50px -20px rgba(0, 0, 0, .45), 0 0 0 1px rgba(0, 0, 0, .25); }
 @media (prefers-color-scheme: dark) { :root[data-theme="system"] .phone { background: #2A251E; box-shadow: 0 20px 50px -20px rgba(0, 0, 0, .7), 0 0 0 1px rgba(255, 255, 255, .08); } }
 :root[data-theme="dark"] .phone { background: #2A251E; box-shadow: 0 20px 50px -20px rgba(0, 0, 0, .7), 0 0 0 1px rgba(255, 255, 255, .08); }
 .phone .screen { width: 100%; height: 100%; border: 0; border-radius: 22px; background: #F4F2ED; display: block; }

@@ -90,7 +90,15 @@ export interface SyncMessage {
   done?: boolean;
 }
 
-export type RoomMessage = RingMessage | PostsMessage | SyncMessage | { type: "hello"; now: string };
+/** A tap taken back from the staff screen (plan 3.6): open owner screens take it off their counts. */
+export interface UndoMessage {
+  type: "undo";
+  tapId: string;
+  tileId: string | null;
+  locationId?: string | null;
+}
+
+export type RoomMessage = RingMessage | UndoMessage | PostsMessage | SyncMessage | { type: "hello"; now: string };
 
 export interface TapResponse {
   ok: boolean;
