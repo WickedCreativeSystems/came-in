@@ -258,3 +258,24 @@ describe("screens paint a frame at once (plan 3.4)", () => {
     expect(staff).not.toMatch(/aria-label="the /i);
   });
 });
+
+describe("each day badge puts one text in the accessibility tree (EaseBot round 4)", () => {
+  it("the short form is hidden from screen readers and its class never collides with the buttons row", async () => {
+    for (const path of ["/sample/t", "/sample/c"]) {
+      const html = await (await call(path)).text();
+      const shorts = html.match(/<span class="bgs"[^>]*>/g) ?? [];
+      expect(shorts.length).toBeGreaterThan(5);
+      expect(shorts.every((s) => s.includes('aria-hidden="true"'))).toBe(true);
+      // The long form is always in the tree (visually hidden on a narrow tile), never display:none.
+      expect(html).toMatch(/@container \(max-width:179px\)\{\.bgl\{position:absolute/);
+      expect(html).not.toMatch(/class="bs">[A-Z]/);
+    }
+  });
+
+  it("the footer's privacy line is ink-2 (4.5 to 1 in both themes)", async () => {
+    const tap = await (await call("/sample/t")).text();
+    expect(tap).toMatch(/\.ft\{[^}]*color:var\(--ink-2\)/);
+    const landing = await (await call("/")).text();
+    expect(landing).toMatch(/\.foot\{[^}]*color:var\(--ink-2\)/);
+  });
+});

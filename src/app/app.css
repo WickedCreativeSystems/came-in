@@ -297,7 +297,7 @@ nav.bottombar { display: none; }
 p.small.has-hint { margin-bottom: 0; }
 .tile { container-type: inline-size; }
 .tile .b-short { display: none; }
-@container (max-width: 179px) { .tile .b-long { display: none; } .tile .b-short { display: inline; } }
+@container (max-width: 179px) { .tile .b-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } .tile .b-short { display: inline; } }
 @media (max-width: 720px) {
   .try .qr { display: none; }
   .try { grid-template-columns: 1fr; }

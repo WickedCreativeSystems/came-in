@@ -24,7 +24,7 @@ const SITE_CSS = `
 .why{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;padding:0 0 64px}
 .why p{margin:8px 0 0}
 @media (max-width:720px){.why{grid-template-columns:1fr}}
-.foot{border-top:1px solid var(--rule);padding:16px 0 32px;font-size:11px;line-height:1.3;color:var(--ink-3);display:flex;gap:8px 16px;flex-wrap:wrap}
+.foot{border-top:1px solid var(--rule);padding:16px 0 32px;font-size:11px;line-height:1.3;color:var(--ink-2);display:flex;gap:8px 16px;flex-wrap:wrap}
 .foot a{color:var(--ink-2)}
 .prose .body{font-size:16px;font-weight:400;margin:0 0 8px}
 .prose .price{font-family:var(--fd);font-weight:700;font-size:22px;line-height:1.2;margin:16px 0}

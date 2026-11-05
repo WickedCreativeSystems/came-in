@@ -34,8 +34,8 @@ html{scrollbar-width:none}html::-webkit-scrollbar{display:none}
 .t img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .t:active{transform:scale(.97)}
 .t{container-type:inline-size}
-.bs{display:none}
-@container (max-width:179px){.bl{display:none}.bs{display:inline}}
+.bgs{display:none}
+@container (max-width:179px){.bgl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}.bgs{display:inline}}
 .bd{position:absolute;top:8px;left:8px;height:22px;padding:0 7px;border-radius:2px;background:var(--label);color:var(--label-ink);font-weight:600;font-size:12px;letter-spacing:.04em;text-transform:uppercase;display:inline-flex;align-items:center;line-height:1}
 .tx{position:absolute;inset:0;padding:38px 14px 14px;font-family:var(--fd);font-weight:700;font-size:22px;line-height:1.02;letter-spacing:-.005em;color:var(--ink);overflow:hidden;overflow-wrap:anywhere}
 .rw{position:sticky;bottom:0;background:var(--paper);padding:4px 16px 16px}
@@ -62,7 +62,7 @@ html{scrollbar-width:none}html::-webkit-scrollbar{display:none}
 
 function tileHtml(t: TapTile, i: number): string {
   const inner = t.imageUrl ? `<img src="${esc(t.imageUrl)}" alt="" ${i < 8 ? "" : 'loading="lazy"'} decoding="async">` : `<span class="tx">${esc(t.text)}</span>`;
-  return `<button class="t" data-i="${esc(t.id)}" data-n="${esc(t.name)}"${t.imageUrl ? ` data-img="${esc(t.imageUrl)}"` : ""} aria-label="${esc(tileLabel(t.name))}"><span class="pic">${inner}<span class="bd"><span class="bl">${esc(t.badge)}</span><span class="bs">${esc(t.badgeShort)}</span></span></span><span class="cn">${esc(tileLabel(t.name))}</span></button>`;
+  return `<button class="t" data-i="${esc(t.id)}" data-n="${esc(t.name)}"${t.imageUrl ? ` data-img="${esc(t.imageUrl)}"` : ""} aria-label="${esc(tileLabel(t.name))}"><span class="pic">${inner}<span class="bd"><span class="bgl">${esc(t.badge)}</span><span class="bgs" aria-hidden="true">${esc(t.badgeShort)}</span></span></span><span class="cn">${esc(tileLabel(t.name))}</span></button>`;
 }
 
 export function renderCounterPage(d: CounterPageData): string {

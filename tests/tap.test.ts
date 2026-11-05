@@ -50,7 +50,7 @@ describe("the tap page (P4, plan 3.5)", () => {
     // Story pinned full width, with TODAY in brass.
     const first = html.indexOf('class="t');
     expect(html.slice(first, first + 40)).toContain('class="t st"');
-    expect(html).toMatch(/class="bd lv"><span class="bl">TODAY<\/span><span class="bs">LIVE<\/span>/);
+    expect(html).toMatch(/class="bd lv"><span class="bgl">TODAY<\/span><span class="bgs" aria-hidden="true">LIVE<\/span>/);
     // P22: fonts self-hosted; nothing on the tap page loads from another origin.
     expect(html).toContain("/fonts/big-shoulders-latin.woff2");
     expect(html.match(/(?:src|href)="https?:\/\//g)).toBeNull();
