@@ -84,7 +84,8 @@ export function BellBanner({ ring, onGone }: { ring: Ring | null; onGone: () => 
     </>
   );
   return (
-    <div class={`ring ${phase}`} role="status" ref={box}>
+    <div ref={box}>
+    <div class={`ring ${phase}`} role="status">
       {ring.href ? (
         <a class="ring-body" href={ring.href}>
           {body}
@@ -95,6 +96,7 @@ export function BellBanner({ ring, onGone }: { ring: Ring | null; onGone: () => 
       <button class="x" aria-label="Dismiss" onClick={fold}>
         <Icon name="x" size={18} />
       </button>
+    </div>
     </div>
   );
 }
