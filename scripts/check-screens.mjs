@@ -28,11 +28,12 @@ for (const width of [360, 1280]) {
     }
     for (const p of paths) {
       await page.goto(base + p);
-      await page.waitForSelector("header.sign", { timeout: 8000 }).catch(() => undefined);
+      await page.waitForSelector("header.sign, header.hd", { timeout: 8000 }).catch(() => undefined);
       await page.waitForTimeout(900);
       const r = await page.evaluate(() => ({
         frame: document.querySelectorAll(".sk-g, .sk-h").length,
-        top: document.querySelector("header.sign")?.getBoundingClientRect().top ?? null,
+        // Owner screens have header.sign; the tap page and the staff screen have their own .hd.
+        top: (document.querySelector("header.sign") ?? document.querySelector("header.hd"))?.getBoundingClientRect().top ?? null,
         wide: document.documentElement.scrollWidth > innerWidth,
         // Each day badge shows one text and exposes one text to a screen reader (EaseBot, Nov 5).
         twoBadges: [...document.querySelectorAll(".bd, .tile .day")].filter((e) => {
