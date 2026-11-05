@@ -22,6 +22,9 @@ export interface CardData {
   printedEndpoint: string;
   backUrl: string;
   sizeHref: (s: CardSize) => string;
+  /** With two or more locations: the card is for one, and the page switches between them (plan 3.11). */
+  locationName?: string | null;
+  locationSwitches?: { label: string; href: string; current: boolean }[];
 }
 
 // look.md section 4: the card is drawn 298 units wide, and every value is in
@@ -44,6 +47,9 @@ body{background:var(--paper-2)}
 .card .av{width:calc(48 * var(--u))!important;height:calc(48 * var(--u))!important;font-size:calc(22 * var(--u))!important;margin:0 0 calc(10 * var(--u));-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .card .nm{font-family:var(--fd);font-weight:700;font-size:calc(28 * var(--u));line-height:1;letter-spacing:.005em}
 .card .hn{font-size:calc(12 * var(--u));line-height:1.2;color:#6E665D;margin:calc(3 * var(--u)) 0 calc(22 * var(--u))}
+.card .hn.tight{margin-bottom:calc(2 * var(--u))}
+.card .loc{font-size:calc(12 * var(--u));line-height:1.2;font-weight:600;color:#231F1B;margin:0 0 calc(22 * var(--u))}
+.sizes .lab{font-size:14px;font-weight:600;color:var(--ink-2);align-self:center;margin-right:4px}
 .card .ask{font-family:var(--fd);font-weight:700;font-size:calc(34 * var(--u));line-height:.98;letter-spacing:-.005em;margin:0 0 calc(6 * var(--u))}
 .card .sub{font-size:calc(13 * var(--u));color:#6E665D;margin:0 0 calc(18 * var(--u));line-height:1.3}
 .card .qr{width:calc(132 * var(--u));height:calc(132 * var(--u));border:1px solid #D8D3CA;border-radius:3px;padding:calc(6 * var(--u));background:#FFF;flex:none}
@@ -68,13 +74,13 @@ export function renderCard(d: CardData): string {
   const sizes = (Object.keys(CARD_SIZES) as CardSize[])
     .map((k) => `<a href="${esc(d.sizeHref(k))}"${k === d.size ? ' aria-current="page"' : ""}>${CARD_SIZES[k].label}</a>`)
     .join("");
-  const body = `<div class="bar"><h1>Your card</h1><nav class="sizes" aria-label="Paper size">${sizes}</nav>
+  const body = `<div class="bar"><h1>Your card</h1>${d.locationSwitches?.length ? `<nav class="sizes locs" aria-label="Card for"><span class="lab">Card for</span>${d.locationSwitches.map((l) => `<a href="${esc(l.href)}"${l.current ? ' aria-current="page"' : ""}>${esc(l.label)}</a>`).join("")}</nav>` : ""}<nav class="sizes" aria-label="Paper size">${sizes}</nav>
 <button class="btn primary" id="print">Print</button><button class="btn" id="pdf">Save as PDF</button><a class="btn quiet" href="${esc(d.backUrl)}">Back</a></div>
 <div class="stage"><div class="card">
 <span class="punch" aria-hidden="true"></span>
 ${avatarHtml(d.shop.name, d.shop.avatarUrl, 48)}
 <div class="nm">${esc(d.shop.name)}</div>
-${d.shop.handle ? `<div class="hn">@${esc(d.shop.handle)}</div>` : `<div class="hn"></div>`}
+${d.shop.handle ? `<div class="hn${d.locationName ? " tight" : ""}">@${esc(d.shop.handle)}</div>` : `<div class="hn${d.locationName ? " tight" : ""}"></div>`}${d.locationName ? `<div class="loc">${esc(d.locationName)}</div>` : ""}
 <p class="ask">Saw us online?</p>
 <p class="sub">Tap the post that brought you in.<br>Three seconds, no app.</p>
 <div class="qr" aria-label="QR code for the tap page">${d.qrSvg}</div>

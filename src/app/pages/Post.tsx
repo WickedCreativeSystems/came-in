@@ -7,6 +7,8 @@ import { api, ApiError } from "../lib/api";
 import { applyTheme } from "../lib/theme";
 import { HeaderSkeleton, TilesSkeleton } from "../ui/Skeleton";
 import { tileLabel } from "@shared/names";
+import { LocationTabs } from "../ui/LocationTabs";
+import { readTab, saveTab, locQuery } from "../lib/locationTab";
 import { Header } from "../ui/Header";
 import { Marks } from "../ui/marks";
 import { Icon } from "../ui/icons";
@@ -17,6 +19,7 @@ interface PostData {
   sent: string;
   byDay: { label: string; n: number }[];
   bySource: { label: string; n: number }[];
+  byLocation?: { label: string; n: number }[];
   noteLeft: boolean;
   media: "image" | "video" | "none";
   channels: Channel[];
@@ -44,6 +47,7 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
   const [nick, setNick] = useState("");
   const [nickState, setNickState] = useState<"rest" | "saving" | "saved">("rest");
   const [nickErr, setNickErr] = useState<string | null>(null);
+  const [loc, setLoc] = useState<string | null | undefined>(undefined);
   const [again, setAgain] = useState(false);
   const [line, setLine] = useState<string | null>(null);
   const [ideaLine, setIdeaLine] = useState<string | null>(null);
@@ -51,9 +55,9 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
   const base = sample ? "/sample" : "";
   const apiBase = `${sample ? "/api/sample/post" : "/api/post"}/${encodeURIComponent(tileId)}`;
 
-  async function load() {
+  async function load(l: string | null | undefined = loc) {
     try {
-      const d = await api<PostData>(apiBase);
+      const d = await api<PostData>(apiBase + (sample ? "" : locQuery(l ?? null)));
       setData(d);
       setNick(d.tile.nickname ?? "");
     } catch (e) {
@@ -66,9 +70,13 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
       .then((w) => {
         setWall(w);
         applyTheme(w.shop.theme);
+        const saved = sample ? null : readTab(w.shop.id);
+        const l = saved && w.locations.some((x) => x.id === saved) ? saved : null;
+        setLoc(l);
+        void load(l);
+        if (l) api<WallData>(`/api/wall${locQuery(l)}`).then(setWall).catch(() => undefined);
       })
       .catch(() => (location.href = "/"));
-    void load();
   }, []);
 
   if (!wall)
@@ -88,6 +96,16 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
         <a class="btn quiet sm back" href={sample ? "/sample" : "/wall"}>
           Your posts
         </a>
+        <LocationTabs
+          locations={wall.locations}
+          value={loc ?? null}
+          onChange={(id) => {
+            saveTab(wall.shop.id, id);
+            setLoc(id);
+            void load(id);
+            api<WallData>(`/api/wall${locQuery(id)}`).then(setWall).catch(() => undefined);
+          }}
+        />
         {missing && <p class="muted">This post isn't on your wall any more.</p>}
         {t && data && (
           <div class="post-grid">
@@ -124,6 +142,8 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
               <Receipt rows={data.byDay} />
               {data.bySource.length > 0 && <div class="caption muted receipt-h">How they came in</div>}
               <Receipt rows={data.bySource} />
+              {data.byLocation && data.byLocation.length > 0 && <div class="caption muted receipt-h">Where they came in</div>}
+              {data.byLocation && <Receipt rows={data.byLocation} />}
 
               <div class="field nick">
                 <div class="eyebrow">Nickname</div>

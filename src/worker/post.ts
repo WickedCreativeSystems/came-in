@@ -3,6 +3,7 @@
 import type { Env } from "./env";
 import type { ShopRow } from "./db";
 import { wallTiles } from "./db";
+import { listLocations } from "./locations";
 import { sentCaption, dayPhrase } from "../shared/names";
 import { shopDayKey, weekdayName, shortDate, shopDaysBetween } from "../shared/time";
 import type { WallTile } from "../shared/types";
@@ -12,6 +13,8 @@ export interface PostPage {
   sent: string;
   byDay: { label: string; n: number }[];
   bySource: { label: string; n: number }[];
+  /** "Where they came in", under All locations with two or more locations. */
+  byLocation?: { label: string; n: number }[];
   noteLeft: boolean;
   media: "image" | "video" | "none";
   channels: { id: string; name: string; service: string; needsPhoto: boolean; needsBoard: boolean }[];
@@ -42,23 +45,30 @@ export function sourceLines(taps: { source: string }[]): { label: string; n: num
   ];
 }
 
-export async function shopPostPage(env: Env, shop: ShopRow, tileId: string, now = new Date()): Promise<PostPage | null> {
-  const tiles = await wallTiles(env, shop, now, { includeHidden: true });
+export async function shopPostPage(env: Env, shop: ShopRow, tileId: string, now = new Date(), locationId: string | null = null): Promise<PostPage | null> {
+  const tiles = await wallTiles(env, shop, now, { includeHidden: true, locationId });
   const tile = tiles.find((t) => t.id === tileId);
   if (!tile) return null;
   const [taps, row, kinds, channels] = await Promise.all([
-    env.DB.prepare(`SELECT source, created_at FROM taps WHERE tile_id = ?1 AND answer = 'post'`).bind(tileId).all<{ source: string; created_at: string }>(),
+    env.DB.prepare(`SELECT source, location_id, created_at FROM taps WHERE tile_id = ?1 AND answer = 'post' AND shop_id = ?2 AND (?3 IS NULL OR location_id = ?3)`).bind(tileId, shop.id, locationId).all<{ source: string; location_id: string | null; created_at: string }>(),
     env.DB.prepare(`SELECT note_id FROM tiles WHERE id = ?1`).bind(tileId).first<{ note_id: string | null }>(),
     env.DB.prepare(`SELECT kind FROM posts WHERE tile_id = ?1`).bind(tileId).all<{ kind: string }>(),
     env.DB.prepare(`SELECT id, name, display_name, service FROM channels WHERE shop_id = ?1 AND enabled = 1 ORDER BY rowid`).bind(shop.id).all<{ id: string; name: string; display_name: string | null; service: string }>(),
   ]);
   const media = kinds.results.some((k) => k.kind === "photo") ? "image" : kinds.results.some((k) => k.kind === "video") ? "video" : "none";
   void dayPhrase;
+  const locs = await listLocations(env, shop.id);
+  let byLocation: { label: string; n: number }[] | undefined;
+  if (!locationId && locs.length >= 2) {
+    const names = new Map(locs.map((l) => [l.id, l.name]));
+    byLocation = [...locs.map((l) => ({ label: l.name, n: taps.results.filter((t) => t.location_id === l.id).length })), { label: "Online", n: taps.results.filter((t) => !t.location_id || !names.has(t.location_id)).length }];
+  }
   return {
     tile,
     sent: sentCaption(new Date(tile.firstSentAt), now, shop.timezone),
     byDay: groupByDay(taps.results.map((t) => ({ at: t.created_at })), now, shop.timezone),
     bySource: sourceLines(taps.results),
+    byLocation,
     noteLeft: !!row?.note_id && row.note_id !== "making",
     media,
     channels: channels.results.map((c) => ({ id: c.id, name: c.display_name || c.name, service: c.service, needsPhoto: (c.service === "instagram" || c.service === "tiktok") && media === "none", needsBoard: c.service === "pinterest" })),

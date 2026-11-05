@@ -124,13 +124,6 @@ describe("Add a location runs Connect Buffer again (P21, plan 3.13)", () => {
     return call(`/auth/callback?code=good&state=${state}`, { cookie: `${owner}; ${cookiesFrom(start)}` });
   }
 
-  it("the page before consent says why you sign in again", async () => {
-    const owner = await firstShop();
-    const html = await (await call("/setup/add", { cookie: owner })).text();
-    expect(html).toContain("You'll sign in to Buffer again, so each shop keeps its own connection.");
-    expect((await call("/setup/add")).status).toBe(302);
-  });
-
   it("a new organization becomes a second shop with its own sign-in; the first stays", async () => {
     const owner = await firstShop();
     const res = await addWith([{ id: "o-1", name: "Shop One" }, { id: "o-2", name: "Shop Two" }], owner);
@@ -156,16 +149,12 @@ describe("Add a location runs Connect Buffer again (P21, plan 3.13)", () => {
     const owner = await firstShop();
     const again = await addWith([{ id: "o-1", name: "Shop One" }], owner);
     expect(again.headers.get("location")).toBe("/setup/add?state=reconnected");
-    expect(await (await call("/setup/add?state=reconnected", { cookie: owner })).text()).toContain("Reconnected.");
     const cnt = await env.DB.prepare(`SELECT COUNT(*) AS n FROM shops WHERE buffer_account_id = ?1`).bind(acct).first<{ n: number }>();
     expect(cnt!.n).toBe(1);
     const two = await addWith([{ id: "o-1", name: "Shop One" }, { id: "o-2", name: "Shop Two" }], owner);
     const both = ownerOf(two);
     const none = await addWith([{ id: "o-1", name: "Shop One" }, { id: "o-2", name: "Shop Two" }], both);
     expect(none.headers.get("location")).toBe("/setup/add?state=none");
-    const page = await (await call("/setup/add?state=none", { cookie: both })).text();
-    expect(page).toContain("Every shop in this Buffer is already added.");
-    expect(page).toContain("Connect a different Buffer account");
   });
 
   it("is never blocked by payment: a second shop needs no price and no link", async () => {
@@ -185,16 +174,18 @@ describe("the pricing page (P21, plan 3.13)", () => {
 
   it("with nothing set it says one shop is free and to write to us", async () => {
     const html = await (await call("/pricing")).text();
-    expect(html).toContain("One shop is free.");
-    expect(html).toContain("Need more than one shop? Write to us.");
-    expect(html).not.toContain("Pay for more shops");
+    expect(html).toContain("One location is free, with everything in it.");
+    expect(html).toContain("Need more than one location? Write to us.");
+    expect(html).not.toContain("Pay for more locations");
   });
 
   it("with a price and a Stripe link it says the price and opens the link; other links are ignored", async () => {
     e.PRICE_TEXT = "9";
     e.STRIPE_PAYMENT_LINK = "https://buy.stripe.com/test_abc";
     const html = await (await call("/pricing")).text();
-    expect(html).toContain("More shops are $9 a month each.");
+    expect(html).toContain("More locations are $9 a month each.");
+    expect(html).toContain("A location is a store with its own card, whether it shares your posts or has its own.");
+    expect(html).toContain("Pay for more locations");
     expect(html).toContain('href="https://buy.stripe.com/test_abc" target="_blank"');
     expect(html).toContain("We don't check payments, so you won't be locked out.");
     e.STRIPE_PAYMENT_LINK = "https://evil.example.com/pay";

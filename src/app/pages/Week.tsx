@@ -8,6 +8,8 @@ import { drawShare } from "../lib/share";
 import { HeaderSkeleton, TilesSkeleton } from "../ui/Skeleton";
 import { Header } from "../ui/Header";
 import { Tile } from "../ui/Tile";
+import { LocationTabs } from "../ui/LocationTabs";
+import { readTab, saveTab, locQuery } from "../lib/locationTab";
 import { PostAgainSheet, PostThisSheet, Sheet, outcomeLine, resultLine, type Channel, type Outcome } from "../ui/Sheets";
 
 type Range = "today" | "this" | "last" | "month";
@@ -15,7 +17,7 @@ type Range = "today" | "this" | "last" | "month";
 interface WeekData {
   range: Range;
   summary: { headline: string; patterns: string[]; ratio: string | null; receipts: { label: string; n: number }[]; people: number; posts: number; topTileId: string | null };
-  tiles: (WallTile & { weekPeople: number })[];
+  tiles: (WallTile & { weekPeople: number; byLocation?: { label: string; n: number }[] })[];
   channels: Channel[];
   drafts: boolean;
 }
@@ -28,6 +30,8 @@ function rangeFromUrl(): Range {
 export function Week({ sample }: { sample: boolean }): JSX.Element {
   const [wall, setWall] = useState<WallData | null>(null);
   const [range, setRange] = useState<Range>(rangeFromUrl());
+  // The location tab (null: all), shared with the Wall and A post; undefined until the shop is known (plan 3.13).
+  const [loc, setLoc] = useState<string | null | undefined>(undefined);
   const [data, setData] = useState<WeekData | null>(null);
   const [error, setError] = useState(false);
   const [again, setAgain] = useState<string | null>(null);
@@ -43,18 +47,23 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
       .then((w) => {
         setWall(w);
         applyTheme(w.shop.theme);
+        const saved = sample ? null : readTab(w.shop.id);
+        setLoc(saved && w.locations.some((l) => l.id === saved) ? saved : null);
       })
       .catch((e) => (e instanceof ApiError && e.status === 401 ? (location.href = "/") : setError(true)));
   }, []);
   useEffect(() => {
+    if (loc === undefined) return;
     setData(null);
+    // The header's count follows the chosen location too.
+    if (!sample) api<WallData>(`/api/wall${locQuery(loc)}`).then(setWall).catch(() => undefined);
     const u = new URL(location.href);
     u.searchParams.set("range", range);
     history.replaceState(null, "", u.pathname + (range === "this" ? "" : `?range=${range}`));
-    api<WeekData>(`${sample ? "/api/sample/week" : "/api/week"}?range=${range}`)
+    api<WeekData>(`${sample ? "/api/sample/week" : "/api/week"}?range=${range}${sample ? "" : locQuery(loc, "&")}`)
       .then(setData)
       .catch(() => setError(true));
-  }, [range]);
+  }, [range, loc]);
 
   if (!wall)
     return (
@@ -109,6 +118,14 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
             </a>
           </div>
         )}
+        <LocationTabs
+          locations={wall.locations}
+          value={loc ?? null}
+          onChange={(id) => {
+            saveTab(wall.shop.id, id);
+            setLoc(id);
+          }}
+        />
         <nav class="range-tabs" aria-label="Range">
           {tabs.map(([r, label]) => (
             <button key={r} class="range-tab body-strong" aria-pressed={range === r} onClick={() => setRange(r)}>
@@ -164,6 +181,7 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
               {data.tiles.filter((t) => t.weekPeople > 0).map((t, i) => (
                 <div class="week-tile" key={t.id}>
                   <Tile tile={{ ...t, count: t.weekPeople }} index={i} now={now} tz={wall.shop.timezone} flash={false} href={`${base}/post/${t.id}`} />
+                  {t.byLocation && t.byLocation.length > 0 && <p class="caption muted by-loc">{t.byLocation.map((x) => `${x.label} ${x.n}`).join(" · ")}</p>}
                   <div class="tile-actions">
                     <button class="tile-action" aria-label="Post it again" onClick={() => setAgain(t.id)}>
                       <span class="long">Post it again</span>

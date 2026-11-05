@@ -85,12 +85,12 @@ export async function dropOwnerShop(c: Context<{ Bindings: Env }>, shopId: strin
 }
 
 /** ci_oauth: the PKCE verifier and state for ten minutes (plan 1.2). */
-export async function setOAuthCookie(c: Context<{ Bindings: Env }>, data: { verifier: string; state: string; next?: string; add?: boolean }): Promise<void> {
+export async function setOAuthCookie(c: Context<{ Bindings: Env }>, data: { verifier: string; state: string; next?: string; add?: boolean; addName?: string }): Promise<void> {
   const value = await sign(btoa(JSON.stringify({ ...data, at: Date.now() })), c.env.COOKIE_SECRET);
   setCookie(c, OAUTH_COOKIE, value, { httpOnly: true, secure: secure(c), sameSite: "Lax", path: "/", maxAge: 600 });
 }
 
-export async function readOAuthCookie(c: Context<{ Bindings: Env }>): Promise<{ verifier: string; state: string; next?: string; add?: boolean } | null> {
+export async function readOAuthCookie(c: Context<{ Bindings: Env }>): Promise<{ verifier: string; state: string; next?: string; add?: boolean; addName?: string } | null> {
   const value = await verify(getCookie(c, OAUTH_COOKIE), c.env.COOKIE_SECRET);
   if (!value) return null;
   try {

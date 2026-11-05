@@ -12,6 +12,8 @@ export interface CounterPageData {
   closeEndpoint: string | null;
   wallUrl: string;
   sample: boolean;
+  /** With two or more locations, the one this screen is at. */
+  locationLabel?: string | null;
 }
 
 const CSS = `${AVATAR_CSS}
@@ -64,7 +66,7 @@ function tileHtml(t: TapTile, i: number): string {
 }
 
 export function renderCounterPage(d: CounterPageData): string {
-  const body = `<header class="hd">${avatarHtml(d.shop.name, d.shop.avatarUrl, 40)}<div><div class="nm">${esc(d.shop.name)}</div>${d.shop.handle ? `<div class="hn">@${esc(d.shop.handle)}</div>` : ""}</div><span class="eyebrow mk">Staff screen</span></header>
+  const body = `<header class="hd">${avatarHtml(d.shop.name, d.shop.avatarUrl, 40)}<div><div class="nm">${esc(d.shop.name)}</div>${d.shop.handle ? `<div class="hn">@${esc(d.shop.handle)}</div>` : ""}</div><span class="eyebrow mk">Staff screen${d.locationLabel ? ` · ${esc(d.locationLabel)}` : ""}</span></header>
 <div class="ask"><h1>What brought them in?</h1></div>
 <div class="ok" id="ok" role="status" aria-live="polite"></div>
 <div class="grid" id="g">${d.tiles.map(tileHtml).join("")}</div>

@@ -4,6 +4,9 @@ import { api } from "./api";
 export interface Locations {
   current: string;
   shops: { id: string; name: string; avatarUrl: string | null }[];
+  /** This shop's locations (plan 3.13). */
+  locations: { id: string; name: string; first: boolean; hasTaps: boolean }[];
+  cap: number;
   price: string | null;
   pay: boolean;
 }

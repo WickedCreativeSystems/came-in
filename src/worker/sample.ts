@@ -89,6 +89,9 @@ export async function sampleWall(env: Env, session: string, now = new Date()): P
     countToday: today,
     countThisWeek: weekTaps,
     hasTapped: taps.length > 0,
+    // The sample bakery has one location (plan 3.13).
+    locations: [{ id: "sample", name: SAMPLE_SHOP.name }],
+    location: null,
     sync: { status: "idle", count: SAMPLE_POSTS.length, startedAt: null },
     strips: { rateLimited: false, reconnect: false },
     // The sample is a few weeks in: the checklist half done (look.md section 10).

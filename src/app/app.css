@@ -330,3 +330,31 @@ p.small.has-hint { margin-bottom: 0; }
 .sk-g { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 16px 0; }
 .sk-t { aspect-ratio: 1; background: var(--paper-2); border-radius: 4px; display: block; }
 @media (min-width: 720px) { .sk-g { grid-template-columns: repeat(4, 1fr); } }
+.loc-tabs-wrap { position: relative; margin: 0 0 12px; }
+.loc-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; }
+.loc-tabs::-webkit-scrollbar { display: none; }
+.loc-chip { flex: none; height: 36px; padding: 0 16px; border-radius: var(--r); border: 1px solid var(--rule-2); background: var(--paper); color: var(--ink); font-weight: 600; font-size: 15px; max-width: 220px; transition: background 200ms ease, color 200ms ease; }
+.loc-chip span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.loc-chip:hover { background: var(--paper-3); }
+.loc-chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+@media (max-width: 720px) { .loc-tabs-wrap::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 24px; background: linear-gradient(to right, transparent, var(--paper)); pointer-events: none; } }
+.which-loc { display: grid; gap: 8px; max-width: 420px; }
+.which-btn { height: 56px; width: 100%; font-weight: 600; }
+.by-loc { margin: 6px 0 0; }
+
+.add-loc .add-form { max-width: 480px; }
+.add-loc .field { margin: 0 0 16px; }
+.add-loc .field label { display: block; margin: 0 0 6px; }
+.posts-choice { border: 0; padding: 0; margin: 0 0 24px; display: grid; gap: 8px; }
+.posts-choice legend { padding: 0; margin: 0 0 8px; }
+.radio-row { display: flex; gap: 12px; align-items: flex-start; padding: 16px; border: 1px solid var(--rule-2); border-radius: var(--r); cursor: pointer; }
+.radio-row.on { border: 1.5px solid var(--ink); background: var(--paper-2); padding: 15.5px; }
+.radio-row input { margin-top: 3px; accent-color: var(--ink); }
+.radio-row span { display: grid; gap: 2px; }
+@media (max-width: 720px) { .add-loc .btn-row { flex-direction: column; align-items: stretch; } }
+
+.loc-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.loc-edit { flex: 1 1 auto; min-width: 0; padding: 8px 0; }
+.loc-rule { height: 1px; background: var(--rule); margin: 12px 0; }
+.btn.stamp { color: var(--stamp); border-color: var(--stamp); }
+@media (max-width: 720px) { .loc-row { flex-wrap: wrap; align-items: flex-start; padding: 12px 0; } .loc-actions { justify-content: flex-start; width: 100%; } }

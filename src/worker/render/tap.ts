@@ -25,6 +25,8 @@ export interface TapPageData {
   source: "card" | "online" | "sample";
   deviceKey: string; // localStorage key for the device id
   showHeader: boolean;
+  /** The store whose card this is: its id goes with every tap, its name sits beside the handle with two or more locations. */
+  location?: { id: string; label: string | null } | null;
 }
 
 const CSS = `${AVATAR_CSS}
@@ -98,7 +100,7 @@ function tileHtml(t: TapTile, i: number, story: boolean): string {
 
 export function renderTapPage(d: TapPageData): string {
   const head = d.showHeader
-    ? `<header class="hd">${avatarHtml(d.shop.name, d.shop.avatarUrl, 40)}<div><div class="nm">${esc(d.shop.name)}</div>${d.shop.handle ? `<div class="hn">@${esc(d.shop.handle)}</div>` : ""}</div></header>`
+    ? `<header class="hd">${avatarHtml(d.shop.name, d.shop.avatarUrl, 40)}<div><div class="nm">${esc(d.shop.name)}</div>${d.shop.handle || d.location?.label ? `<div class="hn">${d.shop.handle ? `@${esc(d.shop.handle)}` : ""}${d.shop.handle && d.location?.label ? " · " : ""}${d.location?.label ? esc(d.location.label) : ""}</div>` : ""}</div></header>`
     : "";
   const tiles = [d.story ? tileHtml(d.story, 0, true) : "", ...d.tiles.map((t, i) => tileHtml(t, i + (d.story ? 1 : 0), false))].join("");
   const body = `<div id="pg">${head}
@@ -120,6 +122,7 @@ export function renderTapPage(d: TapPageData): string {
     ep: d.tapEndpoint,
     src: d.source,
     dk: d.deviceKey,
+    loc: d.location?.id ?? null,
     mode: d.mode,
   })}</script>`;
   return page({
@@ -128,6 +131,15 @@ export function renderTapPage(d: TapPageData): string {
     css: CSS,
     body,
     script: TAP_SCRIPT,
+    head: `<meta name="robots" content="noindex">`,
+  });
+}
+
+export function renderCardRemoved(): string {
+  return page({
+    title: "Came In",
+    css: CSS,
+    body: `<div class="gone"><h1>This card isn't in use any more. Ask at the till.</h1></div>`,
     head: `<meta name="robots" content="noindex">`,
   });
 }
@@ -182,8 +194,8 @@ g.addEventListener('click',function(ev){var b=ev.target.closest('.t');if(!b||bus
 last=b;var t={id:b.dataset.i,name:b.dataset.n,img:b.dataset.img||null,text:(b.querySelector('.tx')||{}).textContent||''};
 var again=already();g.classList.add('picked');b.classList.add('on');
 setTimeout(function(){thanks(t,again)},rm?0:320);
-if(!again)send({shop:C.shop,tile:t.id,answer:'post',source:C.src,device:dev})});
-$('none').onclick=function(){if(busy)return;busy=true;last=$('none');var again=already();thanks(null,again);if(!again)send({shop:C.shop,tile:null,answer:'walked_past',source:C.src,device:dev})};
+if(!again)send({shop:C.shop,tile:t.id,answer:'post',source:C.src,device:dev,location:C.loc})});
+$('none').onclick=function(){if(busy)return;busy=true;last=$('none');var again=already();thanks(null,again);if(!again)send({shop:C.shop,tile:null,answer:'walked_past',source:C.src,device:dev,location:C.loc})};
 // Inside the embed, tell the page around us how tall we are (it sizes the frame).
 if(EMB){var hh=0;window.rp=function(thanks){var h=Math.ceil(document.body.getBoundingClientRect().height);if(h!==hh||thanks){hh=h;parent.postMessage({cameIn:'height',h:h,thanks:!!thanks},'*')}};
 var rp=window.rp;rp();addEventListener('load',function(){rp()});addEventListener('resize',function(){rp()});if(window.ResizeObserver)new ResizeObserver(function(){rp()}).observe(document.body)}

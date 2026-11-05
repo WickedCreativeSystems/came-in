@@ -10,13 +10,14 @@ import type { RingMessage, TapAnswer } from "../shared/types";
 export interface CounterRow {
   token: string;
   shop_id: string;
+  location_id: string | null;
   created_at: string;
   closed_at: string | null;
 }
 
-export async function openCounter(env: Env, shopId: string): Promise<string> {
+export async function openCounter(env: Env, shopId: string, locationId: string): Promise<string> {
   const token = randomToken(32);
-  await env.DB.prepare(`INSERT INTO counters (token, shop_id, created_at) VALUES (?1, ?2, ?3)`).bind(token, shopId, new Date().toISOString()).run();
+  await env.DB.prepare(`INSERT INTO counters (token, shop_id, location_id, created_at) VALUES (?1, ?2, ?3, ?4)`).bind(token, shopId, locationId, new Date().toISOString()).run();
   return token;
 }
 
@@ -76,12 +77,12 @@ export async function recordCounterTap(env: Env, input: CounterTapInput, now = n
   // One statement, so two taps at the same instant can't both pass the 3-second rule.
   const since = new Date(now.getTime() - 3000).toISOString();
   const ins = await env.DB.prepare(
-    `INSERT INTO taps (id, shop_id, tile_id, answer, source, device_hash, rewarded, created_at)
-     SELECT ?1, ?2, ?3, ?4, 'counter', ?5, 0, ?6
+    `INSERT INTO taps (id, shop_id, location_id, tile_id, answer, source, device_hash, rewarded, created_at)
+     SELECT ?1, ?2, ?8, ?3, ?4, 'counter', ?5, 0, ?6
       WHERE NOT EXISTS (SELECT 1 FROM taps WHERE shop_id = ?2 AND device_hash = ?5 AND created_at > ?7)`,
-  ).bind(uuid(), shop.id, input.tile, input.answer, device, now.toISOString(), since).run();
+  ).bind(uuid(), shop.id, input.tile, input.answer, device, now.toISOString(), since, counter.location_id ?? shop.id).run();
   if (!ins.meta.changes) return { status: 200, body: { ok: true, counted: false, name } };
   if (input.answer !== "post" || !input.tile || !name) return { status: 200, body: { ok: true, counted: true, name } };
-  const message = await ringMessage(env, shop, input.tile, name, imageUrl, "counter", now);
+  const message = await ringMessage(env, shop, input.tile, name, imageUrl, "counter", now, counter.location_id ?? shop.id);
   return { status: 200, body: { ok: true, counted: true, name }, ring: { message, exceptDevice: input.device, shop } };
 }

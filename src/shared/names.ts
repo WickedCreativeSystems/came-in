@@ -54,8 +54,9 @@ export function tileLabel(name: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-export function bellSentence(name: string): string {
-  return `Someone just came in because of ${name}.`;
+/** "Someone just came in because of X." and, at a shop with two or more locations, "... at Eastside because of X." */
+export function bellSentence(name: string, location?: string | null): string {
+  return location ? `Someone just came in at ${location} because of ${name}.` : `Someone just came in because of ${name}.`;
 }
 
 export type TapSource = "card" | "counter" | "online" | "sample";

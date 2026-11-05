@@ -29,11 +29,28 @@ export async function seedStagingShops(env: Env): Promise<string[]> {
       ).bind(`p-${tile}`, s.id, tile, `${s.id}-ig`, text, sent).run();
     }
   }
-  // Eastside has had two walk-ins today, Harbour none: the two shops must not show each other's.
-  for (const n of [0, 1]) {
+  // Eastside Bakery has two locations (its own, and Harbour Road); Harbour Cafe has one. Eastside has had
+  // walk-ins at both and one online today, Harbour none: the shops must not show each other's, and the
+  // location tabs must add up.
+  const nm = (id: string) => STAGING_SHOPS.find((x) => x.id === id)!.name;
+  for (const [i, s] of STAGING_SHOPS.entries()) {
+    await env.DB.prepare(`INSERT OR IGNORE INTO locations (id, shop_id, name, position, created_at) VALUES (?1, ?1, ?2, 0, ?3)`).bind(s.id, i === 0 ? "Eastside" : nm(s.id).slice(0, 24), iso(1)).run();
+  }
+  // Staging was seeded before locations existed: the migration named Eastside's first one after the shop.
+  await env.DB.prepare(`UPDATE locations SET name = 'Eastside' WHERE id = 'stagingone' AND name = 'Eastside Bakery'`).run();
+  await env.DB.prepare(`INSERT OR IGNORE INTO locations (id, shop_id, name, position, created_at) VALUES ('stagingloca', 'stagingone', 'Harbour Road', 1, ?1)`).bind(iso(1)).run();
+  const taps: [string, string | null, string, number][] = [
+    ["stagingtap0", "stagingone", "card", 30],
+    ["stagingtap1", "stagingone", "card", 31],
+    ["stagingtap2", "stagingloca", "card", 40],
+    ["stagingtap3", "stagingloca", "counter", 41],
+    ["stagingtap4", "stagingloca", "card", 42],
+    ["stagingtap5", null, "online", 50],
+  ];
+  for (const [id, loc, source, mins] of taps) {
     await env.DB.prepare(
-      `INSERT OR IGNORE INTO taps (id, shop_id, tile_id, answer, source, device_hash, rewarded, created_at) VALUES (?1, 'stagingone', 'stagingone-t0', 'post', 'card', ?2, 0, ?3)`,
-    ).bind(`stagingtap${n}`, `stagingdev${n}`, new Date(now - (30 + n) * 60000).toISOString()).run();
+      `INSERT OR IGNORE INTO taps (id, shop_id, location_id, tile_id, answer, source, device_hash, rewarded, created_at) VALUES (?1, 'stagingone', ?2, ?3, 'post', ?4, ?5, 0, ?6)`,
+    ).bind(id, loc, id === "stagingtap5" ? "stagingone-t1" : "stagingone-t0", source, `dev-${id}`, new Date(now - mins * 60000).toISOString()).run();
   }
   return STAGING_SHOPS.map((s) => s.id);
 }

@@ -9,12 +9,15 @@ import { applyTheme } from "../lib/theme";
 import { ringMyPhone, initialPhoneState, thisPhoneRings, isIOS, type PhoneState } from "../lib/push";
 import { HeaderSkeleton, TilesSkeleton } from "../ui/Skeleton";
 import { Header } from "../ui/Header";
+import { Icon } from "../ui/icons";
+import { Sheet } from "../ui/Sheets";
 import { Bell, Avatar } from "../ui/glyphs";
 import { fetchLocations, switchTo, type Locations } from "../lib/locations";
 
 interface SetupData {
   settings: { thankYou: string | null; reviewUrl: string | null; markWinners: boolean; theme: Theme; cardPrinted: boolean };
   tapUrl: string;
+  tapUrls?: { id: string; name: string; url: string }[];
   embed: string;
   phones: number;
   channels: ChannelRow[];
@@ -29,6 +32,13 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
   const [error, setError] = useState(false);
   const base = sample ? "/sample" : "";
   const setupApi = sample ? "/api/sample/setup" : "/api/setup";
+  // After Add location with Same posts: "Eastside is added. Print its card."
+  const addedId = new URLSearchParams(location.search).get("added");
+  const [added, setAdded] = useState<{ id: string; name: string } | null>(null);
+  useEffect(() => {
+    if (!addedId || sample) return;
+    fetchLocations().then((l) => { const hit = l.locations.find((x) => x.id === addedId); if (hit) setAdded({ id: hit.id, name: hit.name }); }).catch(() => undefined);
+  }, []);
 
   async function load() {
     try {
@@ -88,6 +98,13 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
           </div>
         )}
         <h1 class="h1">Setup</h1>
+        {added && (
+          <div class="strip" role="status">
+            <span>
+              {added.name} is added. <a href={`/card?l=${added.id}`}>Print its card.</a>
+            </span>
+          </div>
+        )}
 
         <Section id="card" eyebrow="Card">
           <p>The sign that goes by your till.</p>
@@ -99,7 +116,7 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
         <Section id="staff" eyebrow="Staff screen">
           <p>A screen for your staff, not something to print.</p>
           <p>This turns this phone or tablet into the staff screen. It stays signed in until you close it.</p>
-          <OpenCounter sample={sample} />
+          <OpenCounter sample={sample} locations={wall.locations} />
         </Section>
 
         <Section id="phone" eyebrow="Phone">
@@ -137,7 +154,15 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
 
         <Section id="receipts" eyebrow="Receipts">
           <p>Paste your tap link into your receipt's custom text.</p>
-          <CopyField value={data.tapUrl} label="Your tap link" />
+          {data.tapUrls && data.tapUrls.length >= 2 ? (
+            <div class="tap-links">
+              {data.tapUrls.map((l) => (
+                <CopyField key={l.id} value={l.url} label={`Tap link for ${l.name}`} />
+              ))}
+            </div>
+          ) : (
+            <CopyField value={data.tapUrl} label="Your tap link" />
+          )}
           <a class="small" href="https://squareup.com/help/us/en/article/5424" target="_blank" rel="noopener">
             How, on Square
           </a>
@@ -164,11 +189,9 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
           </div>
         </Section>
 
-        {!sample && (
-          <Section id="locations" eyebrow="Locations">
-            <LocationsSetting />
-          </Section>
-        )}
+        <Section id="locations" eyebrow="Locations">
+          <LocationsSetting sample={sample} shopName={wall.shop.name} />
+        </Section>
 
         {!sample && (
           <Section id="channels" eyebrow="Channels">
@@ -193,37 +216,141 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
   );
 }
 
-function LocationsSetting(): JSX.Element {
+function LocationsSetting({ sample, shopName }: { sample: boolean; shopName: string }): JSX.Element {
   const [locs, setLocs] = useState<Locations | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<{ id: string; name: string } | null>(null);
+  const reload = () => fetchLocations().then(setLocs).catch(() => undefined);
   useEffect(() => {
-    fetchLocations().then(setLocs).catch(() => undefined);
+    if (!sample) void reload();
   }, []);
+  if (sample)
+    return (
+      <div>
+        <p>Each location has its own card, staff screen and counts.</p>
+        <div class="loc-list">
+          <div class="loc-row">
+            <span class="loc-name">{shopName}</span>
+            <a class="btn quiet sm" href="/sample/card">
+              Print its card
+            </a>
+          </div>
+        </div>
+        <p>
+          <a class="btn" href="/sample/setup/add">
+            <Icon name="plus" size={18} />
+            Add a location
+          </a>
+        </p>
+        <p class="small muted">
+          One location is free. <a href="/pricing">See Pricing.</a>
+        </p>
+      </div>
+    );
+  const mine = locs?.locations ?? [];
+  const others = (locs?.shops ?? []).filter((x) => x.id !== locs?.current);
+  const full = mine.length >= (locs?.cap ?? 10);
+  async function save(id: string) {
+    setErr(null);
+    try {
+      await api(`/api/shop/locations/${id}`, { method: "PATCH", json: { name: draft } });
+      setRenaming(null);
+      await reload();
+    } catch (e) {
+      setErr(e instanceof ApiError && typeof e.body.error === "string" ? e.body.error : "Something's wrong on our side. Try again in a minute.");
+    }
+  }
+  async function remove(id: string) {
+    try {
+      await api(`/api/shop/locations/${id}`, { method: "DELETE" });
+    } catch {}
+    setRemoving(null);
+    await reload();
+  }
   return (
     <div>
-      <p>Each shop has its own wall, card and settings.</p>
+      <p>Each location has its own card, staff screen and counts.</p>
       <div class="loc-list">
-      {locs?.shops.map((s) => (
-        <div class="loc-row" key={s.id}>
-          <Avatar name={s.name} url={s.avatarUrl} size={32} />
-          <span class="loc-name">{s.name}</span>
-          {s.id === locs.current ? (
-            <span class="caption muted current">Current</span>
-          ) : (
+        {mine.map((l, i) => (
+          <div class="loc-row" key={l.id}>
+            {renaming === l.id ? (
+              <>
+                <div class="loc-edit">
+                  <label class="sr" for={`rn-${l.id}`}>
+                    Name
+                  </label>
+                  <input id={`rn-${l.id}`} class={`input${err ? " error" : ""}`} value={draft} maxLength={24} autofocus onInput={(e) => { setDraft((e.target as HTMLInputElement).value); setErr(null); }} onKeyDown={(e) => { if (e.key === "Enter") void save(l.id); if (e.key === "Escape") setRenaming(null); }} />
+                  {err && (
+                    <div class="input-error" role="alert">
+                      {err}
+                    </div>
+                  )}
+                </div>
+                <button class="btn sm" onClick={() => void save(l.id)}>
+                  Save
+                </button>
+                <button class="btn quiet sm" onClick={() => setRenaming(null)}>
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <span class="loc-name">{l.name}</span>
+                <span class="loc-actions">
+                  <a class="btn quiet sm" href={i === 0 ? "/card" : `/card?l=${l.id}`}>
+                    Print its card
+                  </a>
+                  <button class="btn quiet sm" onClick={() => { setRenaming(l.id); setDraft(l.name); setErr(null); }}>
+                    Rename
+                  </button>
+                  {i > 0 && !l.hasTaps && (
+                    <button class="btn quiet sm" onClick={() => setRemoving({ id: l.id, name: l.name })}>
+                      Remove
+                    </button>
+                  )}
+                </span>
+              </>
+            )}
+          </div>
+        ))}
+        {others.length > 0 && <div class="loc-rule" />}
+        {others.map((s) => (
+          <div class="loc-row" key={s.id}>
+            <Avatar name={s.name} url={s.avatarUrl} size={32} />
+            <span class="loc-name">{s.name}</span>
             <button class="btn quiet sm" onClick={() => void switchTo(s.id)}>
               Open
             </button>
-          )}
-        </div>
-      ))}
+          </div>
+        ))}
       </div>
       <p>
-        <a class="btn" href="/setup/add">
-          Add a location
-        </a>
+        {full ? (
+          <span class="small muted">A shop can have up to 10 locations.</span>
+        ) : (
+          <a class="btn" href="/setup/add">
+            <Icon name="plus" size={18} />
+            Add a location
+          </a>
+        )}
       </p>
       <p class="small muted">
-        {locs?.price ? `More than one shop is ${locs.price} a month each.` : "One shop is free."} <a href="/pricing">See Pricing.</a>
+        {locs?.price ? `More than one location is ${locs.price} a month each.` : "One location is free."} <a href="/pricing">See Pricing.</a>
       </p>
+      {removing && (
+        <Sheet title={`Remove ${removing.name}? Its card will stop working.`} onClose={() => setRemoving(null)}>
+          <div class="btn-row">
+            <button class="btn stamp" onClick={() => void remove(removing.id)}>
+              Remove
+            </button>
+            <button class="btn" onClick={() => setRemoving(null)}>
+              Keep
+            </button>
+          </div>
+        </Sheet>
+      )}
     </div>
   );
 }
@@ -318,32 +445,50 @@ function CopyField({ value, label, mono }: { value: string; label: string; mono?
   );
 }
 
-function OpenCounter({ sample }: { sample: boolean }): JSX.Element {
+function OpenCounter({ sample, locations }: { sample: boolean; locations: { id: string; name: string }[] }): JSX.Element {
   const [busy, setBusy] = useState(false);
+  const [asking, setAsking] = useState(false);
   if (sample)
     return (
       <a class="btn" href="/sample/c">
         Open the staff screen on this device
       </a>
     );
+  async function open(location?: string) {
+    setBusy(true);
+    try {
+      const r = await api<{ url: string }>("/api/counter/open", { json: { location } });
+      location_href(r.url);
+    } catch {
+      setBusy(false);
+    }
+  }
+  // With two or more locations the screen first asks which one it is at (plan 3.8).
+  if (asking && locations.length >= 2)
+    return (
+      <div class="which-loc">
+        <h2 class="h2">Which location is this screen at?</h2>
+        {locations.map((l) => (
+          <button key={l.id} class="btn which-btn" disabled={busy} onClick={() => void open(l.id)}>
+            {l.name}
+          </button>
+        ))}
+      </div>
+    );
   return (
     <button
       class="btn"
       disabled={busy}
-      onClick={async () => {
-        setBusy(true);
-        try {
-          const r = await api<{ url: string }>("/api/counter/open", { method: "POST" });
-          location.href = r.url;
-        } catch {
-          setBusy(false);
-        }
-      }}
+      onClick={() => (locations.length >= 2 ? setAsking(true) : void open(locations[0]?.id))}
     >
       {busy && <span class="spin" aria-hidden="true" />}
       Open the staff screen on this device
     </button>
   );
+}
+
+function location_href(url: string): void {
+  location.href = url;
 }
 
 function IOSSteps(): JSX.Element {

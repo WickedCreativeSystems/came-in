@@ -48,6 +48,9 @@ export interface WallData {
   sync: { status: SyncStatus; count: number; startedAt: string | null };
   strips: { rateLimited: boolean; reconnect: boolean };
   checklist: { connected: boolean; card: boolean; counter: boolean; phone: boolean; thankYou: boolean; review: boolean };
+  /** The shop's locations, and the one these counts are for (null: all locations). Tabs show with two or more. */
+  locations: { id: string; name: string }[];
+  location: string | null;
   now: string;
 }
 
@@ -70,6 +73,8 @@ export interface RingMessage {
   countToday: number;
   imageUrl: string | null;
   at: string;
+  /** The location the tap was at, or null for an online tap (plan 1.4). */
+  locationId?: string | null;
 }
 
 export interface PostsMessage {

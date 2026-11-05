@@ -222,7 +222,7 @@ describe("the public pages", () => {
       "Came In reads the posts you've already sent through Buffer, the app many shops use to schedule posts.",
       "Connect Buffer",
       "Try the sample bakery",
-      "Free for one shop.",
+      "Free for one location.",
       "The card on your counter.",
       "A customer taps the post they saw.",
       "Your phone rings.",
