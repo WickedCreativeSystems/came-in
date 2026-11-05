@@ -20,10 +20,14 @@ export function sampleHistory(now: Date): WeekTap[] {
   };
   for (const p of SAMPLE_POSTS) {
     const sent = samplePostSentAt(p, now, tz).getTime();
-    // A post sent before today earned its taps before today, so today's count is only today's posts.
+    // Today's count is always the two posts that are sent today on every day (the live story and the dough post): 3 people.
+    // Any other post, even one whose weekday lands on today, earned its taps before today, so the count never moves
+    // with the weekday and the header, the Today tab and its rows agree.
     const dayStart = startOfShopDay(now, tz).getTime();
-    const end = sent < dayStart ? Math.max(sent + 60000, dayStart - 60000) : Math.max(sent + 60000, now.getTime() - 60000);
-    for (let i = 0; i < p.count; i++) taps.push({ tileId: p.id, answer: "post", source: i % 4 === 1 ? "counter" : "card", at: spread(sent, end, i, p.count) });
+    const sentToday = "daysAgo" in p.when && p.when.daysAgo === 0;
+    const from = sentToday ? sent : Math.min(sent, dayStart - 86400000);
+    const end = sentToday ? Math.max(sent + 60000, now.getTime() - 60000) : Math.max(from + 60000, dayStart - 60000);
+    for (let i = 0; i < p.count; i++) taps.push({ tileId: p.id, answer: "post", source: i % 4 === 1 ? "counter" : "card", at: spread(from, end, i, p.count) });
   }
   const span = Math.max(60000, now.getTime() - weekStart);
   for (const [answer, n] of [["walked_past", 6], ["friend", 4], ["google", 2]] as const) {
