@@ -349,3 +349,18 @@ describe("the sample's today count is 3 on every day (plan 3.10)", () => {
     }
   });
 });
+
+describe("the sample's Setup line follows the price (plan 3.13)", () => {
+  const e = env as unknown as { PRICE_TEXT?: string };
+  afterEach(() => {
+    delete e.PRICE_TEXT;
+  });
+
+  it("carries the price when one is set and none when it isn't", async () => {
+    expect(((await (await call("/api/sample/setup")).json()) as { price: string | null }).price).toBeNull();
+    e.PRICE_TEXT = "$9";
+    expect(((await (await call("/api/sample/setup")).json()) as { price: string | null }).price).toBe("$9");
+    e.PRICE_TEXT = "9";
+    expect(((await (await call("/api/sample/setup")).json()) as { price: string | null }).price).toBe("$9");
+  });
+});

@@ -18,6 +18,7 @@ import { fetchLocations, switchTo, type Locations } from "../lib/locations";
 interface SetupData {
   settings: { thankYou: string | null; reviewUrl: string | null; markWinners: boolean; theme: Theme; cardPrinted: boolean };
   tapUrl: string;
+  price?: string | null;
   tapUrls?: { id: string; name: string; url: string }[];
   embed: string;
   phones: number;
@@ -191,7 +192,7 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
         </Section>
 
         <Section id="locations" eyebrow="Locations">
-          <LocationsSetting sample={sample} shopName={wall.shop.name} />
+          <LocationsSetting sample={sample} shopName={wall.shop.name} samplePrice={data.price ?? null} />
         </Section>
 
         {!sample && (
@@ -223,7 +224,7 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
   );
 }
 
-function LocationsSetting({ sample, shopName }: { sample: boolean; shopName: string }): JSX.Element {
+function LocationsSetting({ sample, shopName, samplePrice }: { sample: boolean; shopName: string; samplePrice?: string | null }): JSX.Element {
   const [locs, setLocs] = useState<Locations | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -252,7 +253,7 @@ function LocationsSetting({ sample, shopName }: { sample: boolean; shopName: str
           </a>
         </p>
         <p class="small muted">
-          One location is free. <a href="/pricing">See Pricing.</a>
+          {samplePrice ? `More than one location is ${samplePrice} a month each.` : "One location is free."} <a href="/pricing">See Pricing.</a>
         </p>
       </div>
     );
