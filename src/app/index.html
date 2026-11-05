@@ -39,7 +39,8 @@ body{margin:0;background:#F4F2ED;color:#231F1B;font-family:"Libre Franklin",syst
   var KEY="ci_reloaded";
   function note(){
     var app=document.getElementById("app");
-    if(!app)return;
+    // A stylesheet that fails answers before the page body exists: wait for it.
+    if(!app){document.addEventListener("DOMContentLoaded",note);return}
     app.setAttribute("data-failed","1");
     app.innerHTML='<div class="nl" role="alert"><p>Came In didn\'t load. Reload the page.</p><button type="button" id="ci-reload">Reload</button></div>';
     var b=document.getElementById("ci-reload");
