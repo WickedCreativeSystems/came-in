@@ -5,7 +5,7 @@ import { liveShop, tileOnGrid, tileText, type ShopRow } from "./db";
 import { deviceHash, randomToken, uuid } from "./lib/crypto";
 import { postName } from "../shared/names";
 import { ringMessage } from "./taps";
-import type { RingMessage, TapAnswer } from "../shared/types";
+import type { RingMessage, TapAnswer, UndoMessage } from "../shared/types";
 
 export interface CounterRow {
   token: string;
@@ -51,7 +51,7 @@ export function parseCounterTap(body: unknown): CounterTapInput | null {
 }
 
 export type CounterOutcome =
-  | { status: 200; body: { ok: true; counted: boolean; name: string | null }; ring?: { message: RingMessage; exceptDevice: string; shop: ShopRow } }
+  | { status: 200; body: { ok: true; counted: boolean; name: string | null; id?: string }; ring?: { message: RingMessage; exceptDevice: string; shop: ShopRow } }
   | { status: 400 | 404 | 409 | 410; body: { ok: false; error: string } };
 
 /**
@@ -76,13 +76,43 @@ export async function recordCounterTap(env: Env, input: CounterTapInput, now = n
   const device = await deviceHash(`counter:${counter.token}`, shop.id);
   // One statement, so two taps at the same instant can't both pass the 3-second rule.
   const since = new Date(now.getTime() - 3000).toISOString();
+  const tapId = uuid();
   const ins = await env.DB.prepare(
     `INSERT INTO taps (id, shop_id, location_id, tile_id, answer, source, device_hash, rewarded, created_at)
      SELECT ?1, ?2, ?8, ?3, ?4, 'counter', ?5, 0, ?6
       WHERE NOT EXISTS (SELECT 1 FROM taps WHERE shop_id = ?2 AND device_hash = ?5 AND created_at > ?7)`,
-  ).bind(uuid(), shop.id, input.tile, input.answer, device, now.toISOString(), since, counter.location_id ?? shop.id).run();
+  ).bind(tapId, shop.id, input.tile, input.answer, device, now.toISOString(), since, counter.location_id ?? shop.id).run();
   if (!ins.meta.changes) return { status: 200, body: { ok: true, counted: false, name } };
-  if (input.answer !== "post" || !input.tile || !name) return { status: 200, body: { ok: true, counted: true, name } };
+  if (input.answer !== "post" || !input.tile || !name) return { status: 200, body: { ok: true, counted: true, name, id: tapId } };
   const message = await ringMessage(env, shop, input.tile, name, imageUrl, "counter", now, counter.location_id ?? shop.id);
-  return { status: 200, body: { ok: true, counted: true, name }, ring: { message, exceptDevice: input.device, shop } };
+  return { status: 200, body: { ok: true, counted: true, name, id: tapId }, ring: { message, exceptDevice: input.device, shop } };
+}
+
+/** How long after a tap the staff screen may take it back (plan 3.6). */
+export const UNDO_WINDOW_MS = 60_000;
+
+export type UndoOutcome =
+  | { status: 200; body: { ok: true }; undo: { message: UndoMessage; shopId: string } }
+  | { status: 404 | 409 | 410; body: { ok: false; error: string } };
+
+/**
+ * Take back one tap from the staff screen that made it (plan 3.6, P7). Only that counter's newest
+ * tap, within 60 s. Another counter's or shop's tap id is a 404; an older tap is "too late" (410).
+ */
+export async function undoCounterTap(env: Env, token: string, tapId: string, now = new Date()): Promise<UndoOutcome> {
+  const counter = await getCounter(env, token);
+  if (!counter) return { status: 404, body: { ok: false, error: "no such counter" } };
+  if (counter.closed_at) return { status: 409, body: { ok: false, error: "closed" } };
+  const shop = await liveShop(env, counter.shop_id);
+  if (!shop) return { status: 410, body: { ok: false, error: "gone" } };
+  const device = await deviceHash(`counter:${counter.token}`, shop.id);
+  const tap = await env.DB.prepare(`SELECT id, tile_id, location_id, created_at FROM taps WHERE id = ?1 AND shop_id = ?2 AND device_hash = ?3 AND source = 'counter'`)
+    .bind(tapId, shop.id, device)
+    .first<{ id: string; tile_id: string | null; location_id: string | null; created_at: string }>();
+  if (!tap) return { status: 404, body: { ok: false, error: "no such tap" } };
+  const newest = await env.DB.prepare(`SELECT id FROM taps WHERE shop_id = ?1 AND device_hash = ?2 ORDER BY created_at DESC, id DESC LIMIT 1`).bind(shop.id, device).first<{ id: string }>();
+  if (newest?.id !== tap.id || now.getTime() - new Date(tap.created_at).getTime() > UNDO_WINDOW_MS) return { status: 410, body: { ok: false, error: "too late" } };
+  const del = await env.DB.prepare(`DELETE FROM taps WHERE id = ?1 AND shop_id = ?2`).bind(tap.id, shop.id).run();
+  if (!del.meta.changes) return { status: 404, body: { ok: false, error: "no such tap" } };
+  return { status: 200, body: { ok: true }, undo: { shopId: shop.id, message: { type: "undo", tapId: tap.id, tileId: tap.tile_id, locationId: tap.location_id } } };
 }
