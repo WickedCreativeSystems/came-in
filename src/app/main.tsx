@@ -4,6 +4,7 @@ import "./app.css";
 import { Wall } from "./pages/Wall";
 import { WhichShop, Channels, Reading } from "./pages/FirstRun";
 import { Setup } from "./pages/Setup";
+import { AddLocation } from "./pages/AddLocation";
 import { Week } from "./pages/Week";
 import { Post } from "./pages/Post";
 import { registerServiceWorker } from "./lib/push";
@@ -21,6 +22,10 @@ function route() {
       return <Wall sample={false} />;
     case "/sample":
       return <Wall sample />;
+    case "/setup/add":
+      return <AddLocation sample={false} />;
+    case "/sample/setup/add":
+      return <AddLocation sample />;
     case "/setup/org":
       return <WhichShop />;
     case "/setup/channels":
@@ -43,4 +48,7 @@ function route() {
   }
 }
 
-render(route(), document.getElementById("app")!);
+// index.html carries a frame that shows before any script runs; the app replaces it (Preact leaves unknown nodes beside its own).
+const root = document.getElementById("app")!;
+root.textContent = "";
+render(route(), root);

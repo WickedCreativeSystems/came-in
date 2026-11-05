@@ -561,11 +561,15 @@ describe("dead jobs (NerdCider, phase-3-tag)", () => {
 });
 
 describe("the stranger fixes (EaseBot, Nov 4)", () => {
-  it("every post sent today says TODAY; only a live story is TODAY · LIVE on the wall", async () => {
+  it("every post sent today says SENT TODAY (NEW on a narrow tile); only a live story is TODAY · LIVE (LIVE)", async () => {
     const { dayBadge } = await import("../src/shared/names");
     const tz = "America/Chicago";
     const now = new Date("2026-11-04T14:30:00Z");
-    expect(dayBadge(new Date("2026-11-04T11:48:00Z"), now, tz, false)).toBe("TODAY");
+    expect(dayBadge(new Date("2026-11-04T11:48:00Z"), now, tz, false)).toBe("SENT TODAY");
+    const { dayBadgeShort } = await import("../src/shared/names");
+    expect(dayBadgeShort(new Date("2026-11-04T11:48:00Z"), now, tz, false)).toBe("NEW");
+    expect(dayBadgeShort(new Date("2026-11-04T14:14:00Z"), now, tz, true)).toBe("LIVE");
+    expect(dayBadgeShort(new Date("2026-11-03T18:10:00Z"), now, tz, false)).toBe("TUE");
     expect(dayBadge(new Date("2026-11-04T14:14:00Z"), now, tz, true)).toBe("TODAY · LIVE");
     expect(dayBadge(new Date("2026-11-03T18:10:00Z"), now, tz, false)).toBe("TUE");
     expect(dayBadge(new Date("2026-10-27T12:55:00Z"), now, tz, false)).toBe("OCT 27");

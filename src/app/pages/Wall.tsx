@@ -7,6 +7,9 @@ import { connectRoom } from "../lib/room";
 import { deviceId } from "../lib/device";
 import { ringSound } from "../lib/bell";
 import { applyTheme } from "../lib/theme";
+import { HeaderSkeleton, TilesSkeleton } from "../ui/Skeleton";
+import { LocationTabs } from "../ui/LocationTabs";
+import { readTab, saveTab, locQuery } from "../lib/locationTab";
 import { Header } from "../ui/Header";
 import { Tile } from "../ui/Tile";
 import { BellBanner, type Ring } from "../ui/BellBanner";
@@ -20,12 +23,24 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
   const [flash, setFlash] = useState<string | null>(null);
   const [refresh, setRefresh] = useState<"rest" | "checking" | "checked">("rest");
   const [sheet, setSheet] = useState(false);
+  // The location tab (null: all locations), shared with This week and A post (plan 3.13).
+  const locRef = useRef<string | null>(null);
+  const restored = useRef(false);
   const ringKey = useRef(0);
   const flashTimer = useRef<ReturnType<typeof setTimeout>>();
 
   async function load() {
     try {
-      const d = await api<WallData>(sample ? "/api/sample/wall" : "/api/wall");
+      const d = await api<WallData>((sample ? "/api/sample/wall" : "/api/wall") + (sample ? "" : locQuery(locRef.current)));
+      // First load: come back to the tab this browser last chose for this shop.
+      if (!restored.current && !sample) {
+        restored.current = true;
+        const saved = readTab(d.shop.id);
+        if (saved && d.locations.some((l) => l.id === saved) && saved !== locRef.current) {
+          locRef.current = saved;
+          return load();
+        }
+      }
       setData(d);
       setError(null);
       applyTheme(d.shop.theme);
@@ -55,6 +70,12 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
     ringKey.current += 1;
     setRing({ key: ringKey.current, sentence: m.sentence, where: m.where, imageUrl: m.imageUrl, href: m.tileId ? `${sample ? "/sample" : ""}/post/${m.tileId}` : null });
     setTimeout(() => {
+      // A chosen location's counts are its own: the ring only carries all-location counts, so ask again.
+      if (locRef.current) {
+        if (m.tileId) setFlash(m.tileId);
+        void load();
+        return;
+      }
       setData((d) => {
         if (!d) return d;
         return {
@@ -97,9 +118,13 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
 
   if (!data) {
     return (
-      <main class="page">
-        {error && <div class="strip stamp" role="alert">Something's wrong on our side. Try again in a minute.</div>}
-      </main>
+      <>
+        <HeaderSkeleton />
+        <main class="page">
+          {error && <div class="strip stamp" role="alert">Something's wrong on our side. Try again in a minute.</div>}
+          {!error && <TilesSkeleton />}
+        </main>
+      </>
     );
   }
 
@@ -123,6 +148,15 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
             </a>
           </div>
         )}
+        <LocationTabs
+          locations={data.locations}
+          value={data.location}
+          onChange={(id) => {
+            locRef.current = id;
+            saveTab(data.shop.id, id);
+            void load();
+          }}
+        />
         {!data.hasTapped || sample ? (
           <section class="try" aria-label="Try it">
             <div class="qr">
@@ -130,7 +164,7 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
             </div>
             <div>
               <h2 class="h2">This is what your customers will tap.</h2>
-              <p class="small muted">Try it: scan this with your phone, tap a post, and this page rings.</p>
+              <p class="small muted">Try it: open the tap page, tap a post, and this page rings. On a computer, scan the code with your phone.</p>
             </div>
             <div class="try-actions">
               <a
@@ -150,6 +184,9 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
                   <span class="small muted">At the till, staff tap here for a customer.</span>
                 </div>
               )}
+              <span class="small muted print-card">
+                Put this code on your counter: <a href={`${base}/card`}>Print your card</a>.
+              </span>
             </div>
           </section>
         ) : null}
@@ -177,7 +214,7 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
         <div class="wall-head">
           <h1 class="h1">Your posts</h1>
           <span class="range">
-            Counts on each post cover the last 60 days · <b>{data.countThisWeek === 1 ? "1 person" : `${data.countThisWeek} people`}</b> came in this week
+            Counts on each post cover the last 60 days
           </span>
           <button class="btn quiet sm refresh" onClick={doRefresh} disabled={refresh === "checking"}>
             {refresh === "checking" ? <span class="spin" aria-hidden="true" /> : <Icon name="refresh" size={18} />}

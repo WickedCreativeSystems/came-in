@@ -5,28 +5,33 @@ import type { WallData, WallTile } from "@shared/types";
 import { api, ApiError } from "../lib/api";
 import { applyTheme } from "../lib/theme";
 import { drawShare } from "../lib/share";
+import { HeaderSkeleton, TilesSkeleton } from "../ui/Skeleton";
 import { Header } from "../ui/Header";
 import { Tile } from "../ui/Tile";
+import { LocationTabs } from "../ui/LocationTabs";
+import { readTab, saveTab, locQuery } from "../lib/locationTab";
 import { PostAgainSheet, PostThisSheet, Sheet, outcomeLine, resultLine, type Channel, type Outcome } from "../ui/Sheets";
 
-type Range = "this" | "last" | "month";
+type Range = "today" | "this" | "last" | "month";
 
 interface WeekData {
   range: Range;
   summary: { headline: string; patterns: string[]; ratio: string | null; receipts: { label: string; n: number }[]; people: number; posts: number; topTileId: string | null };
-  tiles: (WallTile & { weekPeople: number })[];
+  tiles: (WallTile & { weekPeople: number; byLocation?: { label: string; n: number }[] })[];
   channels: Channel[];
   drafts: boolean;
 }
 
 function rangeFromUrl(): Range {
   const r = new URLSearchParams(location.search).get("range");
-  return r === "last" || r === "month" ? r : "this";
+  return r === "today" || r === "last" || r === "month" ? r : "this";
 }
 
 export function Week({ sample }: { sample: boolean }): JSX.Element {
   const [wall, setWall] = useState<WallData | null>(null);
   const [range, setRange] = useState<Range>(rangeFromUrl());
+  // The location tab (null: all), shared with the Wall and A post; undefined until the shop is known (plan 3.13).
+  const [loc, setLoc] = useState<string | null | undefined>(undefined);
   const [data, setData] = useState<WeekData | null>(null);
   const [error, setError] = useState(false);
   const [again, setAgain] = useState<string | null>(null);
@@ -42,20 +47,34 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
       .then((w) => {
         setWall(w);
         applyTheme(w.shop.theme);
+        const saved = sample ? null : readTab(w.shop.id);
+        setLoc(saved && w.locations.some((l) => l.id === saved) ? saved : null);
       })
       .catch((e) => (e instanceof ApiError && e.status === 401 ? (location.href = "/") : setError(true)));
   }, []);
   useEffect(() => {
+    if (loc === undefined) return;
     setData(null);
+    // The header's count follows the chosen location too.
+    if (!sample) api<WallData>(`/api/wall${locQuery(loc)}`).then(setWall).catch(() => undefined);
     const u = new URL(location.href);
     u.searchParams.set("range", range);
     history.replaceState(null, "", u.pathname + (range === "this" ? "" : `?range=${range}`));
-    api<WeekData>(`${sample ? "/api/sample/week" : "/api/week"}?range=${range}`)
+    api<WeekData>(`${sample ? "/api/sample/week" : "/api/week"}?range=${range}${sample ? "" : locQuery(loc, "&")}`)
       .then(setData)
       .catch(() => setError(true));
-  }, [range]);
+  }, [range, loc]);
 
-  if (!wall) return <main class="page">{error && <div class="strip stamp" role="alert">Something's wrong on our side. Try again in a minute.</div>}</main>;
+  if (!wall)
+    return (
+      <>
+        <HeaderSkeleton />
+        <main class="page">
+          {error && <div class="strip stamp" role="alert">Something's wrong on our side. Try again in a minute.</div>}
+          {!error && <TilesSkeleton />}
+        </main>
+      </>
+    );
   const now = new Date(wall.now);
   const top = data?.tiles.find((t) => t.id === data.summary.topTileId) ?? null;
 
@@ -81,6 +100,7 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
   }
 
   const tabs: [Range, string][] = [
+    ["today", "Today"],
     ["this", "This week"],
     ["last", "Last week"],
     ["month", "This month"],
@@ -98,6 +118,14 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
             </a>
           </div>
         )}
+        <LocationTabs
+          locations={wall.locations}
+          value={loc ?? null}
+          onChange={(id) => {
+            saveTab(wall.shop.id, id);
+            setLoc(id);
+          }}
+        />
         <nav class="range-tabs" aria-label="Range">
           {tabs.map(([r, label]) => (
             <button key={r} class="range-tab body-strong" aria-pressed={range === r} onClick={() => setRange(r)}>
@@ -112,6 +140,8 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
         ) : (
           <>
             <h1 class="h1 week-headline">{data.summary.headline}</h1>
+            {range !== "today" && (
+              <>
             {data.summary.patterns.map((p) => (
               <p key={p} class="pattern">
                 {p}
@@ -144,11 +174,14 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
                 Post this week's picture
               </button>
             </div>
+              </>
+            )}
             {postLine && <p class={`small outcome${postLine === outcomeLine("failed") ? " failed" : ""}`}>{postLine}</p>}
             <div class="wall week-wall">
               {data.tiles.filter((t) => t.weekPeople > 0).map((t, i) => (
                 <div class="week-tile" key={t.id}>
                   <Tile tile={{ ...t, count: t.weekPeople }} index={i} now={now} tz={wall.shop.timezone} flash={false} href={`${base}/post/${t.id}`} />
+                  {t.byLocation && t.byLocation.length > 0 && <p class="caption muted by-loc">{t.byLocation.map((x) => `${x.label} ${x.n}`).join(" · ")}</p>}
                   <div class="tile-actions">
                     <button class="tile-action" aria-label="Post it again" onClick={() => setAgain(t.id)}>
                       <span class="long">Post it again</span>
@@ -198,7 +231,7 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
             {(() => {
               const nobody = data.tiles.filter((t) => t.weekPeople === 0).length;
               const when = range === "last" ? "last week" : range === "month" ? "this month" : "this week";
-              return nobody > 0 ? <p class="caption muted other-posts">{nobody === 1 ? "1 other post had" : `${nobody} other posts had`} nobody {when}.</p> : null;
+              return range !== "today" && nobody > 0 ? <p class="caption muted other-posts">{nobody === 1 ? "1 other post had" : `${nobody} other posts had`} nobody {when}.</p> : null;
             })()}
           </>
         )}

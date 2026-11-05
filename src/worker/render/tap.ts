@@ -1,6 +1,7 @@
 // The tap page (plan 3.5, look.md sections 4, 5, 6 and 9). Server-rendered,
 // always Day, inline CSS and one small script, under 30 KB before images.
 // The tap is answered on the phone before the network replies.
+import { tileLabel } from "../../shared/names";
 import { esc, jsonForScript, page, avatarHtml, initials, AVATAR_CSS, BELL_MONO_SVG } from "./html";
 
 export interface TapTile {
@@ -8,7 +9,8 @@ export interface TapTile {
   name: string; // "Tuesday's sourdough post"
   imageUrl: string | null;
   text: string; // first line, for text tiles
-  badge: string; // "TUE", "OCT 28", "TODAY"
+  badge: string; // "TUE", "OCT 28", "SENT TODAY"
+  badgeShort: string; // on a tile under 180px: "NEW", "LIVE"
   live: boolean;
 }
 
@@ -23,6 +25,8 @@ export interface TapPageData {
   source: "card" | "online" | "sample";
   deviceKey: string; // localStorage key for the device id
   showHeader: boolean;
+  /** The store whose card this is: its id goes with every tap, its name sits beside the handle with two or more locations. */
+  location?: { id: string; label: string | null } | null;
 }
 
 const CSS = `${AVATAR_CSS}
@@ -41,6 +45,9 @@ html,.th{scrollbar-width:none}html::-webkit-scrollbar,.th::-webkit-scrollbar{dis
 .t:active{transform:scale(.97)}
 .bd{position:absolute;top:8px;left:8px;height:20px;padding:0 6px;border-radius:2px;background:var(--label);color:var(--label-ink);font-weight:600;font-size:11px;letter-spacing:.04em;text-transform:uppercase;display:inline-flex;align-items:center;line-height:1}
 .bd.lv{background:var(--brass)}
+.t{container-type:inline-size}
+.bs{display:none}
+@container (max-width:179px){.bl{display:none}.bs{display:inline}}
 .tx{position:absolute;inset:0;padding:34px 12px 12px;font-family:var(--fd);font-weight:700;font-size:19px;line-height:1.02;letter-spacing:-.005em;color:var(--ink);overflow:hidden;overflow-wrap:anywhere}
 .picked .t{opacity:.35}
 .picked .t.on{opacity:1;transform:scale(1.04);z-index:1}
@@ -52,6 +59,10 @@ html,.th{scrollbar-width:none}html::-webkit-scrollbar,.th::-webkit-scrollbar{dis
 .th{position:fixed;inset:0;z-index:5;background:var(--paper);display:flex;flex-direction:column;transform:translateY(100%);transition:transform 320ms var(--settle);overflow:auto}
 .th.in{transform:none}
 .th[hidden]{display:none}
+html.emb body{min-height:0}
+html.emb .ph{height:160px;min-height:0}
+html.emb .th{position:static;inset:auto;transform:none;transition:none;min-height:320px;overflow:visible}
+html.emb #pg.away{display:none}
 .ph{height:46%;min-height:180px;position:relative;overflow:hidden;background:var(--paper-2);flex:none}
 .ph img{width:100%;height:100%;object-fit:cover}
 .ph .tx{font-size:28px;padding:18px}
@@ -84,12 +95,12 @@ function tileHtml(t: TapTile, i: number, story: boolean): string {
   const inner = t.imageUrl
     ? `<img src="${esc(t.imageUrl)}" alt="" ${eager} decoding="async">`
     : `<span class="tx">${esc(t.text)}</span>`;
-  return `<button class="t${story ? " st" : ""}" data-i="${esc(t.id)}" data-n="${esc(t.name)}"${t.imageUrl ? ` data-img="${esc(t.imageUrl)}"` : ""} aria-label="${esc(t.name)}">${inner}<span class="bd${t.live ? " lv" : ""}">${esc(t.badge)}</span></button>`;
+  return `<button class="t${story ? " st" : ""}" data-i="${esc(t.id)}" data-n="${esc(t.name)}"${t.imageUrl ? ` data-img="${esc(t.imageUrl)}"` : ""} aria-label="${esc(tileLabel(t.name))}">${inner}<span class="bd${t.live ? " lv" : ""}"><span class="bl">${esc(t.badge)}</span><span class="bs">${esc(t.badgeShort)}</span></span></button>`;
 }
 
 export function renderTapPage(d: TapPageData): string {
   const head = d.showHeader
-    ? `<header class="hd">${avatarHtml(d.shop.name, d.shop.avatarUrl, 40)}<div><div class="nm">${esc(d.shop.name)}</div>${d.shop.handle ? `<div class="hn">@${esc(d.shop.handle)}</div>` : ""}</div></header>`
+    ? `<header class="hd">${avatarHtml(d.shop.name, d.shop.avatarUrl, 40)}<div><div class="nm">${esc(d.shop.name)}</div>${d.shop.handle || d.location?.label ? `<div class="hn">${d.shop.handle ? `@${esc(d.shop.handle)}` : ""}${d.shop.handle && d.location?.label ? " · " : ""}${d.location?.label ? esc(d.location.label) : ""}</div>` : ""}</div></header>`
     : "";
   const tiles = [d.story ? tileHtml(d.story, 0, true) : "", ...d.tiles.map((t, i) => tileHtml(t, i + (d.story ? 1 : 0), false))].join("");
   const body = `<div id="pg">${head}
@@ -111,6 +122,7 @@ export function renderTapPage(d: TapPageData): string {
     ep: d.tapEndpoint,
     src: d.source,
     dk: d.deviceKey,
+    loc: d.location?.id ?? null,
     mode: d.mode,
   })}</script>`;
   return page({
@@ -119,6 +131,15 @@ export function renderTapPage(d: TapPageData): string {
     css: CSS,
     body,
     script: TAP_SCRIPT,
+    head: `<meta name="robots" content="noindex">`,
+  });
+}
+
+export function renderCardRemoved(): string {
+  return page({
+    title: "Came In",
+    css: CSS,
+    body: `<div class="gone"><h1>This card isn't in use any more. Ask at the till.</h1></div>`,
     head: `<meta name="robots" content="noindex">`,
   });
 }
@@ -134,7 +155,8 @@ export function renderGonePage(): string {
 
 // The script, kept small and dependency-free. It runs once per page.
 const TAP_SCRIPT = `(function(){
-var C=JSON.parse(document.getElementById('cfg').textContent),$=function(i){return document.getElementById(i)};
+var C=JSON.parse(document.getElementById('cfg').textContent),EMB=false,$=function(i){return document.getElementById(i)};
+EMB=C.mode==='embed'&&parent!==window;if(EMB)document.documentElement.classList.add('emb');
 var g=$('g'),th=$('th'),err=$('err'),busy=false,pending=null;
 var rm=matchMedia('(prefers-reduced-motion: reduce)').matches;
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
@@ -147,11 +169,11 @@ function e(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{
 function ticket(){if(!C.ty)return'';var d=new Date(),dd,tt;try{dd=d.toLocaleDateString('en-GB',{timeZone:C.tz,weekday:'short',day:'numeric',month:'short'}).replace(/,/g,'');tt=d.toLocaleTimeString('en-US',{timeZone:C.tz,hour:'numeric',minute:'2-digit'}).toLowerCase()}catch(x){dd=d.toDateString();tt=d.toTimeString().slice(0,5)}
 return'<div class="tk"><div><div class="eyebrow">Today\\'s thank-you</div><div class="w">'+e(C.ty)+'</div><div class="c">Show this at the till.</div>'+(C.mode==='sample'?'<div class="c">Sample thank-you. You write your own.</div>':'')+'</div><div class="d">'+e(dd)+'<b>'+e(tt)+'</b></div></div>'}
 var pg=$('pg'),last=null;
-function show(html,plain){th.className='th'+(plain?' plain':'');th.innerHTML=html;th.hidden=false;pg.inert=true;setTimeout(function(){var f=th.querySelector('.btn');if(f)f.focus({preventScroll:true})},rm?0:330);if(rm){th.classList.add('in')}else{requestAnimationFrame(function(){requestAnimationFrame(function(){th.classList.add('in')})})}}
-function close(){th.classList.remove('in');pg.inert=false;setTimeout(function(){th.hidden=true;th.innerHTML=''},rm?0:320);g.classList.remove('picked');var o=g.querySelector('.on');if(o)o.classList.remove('on');busy=false;if(last&&last.focus)last.focus({preventScroll:true});
+function show(html,plain){th.className='th'+(plain?' plain':'');th.innerHTML=html;th.hidden=false;pg.inert=true;if(EMB){pg.classList.add('away');window.rp&&window.rp(true)}setTimeout(function(){var f=th.querySelector('.btn');if(f)f.focus({preventScroll:true})},rm?0:330);if(rm){th.classList.add('in')}else{requestAnimationFrame(function(){requestAnimationFrame(function(){th.classList.add('in')})})}}
+function close(){th.classList.remove('in');pg.inert=false;if(EMB)pg.classList.remove('away');setTimeout(function(){th.hidden=true;th.innerHTML='';if(EMB&&window.rp)window.rp(false)},rm?0:(EMB?0:320));g.classList.remove('picked');var o=g.querySelector('.on');if(o)o.classList.remove('on');busy=false;if(last&&last.focus)last.focus({preventScroll:true});
 if(window.parent!==window){try{window.parent.postMessage({ci:'closed'},location.origin)}catch(x){}}}
 function done(){if(C.rv){review()}else close()}
-function review(){show('<div class="bo rv"><div class="who">'+(C.avatar?'<img class="av" src="'+e(C.avatar)+'" alt="" width="40" height="40" style="width:40px;height:40px">':'<span class="av av-f" aria-hidden="true" style="width:40px;height:40px;font-size:18px">'+e(C.ini)+'</span>')+'<span class="nm">'+e(C.name)+'</span></div><div><h2>Would you leave us a review?</h2><p>A line from you helps more than you\\'d think.</p></div><div class="bs"><a class="btn primary" id="lv" href="'+e(C.rv)+'" target="_blank" rel="noopener">Leave us a review</a><button class="btn" id="nn">Not now</button></div></div>',true);
+function review(){show('<div class="bo rv"><div class="who">'+(C.avatar?'<img class="av" src="'+e(C.avatar)+'" alt="" width="40" height="40" style="width:40px;height:40px">':'<span class="av av-f" aria-hidden="true" style="width:40px;height:40px;font-size:18px">'+e(C.ini)+'</span>')+'<span class="nm">'+e(C.name)+'</span></div><div><h2>Would you leave us a review?</h2><p>A line from you helps more than you\\'d think.</p></div><div class="bs"><a class="btn primary" id="lv" href="'+e(C.rv)+'" target="_blank" rel="noopener">Leave us a review</a><button class="btn" id="nn">Not now</button></div>'+(C.mode==='sample'?'<p>Sample review ask. You paste your own link in Setup.</p>':'')+'</div>',true);
 $('nn').onclick=close;$('lv').addEventListener('click',function(){setTimeout(close,400)})}
 function thanks(t,again){var ph=t?(t.img?'<div class="ph"><img src="'+e(t.img)+'" alt=""></div>':'<div class="ph"><span class="tx">'+e(t.text)+'</span></div>'):'';
 var tick=(!again&&C.ty)?ticket():'';
@@ -172,9 +194,9 @@ g.addEventListener('click',function(ev){var b=ev.target.closest('.t');if(!b||bus
 last=b;var t={id:b.dataset.i,name:b.dataset.n,img:b.dataset.img||null,text:(b.querySelector('.tx')||{}).textContent||''};
 var again=already();g.classList.add('picked');b.classList.add('on');
 setTimeout(function(){thanks(t,again)},rm?0:320);
-if(!again)send({shop:C.shop,tile:t.id,answer:'post',source:C.src,device:dev})});
-$('none').onclick=function(){if(busy)return;busy=true;last=$('none');var again=already();thanks(null,again);if(!again)send({shop:C.shop,tile:null,answer:'walked_past',source:C.src,device:dev})};
+if(!again)send({shop:C.shop,tile:t.id,answer:'post',source:C.src,device:dev,location:C.loc})});
+$('none').onclick=function(){if(busy)return;busy=true;last=$('none');var again=already();thanks(null,again);if(!again)send({shop:C.shop,tile:null,answer:'walked_past',source:C.src,device:dev,location:C.loc})};
 // Inside the embed, tell the page around us how tall we are (it sizes the frame).
-if(C.mode==='embed'&&parent!==window){var hh=0;function rp(){var h=Math.ceil(document.documentElement.scrollHeight);if(h!==hh){hh=h;parent.postMessage({cameIn:'height',h:h},'*')}}
-rp();addEventListener('load',rp);addEventListener('resize',rp);if(window.ResizeObserver)new ResizeObserver(rp).observe(document.body)}
+if(EMB){var hh=0;window.rp=function(thanks){var h=Math.ceil(document.body.getBoundingClientRect().height);if(h!==hh||thanks){hh=h;parent.postMessage({cameIn:'height',h:h,thanks:!!thanks},'*')}};
+var rp=window.rp;rp();addEventListener('load',function(){rp()});addEventListener('resize',function(){rp()});if(window.ResizeObserver)new ResizeObserver(function(){rp()}).observe(document.body)}
 })();`;

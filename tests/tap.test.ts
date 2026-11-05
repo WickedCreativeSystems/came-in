@@ -50,7 +50,7 @@ describe("the tap page (P4, plan 3.5)", () => {
     // Story pinned full width, with TODAY in brass.
     const first = html.indexOf('class="t');
     expect(html.slice(first, first + 40)).toContain('class="t st"');
-    expect(html).toMatch(/class="bd lv">TODAY</);
+    expect(html).toMatch(/class="bd lv"><span class="bl">TODAY<\/span><span class="bs">LIVE<\/span>/);
     // P22: fonts self-hosted; nothing on the tap page loads from another origin.
     expect(html).toContain("/fonts/big-shoulders-latin.woff2");
     expect(html.match(/(?:src|href)="https?:\/\//g)).toBeNull();
@@ -219,10 +219,10 @@ describe("the public pages", () => {
     const html = await (await call("/")).text();
     for (const w of [
       "Find out which of your posts bring people through the door.",
-      "Came In reads the posts you've already sent through Buffer.",
+      "Came In reads the posts you've already sent through Buffer, the app many shops use to schedule posts.",
       "Connect Buffer",
       "Try the sample bakery",
-      "Free for one shop.",
+      "Free for one location.",
       "The card on your counter.",
       "A customer taps the post they saw.",
       "Your phone rings.",

@@ -37,7 +37,7 @@ export const SAMPLE_POSTS: SamplePost[] = [
   { id: "hours", text: "Winter hours start Monday: 7 to 3, closed Sundays.", subject: "winter hours", services: ["facebook", "googlebusiness"], count: 0, noted: false, textOnly: true, when: { weekday: MON }, hour: 8, minute: 5 },
   { id: "cinn", text: "Cinnamon knots are back for the season.", subject: "cinnamon knot", services: ["instagram"], count: 3, noted: true, when: { weekday: FRI }, hour: 10, minute: 30 },
   { id: "latte", text: "New beans from the roaster on Hill Street. Come taste.", subject: "new coffee", services: ["instagram", "googlebusiness"], count: 2, noted: false, when: { weekday: THU }, hour: 15, minute: 2 },
-  { id: "hands", text: "5am. Shaping day. Sound on.", subject: "dough", services: ["instagram", "facebook"], count: 2, noted: false, when: { weekday: WED }, hour: 5, minute: 48 },
+  { id: "hands", text: "5am. Shaping day. Sound on.", subject: "dough", services: ["instagram", "facebook"], count: 2, noted: false, when: { daysAgo: 0 }, hour: 5, minute: 48 },
   { id: "pretz", text: "Pretzel Saturday is a thing now.", subject: "pretzel", services: ["instagram"], count: 1, noted: false, when: { weekday: SAT, weeksBack: 1 }, hour: 11, minute: 15 },
   { id: "apple", text: "Apple cake, the one with the custard.", subject: "apple cake", services: ["facebook"], count: 0, noted: false, when: { weekday: SUN, weeksBack: 1 }, hour: 14, minute: 20 },
   { id: "bun", text: "Morning buns until they're gone.", subject: "morning bun", services: ["instagram", "facebook"], count: 1, noted: false, when: { weekday: TUE, weeksBack: 1 }, hour: 7, minute: 55 },

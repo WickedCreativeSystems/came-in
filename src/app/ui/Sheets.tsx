@@ -1,3 +1,4 @@
+import { tileLabel } from "@shared/names";
 // The sheets of plan 3.7 and 3.9: Post it again, Post this, and the share images.
 import type { JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
@@ -152,7 +153,7 @@ function PostAgainReady({ endpoint, channels, postName, imageUrl, sample, onClos
       {postName ? (
         <div class="sheet-post">
           {imageUrl ? <img src={imageUrl} alt="" width="48" height="48" /> : null}
-          <strong>{postName}</strong>
+          <strong>{tileLabel(postName)}</strong>
         </div>
       ) : null}
       <p class="small muted">{sample ? "Sample bakery: nothing is sent to any real account." : "Goes into your Buffer queue and out at your next slot."}</p>

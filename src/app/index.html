@@ -16,7 +16,19 @@
 <link rel="preload" href="/fonts/libre-franklin-latin.woff2" as="font" type="font/woff2" crossorigin>
 </head>
 <body>
-<div id="app"></div>
+<style>
+body{margin:0;background:#F4F2ED;color:#231F1B;font-family:"Libre Franklin",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){body{background:#17140F;color:#F4F2ED}}
+.sk-h{display:flex;align-items:center;gap:12px;height:64px;padding:0 16px;border-bottom:1px solid rgba(128,128,128,.28)}
+.sk-av{width:36px;height:36px;border-radius:50%;background:rgba(128,128,128,.28);flex:none}
+.sk-name{width:120px;height:18px;border-radius:3px;background:rgba(128,128,128,.28)}
+.sk-nav{display:flex;gap:16px;margin-left:auto;font-weight:600;font-size:15px;opacity:.55}
+.sk-g{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:16px}
+.sk-t{aspect-ratio:1;background:rgba(128,128,128,.2);border-radius:4px;display:block}
+@media (min-width:720px){.sk-g{grid-template-columns:repeat(4,1fr)}}
+@media (max-width:420px){.sk-nav span:nth-child(2){display:none}}
+</style>
+<div id="app"><div class="sk-h" aria-hidden="true"><span class="sk-av"></span><span class="sk-name"></span><span class="sk-nav"><span>Wall</span><span>This week</span><span>Setup</span></span></div><div class="sk-g" aria-hidden="true"><span class="sk-t"></span><span class="sk-t"></span><span class="sk-t"></span><span class="sk-t"></span><span class="sk-t"></span><span class="sk-t"></span></div></div>
 <script type="module" src="./main.tsx"></script>
 </body>
 </html>

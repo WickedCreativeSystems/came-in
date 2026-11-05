@@ -117,6 +117,12 @@ export async function setSample(env: Env, session: string, key: string, value: s
   ).bind(session, key, value, new Date().toISOString()).run();
 }
 
+/** A one-off flag the sample keeps for this browser (for example, that Ring my phone was pressed). */
+export async function sampleFlag(env: Env, session: string, key: string): Promise<boolean> {
+  const r = await env.DB.prepare(`SELECT value FROM sample_settings WHERE session_id = ?1 AND key = ?2`).bind(session, key).first<{ value: string | null }>();
+  return r?.value === "1";
+}
+
 export async function saveSampleSettings(env: Env, session: string, p: SettingsPatch): Promise<void> {
   if ("thankYou" in p) await setSample(env, session, "thank_you", p.thankYou ?? null);
   if ("reviewUrl" in p) await setSample(env, session, "review_url", p.reviewUrl ?? null);
@@ -133,7 +139,7 @@ export async function saveSampleSettings(env: Env, session: string, p: SettingsP
  */
 export async function deleteShop(env: Env, shopId: string): Promise<number> {
   const notes = await env.DB.prepare(`SELECT note_id FROM tiles WHERE shop_id = ?1 AND note_id IS NOT NULL AND note_id != 'making'`).bind(shopId).all<{ note_id: string }>();
-  const tables = ["taps", "posts", "tiles", "channels", "counters", "push_subs", "buffer_jobs"];
+  const tables = ["taps", "posts", "tiles", "channels", "counters", "push_subs", "buffer_jobs", "locations"];
   await env.DB.batch(tables.map((t) => env.DB.prepare(`DELETE FROM ${t} WHERE shop_id = ?1`).bind(shopId)));
   const hasToken = await env.DB.prepare(`SELECT 1 FROM buffer_tokens WHERE shop_id = ?1`).bind(shopId).first();
   if (hasToken) for (const n of notes.results) await enqueue(env, shopId, "delete_note", { noteId: n.note_id });

@@ -13,19 +13,19 @@ import {
 } from "./buffer/client";
 import { ACCOUNT } from "./buffer/queries";
 import { codeChallenge, codeVerifier, randomToken, shopId as newShopId, encrypt, decrypt, timingSafeEqual } from "./lib/crypto";
-import { setOwnerCookie, ownerShopId, setOAuthCookie, readOAuthCookie, clearOAuthCookie, sampleSession } from "./lib/cookies";
+import { setOwnerCookie, setOwnerShops, ownerShopId, ownerState, switchOwnerShop, dropOwnerShop, setOAuthCookie, readOAuthCookie, clearOAuthCookie, sampleSession } from "./lib/cookies";
 import { getShop, liveShop, wallTiles, tapGrid, postCounts, wake, type ShopRow } from "./db";
 import { storeTokens } from "./tokens";
 import { syncChannels, setCardChannel, retryMissingImages } from "./sync";
 import { pollDue, pollShop } from "./poll";
 import { parseTapInput, recordTap } from "./taps";
 import { sampleWall, recordSampleTap, isSampleTile, deleteOldSampleTaps } from "./sample";
-import { renderTapPage, renderGonePage, type TapTile } from "./render/tap";
-import { renderLanding, renderPrivacy, renderCredits } from "./render/site";
+import { renderTapPage, renderGonePage, renderCardRemoved, type TapTile } from "./render/tap";
+import { renderLanding, renderPrivacy, renderCredits, renderPricing, priceLabel, paymentLink } from "./render/site";
 import { SAMPLE_SHOP, SAMPLE_POSTS } from "../shared/sample";
 
 const SAMPLE_POSTS_BY_ID = new Map(SAMPLE_POSTS.map((p) => [p.id, p]));
-import { dayBadge, bellSentence, whereLine, firstLine } from "../shared/names";
+import { dayBadge, dayBadgeShort, bellSentence, whereLine, firstLine } from "../shared/names";
 import { isValidTimeZone } from "../shared/time";
 import type { WallData, WallTile, ChannelRow } from "../shared/types";
 import type { TokenResponse } from "./buffer/client";
@@ -33,11 +33,13 @@ import { pushShop, pushSample, parseSubscription, saveShopSub, saveSampleSub, pu
 import { openCounter, getCounter, closeCounter, parseCounterTap, recordCounterTap } from "./counter";
 import { renderCounterPage, renderCounterClosed } from "./render/counter";
 import { renderCard, cardSize, type CardSize } from "./render/card";
-import { parsePatch, shopSettings, saveShopSettings, sampleSettings, saveSampleSettings, setSample, deleteShop } from "./settings";
+import { parsePatch, shopSettings, saveShopSettings, sampleSettings, saveSampleSettings, setSample, sampleFlag, deleteShop } from "./settings";
 import { clearOwnerCookie } from "./lib/cookies";
-import { shopWeek, parseRange } from "./week";
+import { shopWeek, parseRange, weekByLocation } from "./week";
 import { shopPostPage } from "./post";
 import { queueVision } from "./vision";
+import { seedStagingShops } from "./staging";
+import { cleanName, listLocations, firstLocation, locationOf, createLocation, renameLocation, removeLocation, ensureFirstLocation, PROBLEM_TEXT, MAX_LOCATIONS } from "./locations";
 import { postAgain, postShare, moreLikeThis, queueWinnerJobs, closeDeletedShops, runJobs, againTargets, refusalFor, type PostTarget, type ChannelResult } from "./writes";
 import { sampleWeek, samplePostPage, SAMPLE_CHANNELS } from "./sample";
 import { mondayBody, summarize } from "../shared/week";
@@ -68,6 +70,17 @@ async function ownerShop(c: C): Promise<ShopRow | null> {
   return id ? liveShop(c.env, id) : null;
 }
 
+/**
+ * The location a count is for: "all" or none is every tap (null); an id must be one of this shop's live
+ * locations (any other pair is a 404, plan 1.3).
+ */
+async function chosenLocation(c: C, shop: ShopRow): Promise<{ ok: true; id: string | null } | { ok: false }> {
+  const q = c.req.query("loc");
+  if (!q || q === "all") return { ok: true, id: null };
+  const loc = await locationOf(c.env, shop.id, q);
+  return loc && !loc.removed_at ? { ok: true, id: loc.id } : { ok: false };
+}
+
 function noStore(c: C) {
   c.header("Cache-Control", "no-store");
 }
@@ -87,13 +100,96 @@ app.get("/", (c) => {
 });
 app.get("/privacy", (c) => c.html(renderPrivacy(c.env.CONTACT_EMAIL ?? null)));
 app.get("/credits", (c) => c.html(renderCredits(c.env.CONTACT_EMAIL ?? null)));
+app.get("/pricing", (c) => c.html(renderPricing({ price: priceLabel(c.env.PRICE_TEXT), link: paymentLink(c.env.STRIPE_PAYMENT_LINK), contactEmail: c.env.CONTACT_EMAIL ?? null })));
+
+// ---------- Locations (plan 1.5, 3.13) ----------
+
+/** The shops this browser holds, in the order of its signed list (live ones only). */
+async function ownerLocations(c: C): Promise<{ current: string; shops: { id: string; name: string; avatarUrl: string | null }[] } | null> {
+  const st = await ownerState(c);
+  if (!st) return null;
+  const shops: { id: string; name: string; avatarUrl: string | null }[] = [];
+  for (const id of st.shops) {
+    const s = await liveShop(c.env, id);
+    if (s) shops.push({ id: s.id, name: s.name, avatarUrl: s.avatar_key ? `/i/${s.id}/avatar` : null });
+  }
+  return { current: st.current, shops };
+}
+
+// Staging only: open two made-up shops in this browser to see the Locations screens (no Buffer involved).
+app.get("/staging/shops", async (c) => {
+  if (c.env.APP_ENV !== "staging") return c.notFound();
+  const ids = await seedStagingShops(c.env);
+  await setOwnerShops(c, ids);
+  return c.redirect("/wall", 302);
+});
+
+app.get("/api/locations", async (c) => {
+  noStore(c);
+  const l = await ownerLocations(c);
+  if (!l) return c.json({ error: "signed out" }, 401);
+  const price = priceLabel(c.env.PRICE_TEXT);
+  return c.json({ ...l, locations: await listLocations(c.env, l.current), cap: MAX_LOCATIONS, price, pay: !!(price && paymentLink(c.env.STRIPE_PAYMENT_LINK)) });
+});
+
+// A shop's locations (plan 3.13): add one that shares the shop's posts, rename, remove.
+function problem(p: keyof typeof PROBLEM_TEXT, name?: string): string {
+  return PROBLEM_TEXT[p].replace("{name}", name ?? "");
+}
+
+app.post("/api/shop/locations", async (c) => {
+  const shop = await ownerShop(c);
+  if (!shop) return c.json({ error: "signed out" }, 401);
+  const b = (await c.req.json().catch(() => ({}))) as { name?: unknown; firstName?: unknown };
+  const created = await createLocation(c.env, shop.id, b.name);
+  if (!created.ok) return c.json({ error: problem(created.problem, cleanName(b.name)), field: "name" }, 400);
+  // With one location so far the shop's own can be renamed in the same step, so the two tabs read well.
+  const locs = await listLocations(c.env, shop.id);
+  const fn = cleanName(b.firstName);
+  if (locs.length === 2 && fn && fn !== locs[0].name) {
+    const renamed = await renameLocation(c.env, shop.id, locs[0].id, fn);
+    if (!renamed.ok) {
+      await c.env.DB.prepare(`DELETE FROM locations WHERE id = ?1 AND shop_id = ?2`).bind(created.location.id, shop.id).run();
+      return c.json({ error: problem(renamed.problem, fn), field: "firstName" }, 400);
+    }
+  }
+  return c.json({ ok: true, location: created.location, next: `/setup?added=${created.location.id}` });
+});
+
+app.patch("/api/shop/locations/:id", async (c) => {
+  const shop = await ownerShop(c);
+  if (!shop) return c.json({ error: "signed out" }, 401);
+  const b = (await c.req.json().catch(() => ({}))) as { name?: unknown };
+  const r = await renameLocation(c.env, shop.id, c.req.param("id"), b.name);
+  if (!r.ok) return c.json({ error: problem(r.problem, cleanName(b.name)), field: "name" }, r.problem === "missing" ? 404 : 400);
+  return c.json({ ok: true });
+});
+
+app.delete("/api/shop/locations/:id", async (c) => {
+  const shop = await ownerShop(c);
+  if (!shop) return c.json({ error: "signed out" }, 401);
+  const r = await removeLocation(c.env, shop.id, c.req.param("id"));
+  if (!r.ok) return c.json({ error: problem(r.problem) }, r.problem === "missing" ? 404 : 400);
+  return c.json({ ok: true });
+});
+
+// Switch to another shop this browser holds. An id that is not in the signed list is refused and nothing changes.
+app.post("/setup/switch", async (c) => {
+  const b = (await c.req.json().catch(() => ({}))) as { shop?: unknown };
+  const id = typeof b.shop === "string" ? b.shop : "";
+  if (!id || !(await liveShop(c.env, id)) || !(await switchOwnerShop(c, id))) return c.json({ error: "not one of your shops" }, 403);
+  return c.json({ ok: true, next: "/wall" });
+});
 
 // ---------- OAuth (plan 1.2) ----------
 
 app.get("/auth/start", async (c) => {
   const verifier = codeVerifier();
   const state = randomToken(32);
-  await setOAuthCookie(c, { verifier, state });
+  // "Add a location" runs Connect Buffer again for another shop; it only means something when signed in (plan 3.13).
+  const add = c.req.query("add") === "1" && !!(await ownerState(c));
+  const addName = add ? cleanName(c.req.query("name")).slice(0, 24) : "";
+  await setOAuthCookie(c, { verifier, state, add, addName });
   const url = authorizeUrl(c.env, { redirectUri: `${origin(c)}/auth/callback`, state, codeChallenge: await codeChallenge(verifier) });
   return c.redirect(url, 302);
 });
@@ -124,6 +220,33 @@ app.get("/auth/callback", async (c) => {
   const tz = acct.timezone && isValidTimeZone(acct.timezone) ? acct.timezone : "Europe/London";
   const orgs = acct.organizations ?? [];
   if (orgs.length === 0) return c.redirect("/?error=exchange", 302);
+  const held = saved.add ? await ownerState(c) : null;
+  if (held) {
+    // Another shop for this browser: only organizations it has not added yet (plan 3.13).
+    const have = new Set<string>();
+    for (const o of orgs) {
+      const s = await c.env.DB.prepare(`SELECT id FROM shops WHERE buffer_account_id = ?1 AND buffer_org_id = ?2`).bind(acct.id, o.id).first<{ id: string }>();
+      if (s && held.shops.includes(s.id)) have.add(o.id);
+    }
+    const fresh = orgs.filter((o) => !have.has(o.id));
+    if (fresh.length === 0) {
+      // A sign-in that returns the one shop already held reconnects it; otherwise there is nothing new.
+      if (orgs.length === 1) {
+        const shop = await connectShop(c.env, acct.id, orgs[0], tz, tokens);
+        await setOwnerCookie(c, shop.id);
+        return c.redirect("/setup/add?state=reconnected", 302);
+      }
+      return c.redirect("/setup/add?state=none", 302);
+    }
+    if (fresh.length === 1) {
+      const shop = await connectShop(c.env, acct.id, fresh[0], tz, tokens, saved.addName || undefined);
+      await setOwnerCookie(c, shop.id);
+      return c.redirect("/setup/channels", 302);
+    }
+    const pending = await encrypt(JSON.stringify({ accountId: acct.id, orgs: fresh, tz, tokens, firstName: saved.addName || undefined, at: Date.now() }), c.env.TOKEN_ENC_KEY);
+    setCookie(c, PENDING_COOKIE, pending, { httpOnly: true, secure: origin(c).startsWith("https:"), sameSite: "Lax", path: "/", maxAge: 600 });
+    return c.redirect("/setup/org", 302);
+  }
   if (orgs.length === 1) {
     const shop = await connectShop(c.env, acct.id, orgs[0], tz, tokens);
     await setOwnerCookie(c, shop.id);
@@ -135,7 +258,7 @@ app.get("/auth/callback", async (c) => {
   return c.redirect("/setup/org", 302);
 });
 
-async function readPending(c: C): Promise<{ accountId: string; orgs: { id: string; name: string }[]; tz: string; tokens: TokenResponse } | null> {
+async function readPending(c: C): Promise<{ accountId: string; orgs: { id: string; name: string }[]; tz: string; tokens: TokenResponse; firstName?: string } | null> {
   const raw = getCookie(c, PENDING_COOKIE);
   if (!raw) return null;
   try {
@@ -148,7 +271,7 @@ async function readPending(c: C): Promise<{ accountId: string; orgs: { id: strin
 }
 
 /** Make or find the shop for an account and organization, and keep its tokens (plan 1.2 step 3). */
-export async function connectShop(env: Env, accountId: string, org: { id: string; name: string }, tz: string, tokens: TokenResponse): Promise<ShopRow> {
+export async function connectShop(env: Env, accountId: string, org: { id: string; name: string }, tz: string, tokens: TokenResponse, firstName?: string): Promise<ShopRow> {
   let shop = await env.DB.prepare(`SELECT * FROM shops WHERE buffer_account_id = ?1 AND buffer_org_id = ?2`).bind(accountId, org.id).first<ShopRow>();
   const now = new Date().toISOString();
   if (!shop) {
@@ -157,6 +280,8 @@ export async function connectShop(env: Env, accountId: string, org: { id: string
       `INSERT INTO shops (id, buffer_account_id, buffer_org_id, name, handle, timezone, created_at) VALUES (?1, ?2, ?3, ?4, '', ?5, ?6)`,
     ).bind(id, accountId, org.id, org.name, tz, now).run();
     shop = (await getShop(env, id))!;
+    // A shop starts with one location, named after it, or with the name typed on Add a location (plan 3.13).
+    await ensureFirstLocation(env, shop, firstName);
   } else {
     await env.DB.prepare(`UPDATE shops SET revoked_at = NULL, deleted_at = NULL WHERE id = ?1`).bind(shop.id).run();
   }
@@ -177,7 +302,7 @@ app.post("/api/setup/org", async (c) => {
   const { org } = await c.req.json<{ org: string }>().catch(() => ({ org: "" }));
   const chosen = p.orgs.find((o) => o.id === org);
   if (!chosen) return c.json({ error: "no such shop" }, 400);
-  const shop = await connectShop(c.env, p.accountId, chosen, p.tz, p.tokens);
+  const shop = await connectShop(c.env, p.accountId, chosen, p.tz, p.tokens, p.firstName);
   deleteCookie(c, PENDING_COOKIE, { path: "/" });
   await setOwnerCookie(c, shop.id);
   return c.json({ ok: true, next: "/setup/channels" });
@@ -239,15 +364,18 @@ app.get("/api/wall", async (c) => {
   const shop = await ownerShop(c);
   if (!shop) return c.json({ error: "signed out" }, 401);
   const now = new Date();
+  const loc = await chosenLocation(c, shop);
+  if (!loc.ok) return c.json({ error: "no such location" }, 404);
   await wake(c.env, shop.id, now);
-  const [tiles, counts, sync, blocked, extras] = await Promise.all([
-    wallTiles(c.env, shop, now, { includeHidden: true }),
-    postCounts(c.env, shop, now),
+  const [tiles, counts, sync, blocked, extras, locations] = await Promise.all([
+    wallTiles(c.env, shop, now, { includeHidden: true, locationId: loc.id }),
+    postCounts(c.env, shop, now, loc.id),
     room(c.env, shop.id).syncStatus(),
     blockedUntil(c.env),
     c.env.DB.prepare(
       `SELECT (SELECT COUNT(*) FROM counters WHERE shop_id = ?1) AS counters, (SELECT COUNT(*) FROM push_subs WHERE shop_id = ?1 AND failed_at IS NULL) AS subs`,
     ).bind(shop.id).first<{ counters: number; subs: number }>(),
+    listLocations(c.env, shop.id),
   ]);
   const data: WallData = {
     shop: {
@@ -276,6 +404,8 @@ app.get("/api/wall", async (c) => {
       thankYou: !!shop.thank_you_text,
       review: !!shop.review_url,
     },
+    locations: locations.map((l) => ({ id: l.id, name: l.name })),
+    location: loc.id,
     now: now.toISOString(),
   };
   return c.json(data);
@@ -356,16 +486,23 @@ function toTapTile(t: WallTile, now: Date, tz: string, sample = false): TapTile 
     // The sample's text-only post shows its name, never a sentence of the post.
     text: sample && !t.imageUrl ? t.name.replace(/^the\s+/i, "") : firstLine(t.text),
     badge: dayBadge(new Date(t.firstSentAt), now, tz, t.isLive, "tap"),
+    badgeShort: dayBadgeShort(new Date(t.firstSentAt), now, tz, t.isLive),
     live: t.isLive,
   };
 }
 
-app.get("/t/:shop{[a-z]{10}}", async (c) => {
+/** The tap page for one of a shop's locations (plan 3.5). /t/<shop> is the first, so every printed card keeps working. */
+async function shopTapPage(c: C, shopId: string, locationId: string | null): Promise<Response> {
   c.header("Cache-Control", "no-store");
-  const shop = await liveShop(c.env, c.req.param("shop"));
+  const shop = await liveShop(c.env, shopId);
   if (!shop) return c.html(renderGonePage(), 404);
+  const loc = locationId ? await locationOf(c.env, shop.id, locationId) : await firstLocation(c.env, shop.id);
+  if (!loc) return c.html(renderGonePage(), 404);
+  // A removed location's card says so and records nothing.
+  if (loc.removed_at) return c.html(renderCardRemoved(), 410);
   const now = new Date();
   c.executionCtx.waitUntil(wake(c.env, shop.id, now));
+  const locs = await listLocations(c.env, shop.id);
   const { story, tiles } = tapGrid(await wallTiles(c.env, shop, now));
   return c.html(
     renderTapPage({
@@ -380,9 +517,13 @@ app.get("/t/:shop{[a-z]{10}}", async (c) => {
       // "Open the tap page" on the owner's own screen uses a separate device id, so this screen rings.
       deviceKey: c.req.query("try") ? "ci_device_try" : "ci_device",
       showHeader: true,
+      location: { id: loc.id, label: locs.length >= 2 ? loc.name : null },
     }),
   );
-});
+}
+
+app.get("/t/:shop{[a-z]{10}}", (c) => shopTapPage(c, c.req.param("shop"), null));
+app.get("/t/:shop{[a-z]{10}}/:loc{[a-z]{10}}", (c) => shopTapPage(c, c.req.param("shop"), c.req.param("loc")));
 
 app.post("/api/tap", async (c) => {
   const input = parseTapInput(await c.req.json().catch(() => null));
@@ -404,13 +545,14 @@ app.post("/api/tap", async (c) => {
 app.get("/api/sample/wall", async (c) => {
   noStore(c);
   const session = sampleSession(c, () => randomToken(32));
-  const [wall, settings, subs] = await Promise.all([
+  const [wall, settings, subs, phoneOn] = await Promise.all([
     sampleWall(c.env, session),
     sampleSettings(c.env, session),
     c.env.DB.prepare(`SELECT COUNT(*) AS n FROM sample_push_subs WHERE session_id = ?1 AND failed_at IS NULL`).bind(session).first<{ n: number }>(),
+    sampleFlag(c.env, session, "phone_on"),
   ]);
   wall.shop.theme = settings.theme;
-  wall.checklist = { connected: true, card: settings.cardPrinted, counter: settings.counterOpened, phone: (subs?.n ?? 0) > 0, thankYou: !!settings.thankYou, review: !!settings.reviewUrl };
+  wall.checklist = { connected: true, card: settings.cardPrinted, counter: settings.counterOpened, phone: (subs?.n ?? 0) > 0 || phoneOn, thankYou: !!settings.thankYou, review: !!settings.reviewUrl };
   return c.json(wall);
 });
 
@@ -424,7 +566,8 @@ app.get("/embed.js", (c) => {
 var o=new URL(s.src).origin,f=document.createElement("iframe");f.src=id==="sample"?o+"/sample/t":o+"/e/"+id;f.title="Saw us online? Tap the post that brought you in.";f.loading="lazy";
 f.style.cssText="display:block;width:100%;max-width:520px;height:560px;border:0;margin:0 auto;background:transparent";f.setAttribute("allow","");
 s.parentNode.insertBefore(f,s.nextSibling);
-addEventListener("message",function(e){if(e.source!==f.contentWindow||!e.data||e.data.cameIn!=="height")return;var h=Math.max(560,Math.min(4000,Number(e.data.h)||0));f.style.height=h+"px"})})();`);
+var rm=matchMedia("(prefers-reduced-motion: reduce)").matches;if(!rm)f.style.transition="height 260ms cubic-bezier(.2,.8,.2,1)";
+addEventListener("message",function(e){if(e.source!==f.contentWindow||!e.data||e.data.cameIn!=="height")return;var h=Math.max(320,Math.min(4000,Number(e.data.h)||0));f.style.height=h+"px";if(e.data.thanks&&f.getBoundingClientRect().top<0)f.scrollIntoView({block:"start",behavior:rm?"auto":"smooth"})})})();`);
 });
 
 app.get("/e/:shop{[a-z]{10}}", async (c) => {
@@ -522,6 +665,8 @@ app.get("/api/setup", async (c) => {
   return c.json({
     settings: shopSettings(shop),
     tapUrl: `${publicOrigin(c)}/t/${shop.id}`,
+    // One tap link per location; the first is /t/<shop>, as every card printed before locations is.
+    tapUrls: (await listLocations(c.env, shop.id)).map((l) => ({ id: l.id, name: l.name, url: l.first ? `${publicOrigin(c)}/t/${shop.id}` : `${publicOrigin(c)}/t/${shop.id}/${l.id}` })),
     embed: `<script src="${publicOrigin(c)}/embed.js" data-shop="${shop.id}"></script>`,
     phones: subs?.n ?? 0,
     channels: await channelRows(c.env, shop),
@@ -569,14 +714,24 @@ app.get("/card", async (c) => {
   const shop = await ownerShop(c);
   if (!shop) return c.redirect("/", 302);
   const size = cardSize(c.req.query("size"));
+  const locs = await listLocations(c.env, shop.id);
+  const want = c.req.query("l");
+  // The card is for one location; a location id from another shop is not one of this shop's, and a 404.
+  const loc = want ? locs.find((l) => l.id === want) : locs[0];
+  if (!loc) return c.notFound();
+  const many = locs.length >= 2;
+  const href = (l: string, s: CardSize) => `/card?size=${s}${l === locs[0].id ? "" : `&l=${l}`}`;
   return c.html(
     renderCard({
       shop: { name: shop.name, handle: shop.handle, avatarUrl: shop.avatar_key ? `/i/${shop.id}/avatar` : null },
-      qrSvg: await qrSvg(`${publicOrigin(c)}/t/${shop.id}`),
+      // The first location's card is /t/<shop>, as every card printed before locations is.
+      qrSvg: await qrSvg(loc.id === locs[0].id ? `${publicOrigin(c)}/t/${shop.id}` : `${publicOrigin(c)}/t/${shop.id}/${loc.id}`),
       size,
       printedEndpoint: "/api/card/printed",
-      backUrl: "/setup#card",
-      sizeHref: (s: CardSize) => `/card?size=${s}`,
+      backUrl: "/setup#locations",
+      sizeHref: (s: CardSize) => href(loc.id, s),
+      locationName: many ? loc.name : null,
+      locationSwitches: many ? locs.map((l) => ({ label: l.name, href: href(l.id, size), current: l.id === loc.id })) : undefined,
     }),
   );
 });
@@ -613,7 +768,12 @@ app.post("/api/sample/card/printed", async (c) => {
 app.post("/api/counter/open", async (c) => {
   const shop = await ownerShop(c);
   if (!shop) return c.json({ error: "signed out" }, 401);
-  return c.json({ ok: true, url: `/c/${await openCounter(c.env, shop.id)}` });
+  const body = (await c.req.json().catch(() => ({}))) as { location?: string };
+  const locs = await listLocations(c.env, shop.id);
+  // With two or more locations the screen must say which one it is at (plan 3.8).
+  const loc = locs.length >= 2 ? locs.find((l) => l.id === body.location) : locs[0];
+  if (!loc) return c.json({ error: "Which location is this screen at?" }, 400);
+  return c.json({ ok: true, url: `/c/${await openCounter(c.env, shop.id, loc.id)}` });
 });
 
 app.post("/api/counter/close", async (c) => {
@@ -635,8 +795,12 @@ app.get("/c/:token", async (c) => {
   c.executionCtx.waitUntil(wake(c.env, shop.id, now));
   const tiles = (await wallTiles(c.env, shop, now)).slice(0, 12);
   const owner = (await ownerShopId(c)) === shop.id;
+  const locs = await listLocations(c.env, shop.id);
+  const here = locs.find((l) => l.id === counter.location_id);
+  // A screen whose location was removed is closed with it; one for a shop with a single location shows no name.
   return c.html(
     renderCounterPage({
+      locationLabel: locs.length >= 2 && here ? here.name : null,
       shop: { name: shop.name, handle: shop.handle, avatarUrl: shop.avatar_key ? `/i/${shop.id}/avatar` : null },
       tiles: tiles.map((t) => toTapTile(t, now, shop.timezone)),
       token: counter.token,
@@ -712,6 +876,13 @@ app.post("/api/push/subscribe", async (c) => {
   return c.json({ ok: true });
 });
 
+// In the sample, pressing Ring my phone ticks its chip: the bell rings in this browser.
+app.post("/api/sample/phone", async (c) => {
+  const session = sampleSession(c, () => randomToken(32));
+  await setSample(c.env, session, "phone_on", "1");
+  return c.json({ ok: true });
+});
+
 app.post("/api/sample/push/subscribe", async (c) => {
   const session = sampleSession(c, () => randomToken(32));
   const b = (await c.req.json().catch(() => ({}))) as { device?: string; subscription?: unknown };
@@ -728,8 +899,8 @@ app.post("/api/shop/delete", async (c) => {
   if (!shop) return c.json({ error: "signed out" }, 401);
   // The notes come out of Buffer through jobs that run after this answers.
   if ((await deleteShop(c.env, shop.id)) > 0) c.executionCtx.waitUntil(room(c.env, shop.id).kickJobs(shop.id));
-  clearOwnerCookie(c);
-  return c.json({ ok: true, next: "/" });
+  const more = await dropOwnerShop(c, shop.id);
+  return c.json({ ok: true, next: more ? "/wall" : "/" });
 });
 
 // ---------- Phase 3: This week, a post's page, the write-backs, the share image ----------
@@ -738,7 +909,9 @@ app.get("/api/week", async (c) => {
   noStore(c);
   const shop = await ownerShop(c);
   if (!shop) return c.json({ error: "signed out" }, 401);
-  const data = await shopWeek(c.env, shop, parseRange(c.req.query("range")));
+  const loc = await chosenLocation(c, shop);
+  if (!loc.ok) return c.json({ error: "no such location" }, 404);
+  const data = await shopWeek(c.env, shop, parseRange(c.req.query("range")), new Date(), loc.id);
   return c.json({ ...data, channels: await targetChannels(c.env, shop.id), drafts: c.env.BUFFER_DRAFTS === "1" });
 });
 
@@ -773,7 +946,9 @@ app.get("/api/post/:tile", async (c) => {
   noStore(c);
   const shop = await ownerShop(c);
   if (!shop) return c.json({ error: "signed out" }, 401);
-  const page = await shopPostPage(c.env, shop, c.req.param("tile"));
+  const loc = await chosenLocation(c, shop);
+  if (!loc.ok) return c.json({ error: "no such location" }, 404);
+  const page = await shopPostPage(c.env, shop, c.req.param("tile"), new Date(), loc.id);
   if (!page) return c.json({ error: "no such post" }, 404);
   return c.json({ ...page, drafts: c.env.BUFFER_DRAFTS === "1" });
 });
@@ -934,7 +1109,7 @@ app.post("/api/sample/week/post", async (c) => {
 
 // ---------- The owner app (Vite + Preact, static assets) ----------
 
-const APP_ROUTES = ["/wall", "/week", "/setup", "/setup/org", "/setup/channels", "/setup/reading", "/sample", "/sample/week", "/sample/setup"];
+const APP_ROUTES = ["/wall", "/week", "/setup", "/setup/add", "/setup/org", "/setup/channels", "/setup/reading", "/sample", "/sample/week", "/sample/setup", "/sample/setup/add"];
 
 async function serveApp(c: C) {
   const url = new URL(c.req.url);
@@ -976,8 +1151,11 @@ export async function mondayPushes(env: Env, now = new Date()): Promise<string[]
     if (shop.monday_push_week === week) continue;
     await env.DB.prepare(`UPDATE shops SET monday_push_week = ?2 WHERE id = ?1`).bind(shop.id, week).run();
     const last = await shopWeek(env, shop, "last", now);
-    const body = mondayBody(last.summary);
-    if (!body) continue;
+    const base = mondayBody(last.summary);
+    if (!base) continue;
+    // With two or more locations the push adds who came in where: "Downtown 7 · Eastside 4." (plan 3.7).
+    const by = await weekByLocation(env, shop, "last", now);
+    const body = by ? `${base} ${by}.` : base;
     await pushShop(env, shop.id, { title: "Came In", body, icon: "/icons/icon-192.png", url: "/week?range=last", tag: `week-${week}` }, null);
     sent.push(shop.id);
   }

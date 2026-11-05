@@ -2,7 +2,7 @@
 // ratio and the receipt lines, from taps. Shared by the Worker and the sample.
 import { weekdayName, timeBucket, type TimeBucket } from "./time";
 
-export type Range = "this" | "last" | "month";
+export type Range = "today" | "this" | "last" | "month";
 
 export interface WeekTap {
   tileId: string | null;
@@ -31,7 +31,7 @@ export interface WeekSummary {
 }
 
 export function rangeWords(r: Range): string {
-  return r === "last" ? "last week" : r === "month" ? "this month" : "this week";
+  return r === "today" ? "today" : r === "last" ? "last week" : r === "month" ? "this month" : "this week";
 }
 
 function people(n: number): string {
@@ -76,7 +76,8 @@ export function summarize(taps: WeekTap[], tiles: WeekTile[], tz: string, range:
 
   // Headline (plan 3.7): 0, under ten answers, or the full sentence.
   let headline: string;
-  if (n === 0) headline = range === "this" ? "Nobody has tapped yet this week." : range === "month" ? "Nobody has tapped yet this month." : "Nobody tapped last week.";
+  if (range === "today") headline = n === 0 ? "Nobody has tapped yet today." : `${people(n)} came in today because of ${posts === 1 ? "1 post" : `${posts} posts`}.`;
+  else if (n === 0) headline = range === "this" ? "Nobody has tapped yet this week." : range === "month" ? "Nobody has tapped yet this month." : "Nobody tapped last week.";
   else if (answers < 10) headline = `${people(n)} said a post brought them in ${words}.`;
   else headline = `${people(n)} came in because of ${posts === 1 ? "1 post" : `${posts} posts`}.`;
 

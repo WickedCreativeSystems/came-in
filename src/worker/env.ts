@@ -15,6 +15,9 @@ export interface Env {
   VAPID_PRIVATE?: string;
   VAPID_SUBJECT?: string;
   ANTHROPIC_API_KEY?: string;
+  /** Locations (plan 3.13): the price for more than one shop, and Walker's Stripe Payment Link. Both optional. */
+  PRICE_TEXT?: string;
+  STRIPE_PAYMENT_LINK?: string;
   /** The landing's Contact line (plan 3.1). Set at deploy, never typed into the repo. */
   CONTACT_EMAIL?: string;
   /** "1" on staging: Post it again and Post this save Buffer drafts, never queue (plan section 2, P12). */
