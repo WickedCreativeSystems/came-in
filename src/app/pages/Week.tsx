@@ -112,7 +112,7 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
       <main class="page week">
         {sample && (
           <div class="strip">
-            <span>Sample bakery. Nothing here reaches a real shop. Tap a post and this page rings.</span>
+            <span>Sample bakery. Nothing here reaches a real shop. Tap a post and this wall rings.</span>
             <a class="btn primary sm" href="/auth/start">
               Connect your own Buffer
             </a>
