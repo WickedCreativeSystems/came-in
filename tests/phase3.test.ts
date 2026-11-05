@@ -216,7 +216,7 @@ describe("the note in Buffer (P13)", () => {
     for (const d of ["a", "b", "c"]) await call("/api/tap", json({ shop: id, tile: `sour-${id}`, answer: "post", source: "card", device: d }));
     const stub = env.SHOP_ROOM.get(env.SHOP_ROOM.idFromName(id));
     await runDurableObjectAlarm(stub);
-    expect(fb.notes).toEqual([{ id: "note-1", postId: `p-sour-${id}`, text: "3 people came in because of this post. — Came In" }]);
+    expect(fb.notes.filter((n) => n.postId === `p-sour-${id}`).map(({ postId, text }) => ({ postId, text }))).toEqual([{ postId: `p-sour-${id}`, text: "3 people came in because of this post. — Came In" }]);
     expect(fb.tags).toEqual([]);
     expect(fb.postTags[`p-sour-${id}`]).toEqual(["existing"]);
     expect(fb.calls.some((c) => /CameIn(Edit)?(Post)?(Create)?Tags?\b/.test(c.query))).toBe(false);
@@ -513,7 +513,8 @@ describe("check fixes on e80197b (NerdCider, The Playner's ruling)", () => {
     await enqueue(env, id, "note", { tileId: `sour-${id}`, people: 3 });
     await Promise.all([runJobs(env, id), runJobs(env, id)]);
     await runJobs(env, id, new Date(Date.now() + 20 * 60000));
-    expect(fb.notes).toHaveLength(1);
+    // Count this shop's notes only: an earlier test's background job may still call the fake Buffer.
+    expect(fb.notes.filter((n) => n.postId === `p-sour-${id}`)).toHaveLength(1);
   });
 
   it("taps that step past 3 together still tag and note", async () => {
@@ -522,7 +523,7 @@ describe("check fixes on e80197b (NerdCider, The Playner's ruling)", () => {
     // Four taps land before any job runs.
     for (const d of ["a", "b", "c", "d"]) await call("/api/tap", json({ shop: id, tile: `sour-${id}`, answer: "post", source: "card", device: d }));
     await runJobs(env, id);
-    expect(fb.notes).toHaveLength(1);
+    expect(fb.notes.filter((n) => n.postId === `p-sour-${id}`)).toHaveLength(1);
     const { nextNoteStep } = await import("../src/worker/writes");
     expect([nextNoteStep(0), nextNoteStep(3), nextNoteStep(10), nextNoteStep(100), nextNoteStep(250)]).toEqual([3, 10, 25, 200, 300]);
   });
