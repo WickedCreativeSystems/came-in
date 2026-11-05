@@ -709,6 +709,8 @@ app.get("/api/sample/setup", async (c) => {
     settings,
     tapUrl: `${publicOrigin(c)}/sample/t`,
     embed: `<script src="${publicOrigin(c)}/embed.js" data-shop="sample"></script>`,
+    // The sample's line under Add a location follows the price too (plan 3.13).
+    price: priceLabel(c.env.PRICE_TEXT),
     phones: subs?.n ?? 0,
     channels: [],
     pushKey: pushConfigured(c.env) ? c.env.VAPID_PUBLIC : null,
