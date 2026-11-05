@@ -122,6 +122,36 @@ describe("Undo on the staff screen (P7, plan 3.6)", () => {
     expect(n!.n).toBe(3);
   });
 
+  it("two taps on two tiles 3.2 s apart give two taps, and Undo then removes only the second (the first is too late)", async () => {
+    const id = await shopWithPosts();
+    const token = await openCounterFor(id);
+    const start = Date.now();
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: start });
+    const a = await tapOn(token, `sour-${id}`);
+    vi.setSystemTime(start + 3200);
+    const b = await tapOn(token, `hours-${id}`);
+    expect(a.counted).toBe(true);
+    expect(b.counted).toBe(true);
+    expect(await todayCount(id)).toBe(2);
+    expect((await del(`/c/${token}/taps/${a.id}`)).status).toBe(410);
+    expect((await del(`/c/${token}/taps/${b.id}`)).status).toBe(200);
+    expect(await todayCount(id)).toBe(1);
+    const left = await env.DB.prepare(`SELECT id FROM taps WHERE id IN (?1, ?2)`).bind(a.id, b.id).all<{ id: string }>();
+    expect(left.results.map((r) => r.id)).toEqual([a.id]);
+  });
+
+  it("a tap within 3 s of the last one is not counted, as plan 1.3 says", async () => {
+    const id = await shopWithPosts();
+    const token = await openCounterFor(id);
+    const start = Date.now();
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: start });
+    expect((await tapOn(token, `sour-${id}`)).counted).toBe(true);
+    vi.setSystemTime(start + 1000);
+    expect((await tapOn(token, `hours-${id}`)).counted).toBe(false);
+    vi.setSystemTime(start + 3200);
+    expect((await tapOn(token, `hours-${id}`)).counted).toBe(true);
+  });
+
   it("a closed staff screen can't undo", async () => {
     const id = await shopWithPosts();
     const token = await openCounterFor(id);
