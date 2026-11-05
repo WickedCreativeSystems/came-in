@@ -38,6 +38,7 @@ function css(size: CardSize): string {
 body{background:var(--paper-2)}
 .bar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:16px 24px;background:var(--paper);border-bottom:1px solid var(--rule)}
 .bar h1{margin:0 auto 0 0;font-family:var(--fd);font-weight:700;font-size:24px;line-height:1}
+.bar .how{flex:1 0 100%;margin:0;max-width:420px;font-size:14px;line-height:1.4;color:var(--ink-2)}
 .sizes{display:inline-flex;gap:4px}
 .sizes a{text-decoration:none;font-weight:600;font-size:14px;padding:8px 10px;border-radius:3px;color:var(--ink-2);border:1px solid var(--rule)}
 .sizes a[aria-current]{color:var(--paper);background:var(--ink);border-color:var(--ink)}
@@ -75,8 +76,8 @@ export function renderCard(d: CardData): string {
     .map((k) => `<a href="${esc(d.sizeHref(k))}"${k === d.size ? ' aria-current="page"' : ""}>${CARD_SIZES[k].label}</a>`)
     .join("");
   const body = `<div class="bar"><h1>Your card</h1>${d.locationSwitches?.length ? `<nav class="sizes locs" aria-label="Card for"><span class="lab">Card for</span>${d.locationSwitches.map((l) => `<a href="${esc(l.href)}"${l.current ? ' aria-current="page"' : ""}>${esc(l.label)}</a>`).join("")}</nav>` : ""}<nav class="sizes" aria-label="Paper size">${sizes}</nav>
-<button class="btn primary" id="print">Print</button><button class="btn" id="pdf">Save as PDF</button><a class="btn quiet" href="${esc(d.backUrl)}">Back</a></div>
-<div class="stage"><div class="card">
+<button class="btn primary" id="print">Print</button><button class="btn" id="pdf">Save as PDF</button><a class="btn quiet" href="${esc(d.backUrl)}">Back</a><p class="how">Your name and picture come from your Buffer channel, so there's nothing to set up. Put it by the till.</p></div>
+<main class="stage"><div class="card">
 <span class="punch" aria-hidden="true"></span>
 ${avatarHtml(d.shop.name, d.shop.avatarUrl, 48)}
 <div class="nm">${esc(d.shop.name)}</div>
@@ -85,8 +86,7 @@ ${d.shop.handle ? `<div class="hn${d.locationName ? " tight" : ""}">@${esc(d.sho
 <p class="sub">Tap the post that brought you in.<br>Three seconds, no app.</p>
 <div class="qr" aria-label="QR code for the tap page">${d.qrSvg}</div>
 <div class="ci">${BELL_MONO_SVG}<span>Came In</span></div>
-</div></div>
-<p class="note">It brands itself from your Buffer channel. Nothing to set up. Put it where people pay.</p>
+</div></main>
 <script type="application/json" id="cfg">${jsonForScript({ ep: d.printedEndpoint })}</script>`;
   const script = `(function(){var C=JSON.parse(document.getElementById('cfg').textContent);
 function go(){try{fetch(C.ep,{method:'POST',credentials:'same-origin',keepalive:true})}catch(e){}window.print()}

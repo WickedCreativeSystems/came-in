@@ -34,10 +34,12 @@ html{scrollbar-width:none}html::-webkit-scrollbar{display:none}
 .t img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .t:active{transform:scale(.97)}
 .t{container-type:inline-size}
-.bs{display:none}
-@container (max-width:179px){.bl{display:none}.bs{display:inline}}
+.bgs{display:none}
+@container (max-width:179px){.bgl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}.bgs{display:inline}}
 .bd{position:absolute;top:8px;left:8px;height:22px;padding:0 7px;border-radius:2px;background:var(--label);color:var(--label-ink);font-weight:600;font-size:12px;letter-spacing:.04em;text-transform:uppercase;display:inline-flex;align-items:center;line-height:1}
 .tx{position:absolute;inset:0;padding:38px 14px 14px;font-family:var(--fd);font-weight:700;font-size:22px;line-height:1.02;letter-spacing:-.005em;color:var(--ink);overflow:hidden;overflow-wrap:anywhere}
+.cmain{flex:1 1 auto;display:flex;flex-direction:column}
+.cmain .rw{margin-top:auto}
 .rw{position:sticky;bottom:0;background:var(--paper);padding:4px 16px 16px}
 .or{margin:0 0 8px;font-size:14px;color:var(--ink-2)}
 .row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -62,15 +64,16 @@ html{scrollbar-width:none}html::-webkit-scrollbar{display:none}
 
 function tileHtml(t: TapTile, i: number): string {
   const inner = t.imageUrl ? `<img src="${esc(t.imageUrl)}" alt="" ${i < 8 ? "" : 'loading="lazy"'} decoding="async">` : `<span class="tx">${esc(t.text)}</span>`;
-  return `<button class="t" data-i="${esc(t.id)}" data-n="${esc(t.name)}"${t.imageUrl ? ` data-img="${esc(t.imageUrl)}"` : ""} aria-label="${esc(tileLabel(t.name))}"><span class="pic">${inner}<span class="bd"><span class="bl">${esc(t.badge)}</span><span class="bs">${esc(t.badgeShort)}</span></span></span><span class="cn">${esc(tileLabel(t.name))}</span></button>`;
+  return `<button class="t" data-i="${esc(t.id)}" data-n="${esc(t.name)}"${t.imageUrl ? ` data-img="${esc(t.imageUrl)}"` : ""} aria-label="${esc(tileLabel(t.name))}"><span class="pic">${inner}<span class="bd"><span class="bgl">${esc(t.badge)}</span><span class="bgs" aria-hidden="true">${esc(t.badgeShort)}</span></span></span><span class="cn">${esc(tileLabel(t.name))}</span></button>`;
 }
 
 export function renderCounterPage(d: CounterPageData): string {
   const body = `<header class="hd">${avatarHtml(d.shop.name, d.shop.avatarUrl, 40)}<div><div class="nm">${esc(d.shop.name)}</div>${d.shop.handle ? `<div class="hn">@${esc(d.shop.handle)}</div>` : ""}</div><span class="eyebrow mk">Staff screen${d.locationLabel ? ` · ${esc(d.locationLabel)}` : ""}</span></header>
-<div class="ask"><h1>What brought them in?</h1></div>
+<main class="cmain"><div class="ask"><h1>What brought them in?</h1></div>
 <div class="ok" id="ok" role="status" aria-live="polite"></div>
 <div class="grid" id="g">${d.tiles.map(tileHtml).join("")}</div>
 <div class="rw"><p class="or">Or, if it wasn't a post:</p><div class="row"><button class="btn" data-a="walked_past" data-n="Walked past">Walked past</button><button class="btn" data-a="friend" data-n="A friend told them">A friend told them</button><button class="btn" data-a="google" data-n="Found us on Google">Found us on Google</button></div></div>
+</main>
 <div class="ft">${
     d.owner
       ? `<button id="own" aria-expanded="false">Owner</button><div class="menu" id="menu" hidden>${d.closeEndpoint ? `<button class="btn" id="cls">Close the staff screen on this device</button>` : ""}<a class="btn quiet" href="${esc(d.wallUrl)}">Back to the wall</a></div>`
@@ -85,7 +88,7 @@ export function renderCounterClosed(): string {
   return page({
     title: "Came In: staff screen",
     css: CSS,
-    body: `<div class="gone"><h1>This staff screen was closed. Open it again from Setup.</h1><a class="btn" href="/setup#staff">Open Setup</a></div>`,
+    body: `<main class="gone"><h1>This staff screen was closed. Open it again from Setup.</h1><a class="btn" href="/setup#staff">Open Setup</a></main>`,
     head: `<meta name="robots" content="noindex">`,
   });
 }

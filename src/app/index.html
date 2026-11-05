@@ -27,7 +27,36 @@ body{margin:0;background:#F4F2ED;color:#231F1B;font-family:"Libre Franklin",syst
 .sk-t{aspect-ratio:1;background:rgba(128,128,128,.2);border-radius:4px;display:block}
 @media (min-width:720px){.sk-g{grid-template-columns:repeat(4,1fr)}}
 @media (max-width:420px){.sk-nav span:nth-child(2){display:none}}
+.nl{box-sizing:border-box;width:calc(100% - 32px);max-width:360px;margin:24px auto;padding:24px;background:#ECE9E2;border:1px solid #D8D3CA;border-radius:4px;color:#231F1B;font-size:16px;line-height:1.4;font-family:"Libre Franklin",system-ui,-apple-system,"Segoe UI",sans-serif}
+.nl p{margin:0 0 16px}
+.nl button{height:40px;padding:0 16px;border:1.5px solid #231F1B;border-radius:3px;background:#F4F2ED;color:#231F1B;font:600 15px/1 "Libre Franklin",system-ui,sans-serif;cursor:pointer}
+@media (prefers-color-scheme:dark){.nl{background:#1F1B16;border-color:#332D26;color:#EFEAE1}.nl button{background:#17140F;border-color:#EFEAE1;color:#EFEAE1}}
 </style>
+<script>
+// If the page's own files fail (a visit that spans a deploy replaces the hashed files), reload once, then say so
+// and offer Reload. The flag lives in sessionStorage, so it can never loop (plan 1.8, "App files don't load").
+(function(){
+  var KEY="ci_reloaded";
+  function note(){
+    var app=document.getElementById("app");
+    // A stylesheet that fails answers before the page body exists: wait for it.
+    if(!app){document.addEventListener("DOMContentLoaded",note);return}
+    app.setAttribute("data-failed","1");
+    app.innerHTML='<div class="nl" role="alert"><p>Came In didn\'t load. Reload the page.</p><button type="button" id="ci-reload">Reload</button></div>';
+    var b=document.getElementById("ci-reload");
+    if(b)b.onclick=function(){try{sessionStorage.removeItem(KEY)}catch(e){}location.reload()};
+  }
+  function failed(){
+    if(window.__ciStarted||window.__ciFailed)return;
+    window.__ciFailed=true;
+    try{if(!sessionStorage.getItem(KEY)){sessionStorage.setItem(KEY,"1");location.reload();return}}catch(e){}
+    note();
+  }
+  addEventListener("error",function(e){var t=e.target;if(t&&(t.tagName==="SCRIPT"||t.tagName==="LINK")&&/\/assets\//.test(t.src||t.href||""))failed()},true);
+  // Slow or silent failure: nothing started within 15 seconds.
+  setTimeout(function(){if(!window.__ciStarted)failed()},15000);
+})();
+</script>
 <div id="app"><div class="sk-h" aria-hidden="true"><span class="sk-av"></span><span class="sk-name"></span><span class="sk-nav"><span>Wall</span><span>This week</span><span>Setup</span></span></div><div class="sk-g" aria-hidden="true"><span class="sk-t"></span><span class="sk-t"></span><span class="sk-t"></span><span class="sk-t"></span><span class="sk-t"></span><span class="sk-t"></span></div></div>
 <script type="module" src="./main.tsx"></script>
 </body>

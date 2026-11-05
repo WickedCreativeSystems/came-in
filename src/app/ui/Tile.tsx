@@ -24,7 +24,7 @@ export function Tile({ tile, index, now, tz, flash, href }: { tile: WallTile; in
         </div>
       )}
       <div class="top">
-        <span class={`day${tile.isLive ? " live" : ""}`}><span class="b-long">{dayBadge(sent, now, tz, tile.isLive, "wall")}</span><span class="b-short">{dayBadgeShort(sent, now, tz, tile.isLive)}</span></span>
+        <span class={`day${tile.isLive ? " live" : ""}`}><span class="b-long">{dayBadge(sent, now, tz, tile.isLive, "wall")}</span><span class="b-short" aria-hidden="true">{dayBadgeShort(sent, now, tz, tile.isLive)}</span></span>
         {tile.hidden ? <span class="day off-badge">Off the card</span> : <Marks services={tile.services} />}
       </div>
       <Sticker count={tile.count} index={index} flash={flash} onPaper={!showImage} />

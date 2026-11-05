@@ -6,6 +6,7 @@ import type { WallData, ChannelRow, Theme } from "@shared/types";
 import { serviceName } from "@shared/marks";
 import { api, ApiError } from "../lib/api";
 import { applyTheme } from "../lib/theme";
+import { deviceId } from "../lib/device";
 import { ringMyPhone, initialPhoneState, thisPhoneRings, isIOS, type PhoneState } from "../lib/push";
 import { HeaderSkeleton, TilesSkeleton } from "../ui/Skeleton";
 import { Header } from "../ui/Header";
@@ -196,6 +197,12 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
         {!sample && (
           <Section id="channels" eyebrow="Channels">
             <ChannelsSetting rows={data.channels} />
+          </Section>
+        )}
+
+        {!sample && (
+          <Section id="signout" eyebrow="Sign out">
+            <SignOut />
           </Section>
         )}
 
@@ -645,6 +652,31 @@ function ChannelsSetting({ rows: initial }: { rows: ChannelRow[] }): JSX.Element
         </a>
       </div>
     </>
+  );
+}
+
+function SignOut(): JSX.Element {
+  const [busy, setBusy] = useState(false);
+  return (
+    <div>
+      <p>Signs this browser out of every shop in it. Your walls, cards and taps stay, and open staff screens keep working.</p>
+      <button
+        class="btn"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            const r = await api<{ next: string }>("/setup/signout", { json: { device: deviceId() } });
+            location.href = r.next;
+          } catch {
+            setBusy(false);
+          }
+        }}
+      >
+        {busy && <span class="spin" aria-hidden="true" />}
+        Sign out of this browser
+      </button>
+    </div>
   );
 }
 

@@ -114,7 +114,10 @@ export function summarize(taps: WeekTap[], tiles: WeekTile[], tz: string, range:
     if (top.length) {
       const [b1, n1] = top[0];
       const second = top[1];
-      lines.push({ text: second ? `Posts sent ${BUCKET_WORDS[b1][0]} brought ${people(n1)}; ${BUCKET_WORDS[second[0]][1]} ${second[1]}.` : `Posts sent ${BUCKET_WORDS[b1][0]} brought ${people(n1)}.`, weight: n1 });
+      // The line names the two biggest times; anyone in the others is added, so it always adds up to the headline.
+      const others = top.slice(2).reduce((n, [, c]) => n + c, 0);
+      const tail = others > 0 ? `; other times ${others}` : "";
+      lines.push({ text: second ? `Posts sent ${BUCKET_WORDS[b1][0]} brought ${people(n1)}; ${BUCKET_WORDS[second[0]][1]} ${second[1]}${tail}.` : `Posts sent ${BUCKET_WORDS[b1][0]} brought ${people(n1)}.`, weight: n1 });
     }
     const stories = postTaps.filter((t) => tileOf(t).isStory).length;
     if (stories) lines.push({ text: `Stories brought ${people(stories)}.`, weight: stories });

@@ -46,14 +46,14 @@ html,.th{scrollbar-width:none}html::-webkit-scrollbar,.th::-webkit-scrollbar{dis
 .bd{position:absolute;top:8px;left:8px;height:20px;padding:0 6px;border-radius:2px;background:var(--label);color:var(--label-ink);font-weight:600;font-size:11px;letter-spacing:.04em;text-transform:uppercase;display:inline-flex;align-items:center;line-height:1}
 .bd.lv{background:var(--brass)}
 .t{container-type:inline-size}
-.bs{display:none}
-@container (max-width:179px){.bl{display:none}.bs{display:inline}}
+.bgs{display:none}
+@container (max-width:179px){.bgl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}.bgs{display:inline}}
 .tx{position:absolute;inset:0;padding:34px 12px 12px;font-family:var(--fd);font-weight:700;font-size:19px;line-height:1.02;letter-spacing:-.005em;color:var(--ink);overflow:hidden;overflow-wrap:anywhere}
 .picked .t{opacity:.35}
 .picked .t.on{opacity:1;transform:scale(1.04);z-index:1}
 .none{position:sticky;bottom:0;padding:8px 10px;background:var(--paper)}
 .none .btn{width:100%;height:44px}
-.ft{padding:10px 16px 14px;font-size:11px;line-height:1.3;color:var(--ink-3);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.ft{padding:10px 16px 14px;font-size:11px;line-height:1.3;color:var(--ink-2);display:flex;justify-content:space-between;align-items:center;gap:12px}
 .ci{display:inline-flex;align-items:center;gap:5px;font-family:var(--fd);font-weight:800;font-size:13px;letter-spacing:.04em;color:var(--ink-2);white-space:nowrap}
 .ci svg{width:13px;height:13px}
 .th{position:fixed;inset:0;z-index:5;background:var(--paper);display:flex;flex-direction:column;transform:translateY(100%);transition:transform 320ms var(--settle);overflow:auto}
@@ -95,7 +95,7 @@ function tileHtml(t: TapTile, i: number, story: boolean): string {
   const inner = t.imageUrl
     ? `<img src="${esc(t.imageUrl)}" alt="" ${eager} decoding="async">`
     : `<span class="tx">${esc(t.text)}</span>`;
-  return `<button class="t${story ? " st" : ""}" data-i="${esc(t.id)}" data-n="${esc(t.name)}"${t.imageUrl ? ` data-img="${esc(t.imageUrl)}"` : ""} aria-label="${esc(tileLabel(t.name))}">${inner}<span class="bd${t.live ? " lv" : ""}"><span class="bl">${esc(t.badge)}</span><span class="bs">${esc(t.badgeShort)}</span></span></button>`;
+  return `<button class="t${story ? " st" : ""}" data-i="${esc(t.id)}" data-n="${esc(t.name)}"${t.imageUrl ? ` data-img="${esc(t.imageUrl)}"` : ""} aria-label="${esc(tileLabel(t.name))}">${inner}<span class="bd${t.live ? " lv" : ""}"><span class="bgl">${esc(t.badge)}</span><span class="bgs" aria-hidden="true">${esc(t.badgeShort)}</span></span></button>`;
 }
 
 export function renderTapPage(d: TapPageData): string {
@@ -103,12 +103,12 @@ export function renderTapPage(d: TapPageData): string {
     ? `<header class="hd">${avatarHtml(d.shop.name, d.shop.avatarUrl, 40)}<div><div class="nm">${esc(d.shop.name)}</div>${d.shop.handle || d.location?.label ? `<div class="hn">${d.shop.handle ? `@${esc(d.shop.handle)}` : ""}${d.shop.handle && d.location?.label ? " · " : ""}${d.location?.label ? esc(d.location.label) : ""}</div>` : ""}</div></header>`
     : "";
   const tiles = [d.story ? tileHtml(d.story, 0, true) : "", ...d.tiles.map((t, i) => tileHtml(t, i + (d.story ? 1 : 0), false))].join("");
-  const body = `<div id="pg">${head}
+  const body = `<main id="pg">${head}
 <div class="ask"><h1>Saw us online?</h1><p>Tap the post that brought you in.</p></div>
 <div class="grid" id="g">${tiles}</div>
 <div class="none"><button class="btn" id="none">I didn't see a post</button></div>
 <footer class="ft"><span>Anonymous. A post, a time, nothing else.</span><span class="ci">${BELL_MONO_SVG}CAME IN</span></footer>
-</div>
+</main>
 <section class="th" id="th" hidden role="dialog" aria-modal="true" aria-label="Thanks"></section>
 <div class="strip" id="err" hidden role="alert"><span>We couldn't reach the shop. Try again?</span><button class="btn" id="retry">Try again</button></div>
 <script type="application/json" id="cfg">${jsonForScript({
@@ -139,7 +139,7 @@ export function renderCardRemoved(): string {
   return page({
     title: "Came In",
     css: CSS,
-    body: `<div class="gone"><h1>This card isn't in use any more. Ask at the till.</h1></div>`,
+    body: `<main class="gone"><h1>This card isn't in use any more. Ask at the till.</h1></main>`,
     head: `<meta name="robots" content="noindex">`,
   });
 }
@@ -148,7 +148,7 @@ export function renderGonePage(): string {
   return page({
     title: "Came In",
     css: CSS,
-    body: `<div class="gone"><h1>This shop isn't using Came In any more.</h1></div>`,
+    body: `<main class="gone"><h1>This shop isn't using Came In any more.</h1></main>`,
     head: `<meta name="robots" content="noindex">`,
   });
 }

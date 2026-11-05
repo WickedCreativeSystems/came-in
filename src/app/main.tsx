@@ -50,5 +50,13 @@ function route() {
 
 // index.html carries a frame that shows before any script runs; the app replaces it (Preact leaves unknown nodes beside its own).
 const root = document.getElementById("app")!;
+// The files loaded: the guard in index.html stands down, and a later failure may reload once more.
+(window as unknown as { __ciStarted?: boolean }).__ciStarted = true;
+try {
+  sessionStorage.removeItem("ci_reloaded");
+} catch {
+  /* storage blocked: the guard still reloads at most once per load */
+}
+if (root.getAttribute("data-failed")) throw new Error("app files failed");
 root.textContent = "";
 render(route(), root);

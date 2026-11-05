@@ -45,6 +45,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      - name: Keep the previous build's files, so a page open during the deploy still finds its own
+        run: node scripts/keep-previous-assets.mjs https://came-in-staging.walkertbrown.workers.dev
       - name: Apply D1 migrations
         run: npx wrangler d1 migrations apply DB --env staging --remote
       - name: Deploy
@@ -77,6 +79,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+      - name: Keep the previous build's files, so a page open during the deploy still finds its own
+        run: node scripts/keep-previous-assets.mjs https://came-in.walkertbrown.workers.dev
       - name: Apply D1 migrations
         run: npx wrangler d1 migrations apply DB --remote
       - name: Deploy

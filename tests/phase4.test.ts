@@ -278,7 +278,7 @@ describe("the third round of strangers (Nov 4)", () => {
     expect(html).not.toMatch(/class="cn">the /i);
     const tap = await (await call("/sample/t")).text();
     expect(tap).toContain("Sample review ask. You paste your own link in Setup.");
-    expect(tap).toContain('class="bl"');
+    expect(tap).toContain('class="bgl"');
   });
 
   it("a tile label drops its leading 'the' and starts with a capital", async () => {
