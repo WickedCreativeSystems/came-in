@@ -167,7 +167,10 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
             </div>
             <div>
               <h2 class="h2">This is what your customers will tap.</h2>
-              <p class="small muted">Try it: open the tap page, tap a post, and this page rings.</p>
+              <p class="small muted">
+                <span class="on-desk">Try it: open the tap page or scan the code with your phone, tap a post, and this page rings.</span>
+                <span class="on-phone">Try it: open the tap page, tap a post, and this page rings.</span>
+              </p>
             </div>
             <div class="try-actions">
               <a
@@ -188,7 +191,10 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
                 </div>
               )}
               <div class="print-card">
-                <span class="small muted">Put this code on your counter:</span>
+                <span class="small muted">
+                  <span class="on-desk">Put this code on your counter:</span>
+                  <span class="on-phone">Put your code on the counter:</span>
+                </span>
                 <a class="btn quiet sm card-btn" href={`${base}/card`}>
                   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true">
                     <rect x="6" y="3" width="12" height="18" rx="2.5" />

@@ -57,6 +57,6 @@ try {
 } catch {
   /* storage blocked: the guard still reloads at most once per load */
 }
-if (root.getAttribute("data-failed")) throw new Error("app files failed");
+if (document.body.getAttribute("data-failed")) throw new Error("app files failed");
 root.textContent = "";
 render(route(), root);

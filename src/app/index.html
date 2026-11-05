@@ -38,11 +38,11 @@ body{margin:0;background:#F4F2ED;color:#231F1B;font-family:"Libre Franklin",syst
 (function(){
   var KEY="ci_reloaded";
   function note(){
-    var app=document.getElementById("app");
     // A stylesheet that fails answers before the page body exists: wait for it.
-    if(!app){document.addEventListener("DOMContentLoaded",note);return}
-    app.setAttribute("data-failed","1");
-    app.innerHTML='<div class="nl" role="alert"><p>Came In didn\'t load. Reload the page.</p><button type="button" id="ci-reload">Reload</button></div>';
+    if(!document.body){document.addEventListener("DOMContentLoaded",note);return}
+    // The note replaces the page: nothing that did load stays beside it.
+    document.body.setAttribute("data-failed","1");
+    document.body.innerHTML='<div class="nl" role="alert"><p>Came In didn\'t load. Reload the page.</p><button type="button" id="ci-reload">Reload</button></div>';
     var b=document.getElementById("ci-reload");
     if(b)b.onclick=function(){try{sessionStorage.removeItem(KEY)}catch(e){}location.reload()};
   }
