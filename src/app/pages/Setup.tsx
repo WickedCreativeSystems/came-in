@@ -93,7 +93,7 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
       <main class="page setup">
         {sample && (
           <div class="strip">
-            <span>Sample bakery. Nothing here reaches a real shop. Tap a post and this page rings.</span>
+            <span>Sample bakery. Nothing here reaches a real shop. Tap a post and this wall rings.</span>
             <a class="btn primary" href="/auth/start">
               Connect your own Buffer
             </a>
@@ -558,7 +558,7 @@ function RingMyPhone({ sample, pushKey, onDone }: { sample: boolean; pushKey: st
           Ring my phone
         </button>
       )}
-      {state === "ok" && <p class={`small${sample ? "" : " has-hint"}`}>{sample ? "This browser will ring." : "Your phone will ring."}</p>}
+      {state === "ok" && <p class={`small${sample ? "" : " has-hint"}`}>{sample ? "This browser will ring. In your own shop, this button makes your phone ring." : "Your phone will ring."}</p>}
       {state === "ok" && !sample && <p class="caption muted sound-hint">If it only buzzes, open your phone's notification settings for Came In and turn sound on.</p>}
       {state === "denied" && <p class="small">Notifications are blocked for Came In on this device. Allow them in this browser's or phone's settings, then tap Ring my phone again.</p>}
       {state === "ios" && (

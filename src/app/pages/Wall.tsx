@@ -94,6 +94,35 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
     }, 300);
   }
 
+  // The sample's "Open the tap page" keeps the wall in view so its ring is seen (plan 3.10, P6):
+  // on a phone it opens the Try a tap sheet; on a computer it brings the phone frame into view and focuses its first tile.
+  function openTapPage(e: JSX.TargetedMouseEvent<HTMLAnchorElement>) {
+    if (!sample || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    if (!matchMedia("(min-width: 1024px)").matches) {
+      setSheet(true);
+      return;
+    }
+    const frame = document.querySelector<HTMLElement>(".phone-wrap .phone");
+    const iframe = document.querySelector<HTMLIFrameElement>(".phone-wrap iframe.screen");
+    if (!frame || !iframe) return;
+    const r = frame.getBoundingClientRect();
+    if (r.top < 88 || r.bottom > innerHeight) {
+      const rm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.scrollBy({ top: r.top - 88, behavior: rm ? "auto" : "smooth" });
+    }
+    const focusTile = (tries: number) => {
+      const doc = iframe.contentDocument;
+      const tile = doc?.querySelector<HTMLElement>("#g .t, .t");
+      if (tile) {
+        iframe.contentWindow?.focus();
+        // Programmatic focus after a mouse press shows no ring by default; ask for the ordinary one.
+        (tile as HTMLElement & { focus(o?: { focusVisible?: boolean; preventScroll?: boolean }): void }).focus({ focusVisible: true, preventScroll: true });
+      } else if (tries > 0) setTimeout(() => focusTile(tries - 1), 100);
+    };
+    focusTile(20);
+  }
+
   async function showOnCard(id: string) {
     try {
       await api(`${sample ? "/api/sample/post" : "/api/post"}/${encodeURIComponent(id)}`, { json: { hidden: false } });
@@ -142,7 +171,7 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
         {error && <div class="strip stamp" role="alert">Something's wrong on our side. Try again in a minute.</div>}
         {sample && (
           <div class="strip">
-            <span>Sample bakery. Nothing here reaches a real shop. Tap a post and this page rings.</span>
+            <span>Sample bakery. Nothing here reaches a real shop. Tap a post and this wall rings.</span>
             <a class="btn primary sm" href="/auth/start">
               Connect your own Buffer
             </a>
@@ -178,6 +207,7 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
                 href={tapUrl}
                 target={sample ? undefined : "_blank"}
                 rel={sample ? undefined : "noopener"}
+                onClick={openTapPage}
               >
                 <Icon name="phone" size={18} />
                 Open the tap page
