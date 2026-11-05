@@ -337,7 +337,12 @@ p.small.has-hint { margin-bottom: 0; }
 .loc-chip span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .loc-chip:hover { background: var(--paper-3); }
 .loc-chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
-@media (max-width: 720px) { .loc-tabs-wrap::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 24px; background: linear-gradient(to right, transparent, var(--paper)); pointer-events: none; } }
+@media (max-width: 720px) {
+  /* The row scrolls to the screen's edge, and a 24px fade from the page colour marks where more chips wait. */
+  .loc-tabs-wrap { margin-left: -16px; margin-right: -16px; }
+  .loc-tabs { padding-left: 16px; padding-right: 16px; }
+  .loc-tabs-wrap::after { content: ""; position: absolute; top: 0; right: 0; bottom: 0; width: 24px; background: linear-gradient(to right, color-mix(in srgb, var(--paper) 0%, transparent), var(--paper)); pointer-events: none; }
+}
 .which-loc { display: grid; gap: 8px; max-width: 420px; }
 .which-btn { height: 56px; width: 100%; font-weight: 600; }
 .by-loc { margin: 6px 0 0; }
@@ -358,3 +363,14 @@ p.small.has-hint { margin-bottom: 0; }
 .loc-rule { height: 1px; background: var(--rule); margin: 12px 0; }
 .btn.stamp { color: var(--stamp); border-color: var(--stamp); }
 @media (max-width: 720px) { .loc-row { flex-wrap: wrap; align-items: flex-start; padding: 12px 0; } .loc-actions { justify-content: flex-start; width: 100%; } }
+
+/* Setup's Locations buttons are quiet: 36px, no fill (look.md "Locations"). */
+.loc-row .btn.quiet { height: 36px; background: transparent; padding: 0 10px; }
+.loc-row .btn.quiet:hover { background: var(--paper-3); }
+/* Add a location: labels at 600, and radio marks drawn as a 1.8px ink ring with an ink dot when chosen. */
+.add-loc .field label { font-weight: 600; }
+.radio-row input[type="radio"] { appearance: none; -webkit-appearance: none; flex: none; width: 18px; height: 18px; margin: 3px 0 0; border: 1.8px solid var(--ink); border-radius: 50%; background: transparent; display: grid; place-content: center; cursor: pointer; }
+.radio-row input[type="radio"]::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); transform: scale(0); transition: transform 120ms ease; }
+.radio-row input[type="radio"]:checked::before { transform: scale(1); }
+.radio-row input[type="radio"]:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .radio-row input[type="radio"]::before { transition: none; } }
