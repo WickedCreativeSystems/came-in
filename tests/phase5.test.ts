@@ -364,3 +364,22 @@ describe("the sample's Setup line follows the price (plan 3.13)", () => {
     expect(((await (await call("/api/sample/setup")).json()) as { price: string | null }).price).toBe("$9");
   });
 });
+
+describe("every HTML page says no-transform (Cloudflare's analytics script)", () => {
+  it("adds no-transform to HTML and keeps what was already there; assets and API answers are left alone", async () => {
+    const id = await makeShop();
+    const cookie = `ci_owner=${await sign(`${id}.${Date.now()}.${id}`, env.COOKIE_SECRET)}`;
+    const pages: [string, string?][] = [["/"], ["/privacy"], ["/credits"], ["/pricing"], ["/sample"], ["/sample/week"], ["/sample/setup"], ["/sample/t"], ["/sample/c"], ["/sample/card"], [`/t/${id}`], [`/e/${id}`], ["/wall"], ["/week"], ["/setup"], ["/card", cookie]];
+    for (const [path, ck] of pages) {
+      const res = await call(path, ck ? { cookie: ck } : {});
+      const cc = res.headers.get("cache-control") ?? "";
+      expect(res.headers.get("content-type") ?? "", path).toContain("text/html");
+      expect(cc, `${path} cache-control`).toMatch(/no-transform/);
+    }
+    expect((await call("/sample")).headers.get("cache-control")).toBe("no-cache, no-transform");
+    expect((await call(`/t/${id}`)).headers.get("cache-control")).toBe("no-store, no-transform");
+    expect(((await call("/api/sample/wall")).headers.get("cache-control") ?? "")).not.toMatch(/no-transform/);
+    expect(((await call("/embed.js")).headers.get("cache-control") ?? "")).not.toMatch(/no-transform/);
+    expect(((await call("/sw.js")).headers.get("cache-control") ?? "")).not.toMatch(/no-transform/);
+  });
+});

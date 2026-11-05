@@ -50,6 +50,26 @@ export { ShopRoom };
 type C = Context<{ Bindings: Env }>;
 const app = new Hono<{ Bindings: Env }>();
 
+// Every HTML page says Cache-Control: no-transform (added to whatever it already sends), so Cloudflare does not
+// inject its Web Analytics script into a page: nothing but the shop's own counts leaves it (plan 1.1).
+// Assets and API answers are left as they are.
+app.use("*", async (c, next) => {
+  await next();
+  if (!(c.res.headers.get("content-type") ?? "").toLowerCase().startsWith("text/html")) return;
+  const had = c.res.headers.get("cache-control");
+  if (had && /no-transform/i.test(had)) return;
+  // Set it on the response itself: replacing the response would let Hono copy the old Cache-Control back over it.
+  try {
+    c.res.headers.set("Cache-Control", had ? `${had}, no-transform` : "no-transform");
+  } catch {
+    // A response with fixed headers (straight from the assets binding) is copied; only HTML pages reach here and they are built by us.
+    const res = new Response(c.res.body, c.res);
+    res.headers.set("Cache-Control", had ? `${had}, no-transform` : "no-transform");
+    c.res = res;
+    c.res.headers.set("Cache-Control", had ? `${had}, no-transform` : "no-transform");
+  }
+});
+
 const PENDING_COOKIE = "ci_pending";
 
 function room(env: Env, name: string) {
