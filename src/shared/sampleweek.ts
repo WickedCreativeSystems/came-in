@@ -1,5 +1,5 @@
 // The sample bakery's taps (plan 3.10). Each post's baseline count is spread
-// between the moment it went out and now, so its sticker, its page and This
+// between the moment it went out and now (never before it went out), so its sticker, its page and This
 // week always agree, whatever day it is. A quarter of the post taps came at
 // the counter, and the counter heard 6 "walked past", 4 "a friend" and 2
 // "Google" this week, so the honest ratio line shows.
@@ -20,13 +20,13 @@ export function sampleHistory(now: Date): WeekTap[] {
   };
   for (const p of SAMPLE_POSTS) {
     const sent = samplePostSentAt(p, now, tz).getTime();
-    // Today's count is always the two posts that are sent today on every day (the live story and the dough post): 3 people.
-    // Any other post, even one whose weekday lands on today, earned its taps before today, so the count never moves
-    // with the weekday and the header, the Today tab and its rows agree.
+    // No tap is older than its post: a post's people come in after it went out, so the wall's sticker, the post's
+    // page, This week and Today always agree (round 5: the latte post, sent 15 minutes ago, showed 2 on the wall and 0 in Today).
+    // A post sent today therefore earns today's taps; every other post's taps fall between its send time and the start of today.
     const dayStart = startOfShopDay(now, tz).getTime();
-    const sentToday = "daysAgo" in p.when && p.when.daysAgo === 0;
-    const from = sentToday ? sent : Math.min(sent, dayStart - 86400000);
-    const end = sentToday ? Math.max(sent + 60000, now.getTime() - 60000) : Math.max(from + 60000, dayStart - 60000);
+    const sentToday = sent >= dayStart;
+    const from = sent;
+    const end = sentToday ? Math.max(sent, now.getTime() - 30000) : Math.max(sent + 60000, dayStart - 60000);
     for (let i = 0; i < p.count; i++) taps.push({ tileId: p.id, answer: "post", source: i % 4 === 1 ? "counter" : "card", at: spread(from, end, i, p.count) });
   }
   const span = Math.max(60000, now.getTime() - weekStart);

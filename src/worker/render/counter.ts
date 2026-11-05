@@ -42,7 +42,7 @@ html{scrollbar-width:none}html::-webkit-scrollbar{display:none}
 .tx{position:absolute;inset:0;padding:38px 14px 14px;font-family:var(--fd);font-weight:700;font-size:22px;line-height:1.02;letter-spacing:-.005em;color:var(--ink);overflow:hidden;overflow-wrap:anywhere}
 .cmain{flex:1 1 auto;display:flex;flex-direction:column}
 .cmain .rw{margin-top:auto}
-.rw{position:sticky;bottom:0;background:var(--paper);padding:4px 16px 16px}
+.rw{padding:4px 16px 16px}
 .or{margin:0 0 8px;font-size:14px;color:var(--ink-2)}
 .row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .t.chk .pic{box-shadow:inset 0 0 0 2px var(--ink)}

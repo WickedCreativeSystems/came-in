@@ -281,6 +281,15 @@ describe("the third round of strangers (Nov 4)", () => {
     expect(tap).toContain('class="bgl"');
   });
 
+  it("the 'Or, if it wasn't a post:' row is in the page under the grid, not stuck over the tile names (round 5)", async () => {
+    for (const path of ["/sample/c"]) {
+      const html = await (await call(path)).text();
+      const rw = html.match(/\.rw\{[^}]*\}/)?.[0] ?? "";
+      expect(rw).not.toMatch(/sticky|fixed/);
+      expect(html.indexOf('id="g"')).toBeLessThan(html.indexOf('class="rw"'));
+    }
+  });
+
   it("a tile label drops its leading 'the' and starts with a capital", async () => {
     const { tileLabel } = await import("../src/shared/names");
     expect(tileLabel("the Oct 27 morning bun post")).toBe("Oct 27 morning bun post");
