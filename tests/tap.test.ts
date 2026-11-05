@@ -176,7 +176,10 @@ describe("the sample bakery (P6, plan 3.10)", () => {
     expect(data.tiles).toHaveLength(12);
     expect(data.tiles[0]).toMatchObject({ id: "story", isLive: true });
     expect(data.tiles.find((t) => t.id === "sour")!.count).toBe(6);
-    expect(data.countToday).toBe(3);
+    // Today is the people on the posts sent today (3 on most days, more on the weekday a post's day lands on today), and Today's tab says the same.
+    const day = (await (await call("/api/sample/week?range=today")).json()) as { summary: { people: number } };
+    expect(data.countToday).toBeGreaterThanOrEqual(3);
+    expect(data.countToday).toBe(day.summary.people);
     // The wall's "this week" and the This week page are one number, whatever day it is.
     const week = (await (await call("/api/sample/week")).json()) as { summary: { people: number } };
     expect(data.countThisWeek).toBe(week.summary.people);
@@ -188,6 +191,7 @@ describe("the sample bakery (P6, plan 3.10)", () => {
     const session = cookie.split("=")[1];
     const mine = await openSocket(`sample:${session}`, "x");
     const someoneElse = await openSocket(`sample:another-session`, "y");
+    const before = ((await (await call("/api/sample/wall", { cookie })).json()) as { countToday: number }).countToday;
     const r = await call("/api/sample/tap", { method: "POST", cookie, headers: { "content-type": "application/json" }, body: JSON.stringify({ tile: "sour", answer: "post" }) });
     expect(r.status).toBe(200);
     await settle();
@@ -195,7 +199,7 @@ describe("the sample bakery (P6, plan 3.10)", () => {
     expect(someoneElse.got.some((m) => m.type === "ring")).toBe(false);
     const after = (await (await call("/api/sample/wall", { cookie })).json()) as { tiles: { id: string; count: number }[]; countToday: number };
     expect(after.tiles.find((t) => t.id === "sour")!.count).toBe(7);
-    expect(after.countToday).toBe(4);
+    expect(after.countToday).toBe(before + 1);
     const weekAfter = (await (await call("/api/sample/week", { cookie })).json()) as { summary: { people: number } };
     expect((after as unknown as { countThisWeek: number }).countThisWeek).toBe(weekAfter.summary.people);
     // A fresh browser still sees the baseline.

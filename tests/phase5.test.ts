@@ -334,17 +334,32 @@ describe("round four (EaseBot, Nov 5)", () => {
   });
 });
 
-describe("the sample's today count is 3 on every day (plan 3.10)", () => {
-  it("only the posts sent today on any weekday earn today's taps, whatever the weekday or the hour", async () => {
+describe("no sample tap is older than its post (plan 3.10, round 5)", () => {
+  it("every tap comes after its post was sent and not after now, so a post's wall count is the same people This week and Today see", async () => {
     const { sampleHistory } = await import("../src/shared/sampleweek");
+    const { SAMPLE_POSTS, samplePostSentAt, SAMPLE_SHOP } = await import("../src/shared/sample");
     const { startOfShopDay } = await import("../src/shared/time");
-    // Monday 2 to Sunday 8 November 2026, at 1 am, 9 am, 3 pm and 11 pm Chicago time (UTC-6).
+    // Monday 2 to Sunday 8 November 2026, at 1 am, 9 am, 3 pm and 11 pm Chicago time (UTC-6), and a few minutes past the hour.
     for (let d = 2; d <= 8; d++) {
       for (const hourUtc of [7, 15, 21, 29]) {
-        const now = new Date(Date.UTC(2026, 10, d, hourUtc, 10));
-        const dayStart = startOfShopDay(now, "America/Chicago").getTime();
-        const today = sampleHistory(now).filter((t) => t.answer === "post" && Date.parse(t.at) >= dayStart && Date.parse(t.at) <= now.getTime());
-        expect(today.length, `${now.toISOString()}`).toBe(3);
+        for (const minute of [10, 50]) {
+          const now = new Date(Date.UTC(2026, 10, d, hourUtc, minute));
+          const dayStart = startOfShopDay(now, SAMPLE_SHOP.timezone).getTime();
+          const history = sampleHistory(now);
+          for (const p of SAMPLE_POSTS) {
+            const sent = samplePostSentAt(p, now).getTime();
+            const mine = history.filter((t) => t.tileId === p.id);
+            expect(mine.length, `${p.id} count at ${now.toISOString()}`).toBe(p.count);
+            for (const t of mine) {
+              const at = Date.parse(t.at);
+              expect(at, `${p.id} tap before it was sent, at ${now.toISOString()}`).toBeGreaterThanOrEqual(sent);
+              expect(at, `${p.id} tap in the future, at ${now.toISOString()}`).toBeLessThanOrEqual(now.getTime());
+            }
+            // A post sent today has all its people today (so the wall's number and Today's agree); any other post has none today.
+            const today = mine.filter((t) => Date.parse(t.at) >= dayStart).length;
+            expect(today, `${p.id} today at ${now.toISOString()}`).toBe(sent >= dayStart ? p.count : 0);
+          }
+        }
       }
     }
   });
