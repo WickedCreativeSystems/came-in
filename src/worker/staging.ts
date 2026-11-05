@@ -38,13 +38,16 @@ export async function seedStagingShops(env: Env): Promise<string[]> {
   }
   // Staging was seeded before locations existed: the migration named Eastside's first one after the shop.
   await env.DB.prepare(`UPDATE locations SET name = 'Eastside' WHERE id = 'stagingone' AND name = 'Eastside Bakery'`).run();
-  await env.DB.prepare(`INSERT OR IGNORE INTO locations (id, shop_id, name, position, created_at) VALUES ('stagingloca', 'stagingone', 'Harbour Road', 1, ?1)`).bind(iso(1)).run();
+  // The first seed used an id one letter too long; move anything on it to the right one.
+  await env.DB.prepare(`UPDATE taps SET location_id = 'stagingloc' WHERE location_id = 'stagingloca'`).run();
+  await env.DB.prepare(`DELETE FROM locations WHERE id = 'stagingloca'`).run();
+  await env.DB.prepare(`INSERT OR IGNORE INTO locations (id, shop_id, name, position, created_at) VALUES ('stagingloc', 'stagingone', 'Harbour Road', 1, ?1)`).bind(iso(1)).run();
   const taps: [string, string | null, string, number][] = [
     ["stagingtap0", "stagingone", "card", 30],
     ["stagingtap1", "stagingone", "card", 31],
-    ["stagingtap2", "stagingloca", "card", 40],
-    ["stagingtap3", "stagingloca", "counter", 41],
-    ["stagingtap4", "stagingloca", "card", 42],
+    ["stagingtap2", "stagingloc", "card", 40],
+    ["stagingtap3", "stagingloc", "counter", 41],
+    ["stagingtap4", "stagingloc", "card", 42],
     ["stagingtap5", null, "online", 50],
   ];
   for (const [id, loc, source, mins] of taps) {
