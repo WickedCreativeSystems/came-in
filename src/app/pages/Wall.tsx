@@ -167,7 +167,7 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
             </div>
             <div>
               <h2 class="h2">This is what your customers will tap.</h2>
-              <p class="small muted">Try it: open the tap page, tap a post, and this page rings. On a computer, scan the code with your phone.</p>
+              <p class="small muted">Try it: open the tap page, tap a post, and this page rings.</p>
             </div>
             <div class="try-actions">
               <a

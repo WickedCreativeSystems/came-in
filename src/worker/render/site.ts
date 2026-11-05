@@ -8,6 +8,7 @@ const SITE_CSS = `
 .wm{display:inline-flex;align-items:center;gap:8px;font-family:var(--fd);font-weight:800;font-size:13px;letter-spacing:.04em;text-transform:uppercase;text-decoration:none}
 .wm svg{width:22px;height:22px}
 .hero{padding:64px 0 48px;max-width:760px}
+.strip+.hero{padding-top:24px}
 .hero h1{margin:0 0 16px;font-family:var(--fd);font-weight:700;font-size:40px;line-height:1.02;letter-spacing:-.005em}
 .hero p{margin:0 0 24px;color:var(--ink-2);font-size:16px;max-width:620px}
 .bs{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
@@ -29,7 +30,7 @@ const SITE_CSS = `
 .prose .body{font-size:16px;font-weight:400;margin:0 0 8px}
 .prose .price{font-family:var(--fd);font-weight:700;font-size:22px;line-height:1.2;margin:16px 0}
 .prose{max-width:560px}
-.strip{margin:24px 0 0;border:1px solid var(--rule);border-radius:4px;padding:12px 16px;font-size:14px}
+.strip{margin:16px 0 0;border:1px solid var(--rule);border-radius:4px;padding:12px 16px;font-size:14px}
 .prose{max-width:640px;padding:48px 0 64px}
 .prose h1{margin:0 0 24px;font-family:var(--fd);font-weight:700;font-size:28px;line-height:1.02}
 .prose p{margin:0 0 16px}
