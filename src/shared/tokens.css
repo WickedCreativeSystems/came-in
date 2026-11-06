@@ -83,6 +83,8 @@ body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(
 img { display: block; max-width: 100%; }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 a { color: inherit; }
+/* Selected text is ink, never the browser's blue (look.md, Color): the same inversion as a primary button, in both themes, inputs included. */
+::selection { background: var(--ink); color: var(--paper); }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--r); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 

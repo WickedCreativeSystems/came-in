@@ -141,13 +141,15 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
             setLoc(id);
           }}
         />
-        <nav class="range-tabs" aria-label="Range">
-          {tabs.map(([r, label]) => (
-            <button key={r} class="range-tab body-strong" aria-pressed={range === r} onClick={() => setRange(r)}>
-              {label}
-            </button>
-          ))}
-        </nav>
+        <div class="range-wrap">
+          <nav class="range-tabs" aria-label="Range">
+            {tabs.map(([r, label]) => (
+              <button key={r} class="range-tab body-strong" aria-pressed={range === r} onClick={() => setRange(r)}>
+                {label}
+              </button>
+            ))}
+          </nav>
+        </div>
         {!data ? (
           <p class="small muted">
             <span class="spin" aria-hidden="true" />
