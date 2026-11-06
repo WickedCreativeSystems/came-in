@@ -50,3 +50,10 @@ export function sentenceStart(name: string): string {
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
+
+/** The line under the post when none of its own channels can take it (plan 3.9, round 7). */
+export function againNote(channels: { original?: boolean; refusal?: string | null }[]): string | null {
+  const can = (c: { refusal?: string | null }) => !c.refusal;
+  if (channels.some((c) => c.original && can(c))) return null;
+  return channels.some(can) ? "This post's own channels can't take it right now. Pick another, or check Setup." : "No channel can take this post right now. Check Setup.";
+}

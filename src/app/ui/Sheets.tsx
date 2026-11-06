@@ -1,7 +1,7 @@
 // The sheets of plan 3.7 and 3.9: Post it again, Post this, and the share images.
 import { tileLabel } from "@shared/names";
 import { scrollIntoRoom } from "../lib/scroll";
-import { outcomeLine, resultLine, sentenceStart, type Outcome, type SheetResult } from "../lib/lines";
+import { outcomeLine, resultLine, sentenceStart, againNote, type Outcome, type SheetResult } from "../lib/lines";
 
 export { outcomeLine, resultLine };
 export type { Outcome, SheetResult };
@@ -17,6 +17,8 @@ export interface Channel {
   service: string;
   /** Why the server would refuse this channel, asked before the sheet opens (plan 3.9). */
   refusal?: "photo" | "video" | "board" | null;
+  /** A channel the post first went out on (plan 3.9, round 7): the only ones Post it again starts switched on. */
+  original?: boolean;
 }
 
 const REFUSAL_WORDS = { photo: "needs a photo", video: "needs the video", board: "needs a board in Buffer" } as const;
@@ -138,7 +140,8 @@ export function PostAgainSheet({ endpoint, targets, postName, imageUrl, sample, 
 }
 
 function PostAgainReady({ endpoint, channels, postName, imageUrl, sample, onClose, onDone }: { endpoint: string; channels: Channel[]; postName?: string; imageUrl?: string | null; sample?: boolean; onClose: () => void; onDone: (r: SheetResult) => void }): JSX.Element {
-  const [on, setOn] = useState(() => new Set(channels.filter((c) => !blocked(c)).map((c) => c.id)));
+  const [on, setOn] = useState(() => new Set(channels.filter((c) => c.original && !blocked(c)).map((c) => c.id)));
+  const note = againNote(channels);
   const [busy, setBusy] = useState(false);
   return (
     <Sheet title="Post it again to:" onClose={onClose}>
@@ -149,6 +152,7 @@ function PostAgainReady({ endpoint, channels, postName, imageUrl, sample, onClos
         </div>
       ) : null}
       <p class="small muted">{sample ? "Sample bakery: nothing is sent to any real account." : "Goes into your Buffer queue and out at your next slot."}</p>
+      {note ? <p class="small sheet-note" role="status">{note}</p> : null}
       <ChannelToggles channels={channels} on={on} setOn={setOn} />
       <div class="btn-row">
         <button

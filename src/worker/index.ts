@@ -1048,7 +1048,7 @@ app.get("/api/sample/post/:tile/targets", (c) => {
   const p = SAMPLE_POSTS_BY_ID.get(c.req.param("tile"));
   if (!p) return c.json({ error: "no such post" }, 404);
   const media = p.textOnly ? "none" : p.id === "hands" ? "video" : "image";
-  return c.json({ channels: SAMPLE_CHANNELS.map((ch) => ({ ...ch, refusal: refusalFor(ch.service, media) })) });
+  return c.json({ channels: SAMPLE_CHANNELS.map((ch) => ({ ...ch, refusal: refusalFor(ch.service, media), original: p.services.includes(ch.service) })) });
 });
 
 app.get("/api/sample/week/targets", (c) => c.json({ channels: SAMPLE_CHANNELS.map((ch) => ({ ...ch, refusal: refusalFor(ch.service, "image") })) }));

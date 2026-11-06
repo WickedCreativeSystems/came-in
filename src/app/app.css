@@ -295,6 +295,8 @@ nav.bottombar { display: none; }
 
 .sheet-post { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
 .sheet-post img { width: 48px; height: 48px; object-fit: cover; border-radius: var(--r); flex: none; }
+/* 12px under the post's line (the line above ends with a 14px margin, which this margin pulls back to 12) and 12px above the first row (look.md round 7). */
+.sheet-note { color: var(--ink); font-weight: 400; margin: -2px 0 12px; }
 
 .other-posts { margin: 24px 0 0; font-size: 13px; color: var(--ink-2); }
 .receipt-h { margin: 24px 0 4px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; color: var(--ink-2); }
