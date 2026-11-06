@@ -1,5 +1,10 @@
-import { tileLabel } from "@shared/names";
 // The sheets of plan 3.7 and 3.9: Post it again, Post this, and the share images.
+import { tileLabel } from "@shared/names";
+import { scrollIntoRoom } from "../lib/scroll";
+import { outcomeLine, resultLine, sentenceStart, type Outcome, type SheetResult } from "../lib/lines";
+
+export { outcomeLine, resultLine };
+export type { Outcome, SheetResult };
 import type { JSX } from "preact";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { serviceName } from "@shared/marks";
@@ -20,26 +25,31 @@ function blocked(c: Channel): boolean {
   return !!c.refusal;
 }
 
-export interface SheetResult {
-  outcome: Outcome;
-  ok: string[];
-  failed: string[];
-}
-
-function and(names: string[]): string {
-  return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-}
-
 /**
- * The sheet's line (plan 3.9): "Added to your Buffer queue." when every
- * channel took it; "Added on Instagram and TikTok. YouTube didn't take it."
- * when some didn't; the failure line when none did.
+ * The line a write-back leaves where the person acted (plan 3.9, look.md "Round five"): a paper strip with a bar
+ * on its left edge. It arrives over 260ms, scrolls into view if it is not fully on screen, and stays until the page
+ * is left. Mount it with a new key for each confirmation, so a second one replaces the first.
  */
-export function resultLine(r: SheetResult, slot = false): string {
-  if (r.outcome === "failed" || !r.ok.length) return outcomeLine("failed");
-  if (!r.failed.length) return slot && r.outcome === "queued" ? `${outcomeLine("queued")} It goes out at your next slot.` : outcomeLine(r.outcome);
-  const lead = r.outcome === "draft" ? `Saved as a draft on ${and(r.ok)} (staging).` : `Added on ${and(r.ok)}.`;
-  return `${lead} ${and(r.failed)} didn't take it.`;
+export function QueueLine({ text, failed, name }: { text: string; failed?: boolean; name?: string }): JSX.Element {
+  const box = useRef<HTMLParagraphElement>(null);
+  // The post's name stands out in the line (weight 600), when the line is about the post.
+  const lead = name && text.startsWith(sentenceStart(name)) ? sentenceStart(name) : "";
+  useEffect(() => {
+    const t = requestAnimationFrame(() => scrollIntoRoom(box.current));
+    return () => cancelAnimationFrame(t);
+  }, []);
+  return (
+    <p class={`queue-line small${failed ? " failed" : ""}`} role="status" ref={box}>
+      {lead ? (
+        <>
+          <b>{lead}</b>
+          {text.slice(lead.length)}
+        </>
+      ) : (
+        text
+      )}
+    </p>
+  );
 }
 
 async function send(endpoint: string, body: unknown, channels: Channel[]): Promise<SheetResult> {
@@ -54,24 +64,6 @@ async function send(endpoint: string, body: unknown, channels: Channel[]): Promi
     return { outcome: r.outcome, ok: results.filter((x) => good.includes(x.status)).map((x) => name(x.channelId)), failed: results.filter((x) => !good.includes(x.status)).map((x) => name(x.channelId)) };
   } catch {
     return { outcome: "failed", ok: [], failed: [] };
-  }
-}
-
-export type Outcome = "queued" | "approval" | "draft" | "failed" | "saved";
-
-/** What a write-back says when it's done (plan 3.7, 3.9, 1.8). */
-export function outcomeLine(o: Outcome): string {
-  switch (o) {
-    case "queued":
-      return "Added to your Buffer queue.";
-    case "approval":
-      return "Sent to Buffer, waiting for approval.";
-    case "draft":
-      return "Saved as a draft in Buffer (staging).";
-    case "saved":
-      return "Saved to your Buffer Ideas.";
-    default:
-      return "Buffer didn't take that. Try again in a minute.";
   }
 }
 

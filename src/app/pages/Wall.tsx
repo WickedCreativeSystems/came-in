@@ -23,6 +23,10 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
   const [flash, setFlash] = useState<string | null>(null);
   const [refresh, setRefresh] = useState<"rest" | "checking" | "checked">("rest");
   const [sheet, setSheet] = useState(false);
+  // On a phone a tap made in the sample's tap sheet holds the wall's ring until the sheet closes (plan 3.10).
+  const sheetOpen = useRef(false);
+  sheetOpen.current = sheet;
+  const held = useRef<RingMessage[]>([]);
   // The location tab (null: all locations), shared with This week and A post (plan 3.13).
   const locRef = useRef<string | null>(null);
   const restored = useRef(false);
@@ -68,6 +72,14 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
 
   // look.md section 9: sound at once, banner the same instant, sticker and header tick at +300 ms.
   function onRing(m: RingMessage) {
+    if (sheetOpen.current && !matchMedia("(min-width: 1024px)").matches) {
+      held.current.push(m);
+      return;
+    }
+    playRing(m);
+  }
+
+  function playRing(m: RingMessage) {
     ringSound();
     ringKey.current += 1;
     setRing({ key: ringKey.current, sentence: m.sentence, where: m.where, imageUrl: m.imageUrl, href: m.tileId ? `${sample ? "/sample" : ""}/post/${m.tileId}` : null });
@@ -96,11 +108,33 @@ export function Wall({ sample }: { sample: boolean }): JSX.Element {
     }, 300);
   }
 
+  // The sheet has closed: the ring it held plays in full now (sound, banner scrolled into view, ticks, the 8 s clock).
+  useEffect(() => {
+    if (sheet || !held.current.length) return;
+    const q = held.current.splice(0);
+    const t = requestAnimationFrame(() => q.forEach(playRing));
+    return () => cancelAnimationFrame(t);
+  }, [sheet]);
+
+  // "Now try a tap" in Setup comes here: the same as Open the tap page, once the wall is drawn.
+  useEffect(() => {
+    if (!sample || !data) return;
+    const u = new URL(location.href);
+    if (u.searchParams.get("try") !== "1") return;
+    u.searchParams.delete("try");
+    history.replaceState(null, "", u.pathname + u.search + u.hash);
+    tryTap();
+  }, [!!data]);
+
   // The sample's "Open the tap page" keeps the wall in view so its ring is seen (plan 3.10, P6):
   // on a phone it opens the Try a tap sheet; on a computer it brings the phone frame into view and focuses its first tile.
   function openTapPage(e: JSX.TargetedMouseEvent<HTMLAnchorElement>) {
     if (!sample || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
+    tryTap();
+  }
+
+  function tryTap() {
     if (!matchMedia("(min-width: 1024px)").matches) {
       setSheet(true);
       return;

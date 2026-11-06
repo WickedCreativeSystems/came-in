@@ -12,7 +12,7 @@ import { readTab, saveTab, locQuery } from "../lib/locationTab";
 import { Header } from "../ui/Header";
 import { Marks } from "../ui/marks";
 import { Icon } from "../ui/icons";
-import { PostAgainSheet, outcomeLine, resultLine, type Channel, type Outcome } from "../ui/Sheets";
+import { PostAgainSheet, QueueLine, outcomeLine, resultLine, type Channel, type Outcome } from "../ui/Sheets";
 
 interface PostData {
   tile: WallTile;
@@ -49,7 +49,7 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
   const [nickErr, setNickErr] = useState<string | null>(null);
   const [loc, setLoc] = useState<string | null | undefined>(undefined);
   const [again, setAgain] = useState(false);
-  const [line, setLine] = useState<string | null>(null);
+  const [line, setLine] = useState<{ text: string; name: string; n: number } | null>(null);
   const [ideaLine, setIdeaLine] = useState<string | null>(null);
   const [ideaBusy, setIdeaBusy] = useState(false);
   const base = sample ? "/sample" : "";
@@ -223,7 +223,7 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
                   {t.hidden ? "Show on the card" : "Hide from the card"}
                 </button>
               </div>
-              {line && <p class={`small outcome${line === outcomeLine("failed") ? " failed" : ""}`}>{line}</p>}
+              {line && <QueueLine key={line.n} text={line.text} name={line.name} failed={line.text === outcomeLine("failed")} />}
               {ideaLine && <p class={`small outcome${ideaLine === outcomeLine("failed") ? " failed" : ""}`}>{ideaLine}</p>}
               {data.noteLeft && (
                 <p class="caption status-lines">
@@ -244,7 +244,7 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
           sample={apiBase.includes("/sample")}
           onClose={() => setAgain(false)}
           onDone={(r) => {
-            setLine(resultLine(r, true));
+            setLine((l) => ({ text: resultLine(r, data.tile.name), name: data.tile.name, n: (l?.n ?? 0) + 1 }));
             setAgain(false);
           }}
         />
