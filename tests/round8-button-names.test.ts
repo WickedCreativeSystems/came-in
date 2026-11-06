@@ -10,10 +10,10 @@ describe("This week's tile buttons: the name starts with the words that show", (
     expect(weekSrc).not.toContain('aria-label="Post it again"');
     expect(weekSrc).not.toContain('aria-label="More like this"');
   });
-  it("both word forms are in the name's source, and the post's name follows them", () => {
-    expect(weekSrc).toMatch(/<span class="long">Post it again<\/span>\s*<span class="short">Post again<\/span>\s*<span class="sr">: \{t\.name\}<\/span>/);
-    expect(weekSrc).toMatch(/<span class="long">More like this<\/span>\s*<span class="short">More like it<\/span>\s*<span class="sr">: \{t\.name\}<\/span>/);
-    expect(weekSrc).not.toMatch(/<span class="short" aria-hidden="true">(Post again|More like it)<\/span>/);
+  it("each word form's whole name is one hidden span next to its visible words, so no space comes before the colon", () => {
+    expect(weekSrc).toMatch(/<span class="long" aria-hidden="true">Post it again<\/span>\s*<span class="short" aria-hidden="true">Post again<\/span>\s*<span class="sr long">Post it again: \{t\.name\}<\/span>\s*<span class="sr short">Post again: \{t\.name\}<\/span>/);
+    expect(weekSrc).toMatch(/<span class="long" aria-hidden="true">More like this<\/span>\s*<span class="short" aria-hidden="true">More like it<\/span>\s*<span class="sr long">More like this: \{t\.name\}<\/span>\s*<span class="sr short">More like it: \{t\.name\}<\/span>/);
+    expect(weekSrc).not.toContain('<span class="sr">: {t.name}</span>');
   });
   it("the form that doesn't show is display: none, so it is left out of the name", () => {
     expect(__APP_CSS__).toContain(".tile-action .short { display: none; }");

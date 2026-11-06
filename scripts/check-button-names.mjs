@@ -11,9 +11,11 @@ for (const [vw, again, more] of [[320, "Post again", "More like it"], [390, "Pos
   await page.goto(base + "/sample/week");
   await page.waitForSelector(".week-tile");
   const tiles = await page.locator(".week-tile").count();
-  const names = await page.locator(".week-tile .tile-action").evaluateAll((bs) => bs.map((b) => ({ shown: b.innerText.trim() })));
+  const names = await page.locator(".week-tile .tile-action").evaluateAll((bs) => bs.map((b) => ({ shown: b.children.length ? [...b.children].filter((c) => !c.classList.contains("sr") && c.getBoundingClientRect().width > 1).map((c) => c.textContent).join("").trim() : b.innerText.trim() })));
   const a = page.getByRole("button", { name: new RegExp(`^${again}: .+ post$`) });
   const m = page.getByRole("button", { name: new RegExp(`^${more}: .+ post$`) });
+  // exactly the plan's form: no space before the colon
+  ok(await page.getByRole("button", { name: new RegExp(`^${again} :`) }).count() === 0, `${vw}: no space before the colon`);
   ok(await a.count() === tiles, `${vw}: ${await a.count()} of ${tiles} "${again}: …" names (first: "${await a.first().evaluate((b) => b.textContent.replace(/\s+/g, " ").trim())}")`);
   ok(await m.count() === tiles, `${vw}: ${await m.count()} of ${tiles} "${more}: …" names`);
   ok(names.every((n) => n.shown === again || n.shown === more || n.shown === "Show it again" || !n.shown.includes(":")), `${vw}: the post's name doesn't show (${[...new Set(names.map((n) => n.shown))].join(", ")})`);
