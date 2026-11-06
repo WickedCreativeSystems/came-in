@@ -62,6 +62,16 @@ for (const size of ["a6", "a5", "4x6"]) {
   ok(Math.abs(two.markUnder - 19.6) < 1.5, `${size} two locations: ${two.markUnder.toFixed(1)} units under the mark`);
   ok(!two.over && two.markBottom <= two.cardH, `${size} two locations: nothing overflows`);
   if (size === "a6") ok(Math.abs(two.qrTop - 250.4) < 1.5, `a6 two locations: QR frame top ${two.qrTop.toFixed(1)} (look.md 250.4)`);
+  // A name too long for the card: one line, inside the 24-unit margins, ending in an ellipsis.
+  const long = await page.evaluate(() => {
+    const card = document.querySelector(".card"), loc = document.querySelector(".card .loc"), sub = document.querySelector(".card .sub");
+    loc.textContent = "W".repeat(24);
+    const u = parseFloat(getComputedStyle(sub).fontSize) / 12, c = card.getBoundingClientRect(), l = loc.getBoundingClientRect(), s = getComputedStyle(loc);
+    return { left: (l.left - c.left) / u, right: (c.right - l.right) / u, h: l.height / u, cut: loc.scrollWidth > loc.clientWidth, ell: s.textOverflow, wrap: s.whiteSpace };
+  });
+  ok(long.left >= 23.5 && long.right >= 23.5, `${size} long name: inside the margins (${long.left.toFixed(1)} and ${long.right.toFixed(1)} units)`);
+  ok(Math.abs(long.h - 14.4) < 0.8 && long.wrap === "nowrap", `${size} long name: one line (${long.h.toFixed(1)} units)`);
+  ok(long.cut && long.ell === "ellipsis", `${size} long name: cut with an ellipsis`);
   await page.close();
 }
 await browser.close();

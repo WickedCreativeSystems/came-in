@@ -344,8 +344,8 @@ p.small.has-hint b { font-weight: 600; }
 .loc-tabs-wrap { position: relative; margin: 0 0 12px; }
 .loc-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; }
 .loc-tabs::-webkit-scrollbar { display: none; }
-.loc-chip { flex: none; height: 36px; padding: 0 16px; border-radius: var(--r); border: 1px solid var(--rule-2); background: var(--paper); color: var(--ink); font-weight: 600; font-size: 15px; max-width: 220px; transition: background 200ms ease, color 200ms ease; }
-.loc-chip span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.loc-chip { flex: none; height: 36px; padding: 0 16px; border-radius: var(--r); border: 1px solid var(--rule-2); background: var(--paper); color: var(--ink); font-weight: 600; font-size: 15px; max-width: 220px; box-sizing: border-box; display: inline-flex; align-items: center; transition: background 200ms ease, color 200ms ease; }
+.loc-chip span { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .loc-chip:hover { background: var(--paper-3); }
 .loc-chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 @media (max-width: 720px) {

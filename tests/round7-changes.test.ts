@@ -7,6 +7,8 @@ import sheetsSrc from "../src/app/ui/Sheets.tsx?raw";
 import { againNote } from "../src/app/lib/lines";
 import { ratioLine } from "../src/shared/week";
 
+declare const __APP_CSS__: string;
+
 afterEach(() => vi.restoreAllMocks());
 
 const ago = (h: number) => new Date(Date.now() - h * 3600000).toISOString();
@@ -91,13 +93,32 @@ describe("3.9 the line when the post's own channels can't take it", () => {
 describe("3.11 the two-location card", () => {
   it("name: Libre Franklin 600, 12 units, 3 under the handle; 9 units under the second line", async () => {
     const card = (await import("../src/worker/render/card.ts?raw")).default as string;
-    expect(card).toMatch(/\.card \.loc\{font-family:var\(--ft\);font-size:calc\(12 \* var\(--u\)\);line-height:1\.2;font-weight:600;[^}]*margin:calc\(3 \* var\(--u\)\) 0 calc\(22 \* var\(--u\)\)\}/);
+    expect(card).toMatch(/\.card \.loc\{font-family:var\(--ft\);font-size:calc\(12 \* var\(--u\)\);line-height:1\.2;font-weight:600;[^}]*margin:calc\(3 \* var\(--u\)\) 0 calc\(22 \* var\(--u\)\);/);
     expect(card).toContain(".card .hn.tight{margin-bottom:0}");
     expect(card).toContain(".card.two .sub{margin-bottom:calc(9 * var(--u))}");
     // The stack grows by 8.4 units, taken from the bottom padding (28 to 19.6), so the mark keeps its place under the QR.
     expect(card).toContain(".card.two{padding-bottom:calc(19.6 * var(--u))}");
     expect(card).toContain('class="card${d.locationName ? " two" : ""}"');
+    // A long name stays on one line inside the card's margins, ending in an ellipsis (plan 3.11).
+    expect(card).toMatch(/\.card \.loc\{[^}]*max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis\}/);
     // A one-location card keeps its 18 units.
     expect(card).toMatch(/\.card \.sub\{[^}]*margin:0 0 calc\(18 \* var\(--u\)\)/);
   });
 });
+
+describe("3.11 and look.md: a long location name on a chip never widens the page", () => {
+  it("the card page's Card for row scrolls inside itself; each chip is at most 220px and ends in an ellipsis", async () => {
+    const card = (await import("../src/worker/render/card.ts?raw")).default as string;
+    expect(card).toContain(".sizes.locs{display:flex;max-width:100%;overflow-x:auto;scrollbar-width:none}");
+    expect(card).toContain(".sizes.locs a{flex:none;box-sizing:border-box;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}");
+    expect(card).toContain(".locs-wrap{position:relative;max-width:100%;min-width:0}");
+    // On a phone the row is its own line, with the 24px fade where more chips wait.
+    expect(card).toMatch(/@media \(max-width:720px\)\{\.locs-wrap\{flex:1 0 100%\}\.locs-wrap::after\{[^}]*width:24px;background:linear-gradient\(to right,transparent,var\(--paper\)\)/);
+  });
+  it("the Wall's location chip is at most 220px including its sides, and its label ends in an ellipsis", async () => {
+    const css = __APP_CSS__;
+    expect(css).toMatch(/\.loc-chip \{[^}]*max-width: 220px; box-sizing: border-box; display: inline-flex;/);
+    expect(css).toMatch(/\.loc-chip span \{[^}]*min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;/);
+  });
+});
+
