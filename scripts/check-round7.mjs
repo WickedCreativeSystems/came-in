@@ -26,7 +26,7 @@ for (const [name, vp] of [["phone", { width: 390, height: 800 }], ["computer", {
   const page = await (await browser.newContext({ viewport: vp })).newPage();
   await page.goto(`${base}/sample/week`);
   await page.waitForSelector(".week-tile");
-  await page.locator(".week-tile button[aria-label='Post it again']").first().click();
+  await page.locator(".week-tile .tile-action").first().click();
   await page.waitForSelector(".sheet-panel .ch-toggles li");
   const on = await page.evaluate(() => [...document.querySelectorAll(".ch-toggles li")].filter((li) => li.querySelector("button.toggle").getAttribute("aria-checked") === "true").length);
   const all = await page.locator(".ch-toggles li").count();

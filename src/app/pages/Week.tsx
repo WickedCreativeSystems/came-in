@@ -202,14 +202,15 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
                   <Tile tile={{ ...t, count: t.weekPeople }} index={i} now={now} tz={wall.shop.timezone} flash={false} href={`${base}/post/${t.id}`} />
                   {t.byLocation && t.byLocation.length > 0 && <p class="caption muted by-loc">{t.byLocation.map((x, k) => <>{k > 0 && " · "}<span class="by-loc-item" key={x.label}><span class="nm">{x.label}</span><span class="n">{"\u00a0"}{x.n}</span></span></>)}</p>}
                   <div class="tile-actions">
-                    <button class="tile-action" aria-label="Post it again" onClick={() => setAgain(t.id)}>
+                    {/* The name is the words that show, then the post (plan 3.7, label in name): the hidden form is display: none, so it is not read. */}
+                    <button class="tile-action" onClick={() => setAgain(t.id)}>
                       <span class="long">Post it again</span>
-                      <span class="short" aria-hidden="true">Post again</span>
+                      <span class="short">Post again</span>
+                      <span class="sr">: {t.name}</span>
                     </button>
                     <span class="tile-divider" aria-hidden="true" />
                     <button
                       class="tile-action"
-                      aria-label="More like this"
                       disabled={!!busyIdea[t.id]}
                       onClick={async () => {
                         if (busyIdea[t.id]) return;
@@ -224,7 +225,8 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
                       }}
                     >
                       <span class="long">More like this</span>
-                      <span class="short" aria-hidden="true">More like it</span>
+                      <span class="short">More like it</span>
+                      <span class="sr">: {t.name}</span>
                     </button>
                     {t.hidden && (
                       <>
