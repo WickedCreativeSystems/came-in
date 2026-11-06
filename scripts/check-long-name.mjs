@@ -20,7 +20,7 @@ try {
   await page.waitForTimeout(1200);
   // A staff screen at the renamed location (opening one is what Setup's button does).
   const staff = await page.evaluate(async (loc) => (await (await fetch("/api/counter/open", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ location: loc }) })).json()).url || null, LOC);
-  const pages = [["Wall", "/wall", ".loc-tabs"], ["This week", "/week", ".week-tile"], ["A post", "/post/stagingone-t1", ".receipt"], ["Card", `/card?l=${LOC}`, ".card"], ["Tap page", `/t/stagingone/${LOC}`, "body"], ["Setup", "/setup", "main"]];
+  const pages = [["Wall", "/wall", ".loc-tabs"], ["This week", "/week", ".week-tile"], ["A post", "/post/stagingone-t1", ".receipt"], ["Card", `/card?l=${LOC}`, ".card"], ["Tap page", `/t/stagingone/${LOC}`, "body"], ["Setup", "/setup", ".loc-name"]];
   if (staff) pages.push(["Staff screen", staff, "body"]);
   for (const vw of [320, 390]) {
     await page.setViewportSize({ width: vw, height: 844 });
