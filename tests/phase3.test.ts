@@ -55,9 +55,9 @@ describe("This week's words (P11, plan 1.7 and 3.7)", () => {
 
   it("the ratio line: counter taps only, at least 10, 1 in N or the reduced fraction", () => {
     expect(ratioLine(9, 3)).toBeNull();
-    expect(ratioLine(16, 4)).toBe("1 in 4 new customers who told us came because of a post.");
-    expect(ratioLine(12, 3)).toBe("1 in 4 new customers who told us came because of a post.");
-    expect(ratioLine(8 + 4, 9)).toBe("3 in 4 new customers who told us came because of a post.");
+    expect(ratioLine(16, 4)).toBe("At your counter, 1 in 4 new customers who told us came because of a post.");
+    expect(ratioLine(12, 3)).toBe("At your counter, 1 in 4 new customers who told us came because of a post.");
+    expect(ratioLine(8 + 4, 9)).toBe("At your counter, 3 in 4 new customers who told us came because of a post.");
     expect(ratioLine(10, 0)).toBeNull();
     // Card taps never count toward the ratio.
     const s = summarize([...Array(10)].map(() => tap("a", "post", "card")), tiles(), TZ, "this");
@@ -92,7 +92,7 @@ describe("This week's words (P11, plan 1.7 and 3.7)", () => {
       { label: "A friend told them", n: 4 },
       { label: "Found us on Google", n: 2 },
     ]);
-    expect(d.summary.ratio).toMatch(/^1 in \d+ new customers who told us came because of a post\.$/);
+    expect(d.summary.ratio).toMatch(/^At your counter, 1 in \d+ new customers who told us came because of a post\.$/);
     for (const t of d.tiles) expect(t.weekPeople).toBeLessThanOrEqual(t.count);
     // On every day of a week, each post's history adds up to its sticker and never comes before it was sent.
     for (let day = 0; day < 7; day++) {

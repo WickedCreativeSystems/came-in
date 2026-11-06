@@ -571,7 +571,7 @@ function RingMyPhone({ sample, pushKey, onDone }: { sample: boolean; pushKey: st
       )}
       {state === "ok" && (
         <div ref={result}>
-          <p class="small has-hint">{sample ? "This browser will ring. In your own shop, open Came In on your phone and tap Ring my phone there, and your phone rings." : "Your phone will ring."}</p>
+          <p class="small has-hint">{sample ? <><b>This browser will ring.</b> In your own shop, open Came In on your phone and tap Ring my phone there, and your phone rings.</> : "Your phone will ring."}</p>
           {sample && (
             <a class="btn now-try" href="/sample?try=1">
               <Icon name="phone" size={18} />

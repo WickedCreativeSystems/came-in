@@ -31,10 +31,18 @@ describe("3.9 the Post it again line names the post", () => {
   });
 });
 
+describe("round 6 words", () => {
+  it("the card's second line is two nowrap lines at 12 units", async () => {
+    const card = (await import("../src/worker/render/card.ts?raw")).default as string;
+    expect(card).toContain("Scan, then tap the post that brought you in.<br>Three seconds, no app.");
+    expect(card).toMatch(/\.card \.sub\{font-size:calc\(12 \* var\(--u\)\);[^}]*white-space:nowrap\}/);
+  });
+});
+
 describe("source: the screens use them", () => {
   it("3.10 Ring my phone result words and Now try a tap", () => {
     const setup = setupSrc;
-    expect(setup).toContain("This browser will ring. In your own shop, open Came In on your phone and tap Ring my phone there, and your phone rings.");
+    expect(setup).toContain("<b>This browser will ring.</b> In your own shop, open Came In on your phone and tap Ring my phone there, and your phone rings.");
     expect(setup).toContain("Now try a tap");
     expect(setup).toContain('href="/sample?try=1"');
   });

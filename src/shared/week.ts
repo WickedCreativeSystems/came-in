@@ -43,7 +43,7 @@ function gcd(a: number, b: number): number {
 }
 
 /**
- * The ratio line (plan 1.7): counter taps only, at least 10 in the window.
+ * The ratio line (plan 1.7, round 6: starts "At your counter,"): counter taps only, at least 10 in the window.
  * "1 in N" with N = round(all ÷ post taps); if post taps are the majority,
  * the reduced fraction.
  */
@@ -51,9 +51,9 @@ export function ratioLine(counterAll: number, counterPost: number): string | nul
   if (counterAll < 10 || counterPost === 0) return null;
   if (counterPost * 2 > counterAll) {
     const g = gcd(counterPost, counterAll);
-    return `${counterPost / g} in ${counterAll / g} new customers who told us came because of a post.`;
+    return `At your counter, ${counterPost / g} in ${counterAll / g} new customers who told us came because of a post.`;
   }
-  return `1 in ${Math.round(counterAll / counterPost)} new customers who told us came because of a post.`;
+  return `At your counter, 1 in ${Math.round(counterAll / counterPost)} new customers who told us came because of a post.`;
 }
 
 const BUCKET_WORDS: Record<TimeBucket, [string, string]> = {

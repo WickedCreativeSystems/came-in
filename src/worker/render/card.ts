@@ -52,7 +52,7 @@ body{background:var(--paper-2)}
 .card .loc{font-size:calc(12 * var(--u));line-height:1.2;font-weight:600;color:#231F1B;margin:0 0 calc(22 * var(--u))}
 .sizes .lab{font-size:14px;font-weight:600;color:var(--ink-2);align-self:center;margin-right:4px}
 .card .ask{font-family:var(--fd);font-weight:700;font-size:calc(34 * var(--u));line-height:.98;letter-spacing:-.005em;margin:0 0 calc(6 * var(--u))}
-.card .sub{font-size:calc(13 * var(--u));color:#6E665D;margin:0 0 calc(18 * var(--u));line-height:1.3}
+.card .sub{font-size:calc(12 * var(--u));color:#6E665D;margin:0 0 calc(18 * var(--u));line-height:1.3;white-space:nowrap}
 .card .qr{width:calc(132 * var(--u));height:calc(132 * var(--u));border:1px solid #D8D3CA;border-radius:3px;padding:calc(6 * var(--u));background:#FFF;flex:none}
 .card .qr svg{width:100%;height:100%;display:block;shape-rendering:crispEdges}
 .card .ci{margin-top:auto;line-height:1;display:inline-flex;align-items:center;gap:calc(6 * var(--u));font-family:var(--fd);font-weight:800;font-size:calc(13 * var(--u));letter-spacing:.04em;text-transform:uppercase;color:#6E665D}
@@ -83,7 +83,7 @@ ${avatarHtml(d.shop.name, d.shop.avatarUrl, 48)}
 <div class="nm">${esc(d.shop.name)}</div>
 ${d.shop.handle ? `<div class="hn${d.locationName ? " tight" : ""}">@${esc(d.shop.handle)}</div>` : `<div class="hn${d.locationName ? " tight" : ""}"></div>`}${d.locationName ? `<div class="loc">${esc(d.locationName)}</div>` : ""}
 <p class="ask">Saw us online?</p>
-<p class="sub">Tap the post that brought you in.<br>Three seconds, no app.</p>
+<p class="sub">Scan, then tap the post that brought you in.<br>Three seconds, no app.</p>
 <div class="qr" aria-label="QR code for the tap page">${d.qrSvg}</div>
 <div class="ci">${BELL_MONO_SVG}<span>Came In</span></div>
 </div></main>

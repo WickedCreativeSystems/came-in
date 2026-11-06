@@ -133,7 +133,7 @@ describe("the printed card (P8, plan 3.11)", () => {
     const a6 = await (await call("/card", { cookie })).text();
     expect(a6).toContain("@page{size:105mm 148mm;margin:0}");
     expect(a6).toContain(".card{width:105mm;height:148mm");
-    for (const w of ["Saw us online?", "Tap the post that brought you in.<br>Three seconds, no app.", "Came In", "Print", "Save as PDF", "@testbakery"]) expect(a6).toContain(w);
+    for (const w of ["Saw us online?", "Scan, then tap the post that brought you in.<br>Three seconds, no app.", "Came In", "Print", "Save as PDF", "@testbakery"]) expect(a6).toContain(w);
     expect(a6).toMatch(/<div class="qr"[^>]*><svg[^>]*viewBox="0 0 \d+ \d+"/);
     expect(a6).not.toContain("prefers-color-scheme:dark");
     const a5 = await (await call("/card?size=a5", { cookie })).text();
