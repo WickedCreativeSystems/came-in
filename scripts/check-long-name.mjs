@@ -45,12 +45,32 @@ try {
         ok(t.tiles.length > 0 && t.tiles.every((w) => Math.abs(w - want) < 1.5), `${vw} This week: tiles ${[...new Set(t.tiles.map(Math.round))].join(", ")}px (want ${want})`);
         ok(t.caps.length > 0 && t.caps.every((c) => c.lines <= 2 && c.counts), `${vw} This week: captions at most two lines, every count shown (${t.caps.map((c) => c.lines + " line" + (c.lines > 1 ? "s" : "") + ": " + c.text.replace(/\n/g, " ")).join(" | ")})`);
       }
+      if (name === "Setup") {
+        const n = await page.evaluate(() => [...document.querySelectorAll(".loc-name")].filter((x) => x.textContent.includes("WWWW")).map((x) => ({ cut: x.scrollWidth > x.clientWidth + 0.5 || getComputedStyle(x).textOverflow === "ellipsis", lines: Math.round(x.getBoundingClientRect().height / parseFloat(getComputedStyle(x).lineHeight)) })));
+        ok(n.length > 0 && n.every((x) => !x.cut && x.lines >= 2), `${vw} Setup: the long name breaks inside the line, not cut (${n.map((x) => x.lines + " lines").join(", ")})`);
+      }
       if (name === "A post") {
         const p = await page.evaluate(() => [...document.querySelectorAll(".receipt li")].filter((li) => li.textContent.includes("WWWW")).map((li) => { const n = li.querySelector(".num").getBoundingClientRect(), s = li.querySelector("span"); return { right: n.right, cut: s.scrollWidth > s.clientWidth }; }));
         ok(p.length === 1 && p[0].right <= vw - 15 && p[0].cut, `${vw} A post: Where they came in shows the count (right edge ${p[0] ? Math.round(p[0].right) : "?"}) and cuts the name`);
       }
       if (shot("x")) await page.screenshot({ path: shot(`long-${vw}-${name.replace(/ /g, "-")}`), fullPage: true });
     }
+  }
+  // Wider than a phone: the long name's first line is level with its row's buttons, and they stay on screen.
+  for (const vw of [800, 1280]) {
+    await page.setViewportSize({ width: vw, height: 844 });
+    await page.goto(base + "/setup");
+    await page.waitForSelector(".loc-name");
+    await page.waitForTimeout(900);
+    const r = await page.evaluate(() => {
+      const row = [...document.querySelectorAll(".loc-row")].find((x) => x.querySelector(".loc-name")?.textContent.includes("WWWW"));
+      const name = row.querySelector(".loc-name"), btn = row.querySelector(".loc-actions .btn");
+      const range = document.createRange(); range.setStart(name.firstChild, 0); range.setEnd(name.firstChild, 1);
+      const first = range.getBoundingClientRect(), b = btn.getBoundingClientRect();
+      const actions = row.querySelector(".loc-actions").getBoundingClientRect();
+      return { d: Math.abs((first.top + first.bottom) / 2 - (b.top + b.bottom) / 2), right: actions.right, sw: document.documentElement.scrollWidth };
+    });
+    ok(r.d <= 2 && r.right <= vw && r.sw <= vw, `${vw} Setup: the name's first line is level with its buttons (${r.d.toFixed(1)}px apart), buttons on screen`);
   }
 } finally {
   await page.goto(base + "/wall");

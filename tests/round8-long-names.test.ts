@@ -49,4 +49,9 @@ describe("every other line with a name", () => {
     }
     expect(counterSrc).toContain(".mk{margin-left:auto;min-width:0;overflow-wrap:anywhere;text-align:right}");
   });
+  it("Setup's location names break a long word inside the line instead of cutting it (NerdCider, 1e15650)", () => {
+    expect(__APP_CSS__).toContain(".loc-row .loc-name { flex: 1 1 auto; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }");
+    const rule = __APP_CSS__.match(/\.loc-row \.loc-name \{[^}]*\}/g) ?? [];
+    expect(rule.join("")).not.toMatch(/ellipsis|nowrap/);
+  });
 });
