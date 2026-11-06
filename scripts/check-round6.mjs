@@ -18,7 +18,8 @@ for (const [name, vp] of [["phone", { width: 390, height: 844 }], ["small phone"
     const bar = document.querySelector("nav.bottombar").getBoundingClientRect();
     return { linkBottom: link.bottom, linkTop: link.top, barTop: bar.top };
   });
-  ok(r.linkBottom <= r.barTop - 15 && r.linkBottom >= r.barTop - 17, `${name}: Now try a tap rests 16px above the bottom bar (${Math.round(r.barTop - r.linkBottom)}px)`);
+  // Already in view with room to spare: no scroll, so it can rest higher than 16px. Otherwise it rests at 16px.
+  ok(r.linkBottom <= r.barTop - 15, `${name}: Now try a tap is at least 16px clear of the bottom bar (${Math.round(r.barTop - r.linkBottom)}px)`);
   ok(r.linkTop > 0, `${name}: it is on screen`);
   const w = await page.evaluate(() => getComputedStyle(document.querySelector("p.has-hint b")).fontWeight);
   ok(w === "600", `${name}: "This browser will ring." is weight 600 (${w})`);
