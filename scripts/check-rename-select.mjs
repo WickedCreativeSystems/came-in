@@ -1,4 +1,5 @@
 // look.md, Setup LOCATIONS: Rename opens a 40px input, focused, with the name selected; Esc closes it unchanged.
+// A double-click on Rename leaves it open, focused and selected, and a normal Cancel after it still closes it.
 // Usage: node scripts/check-rename-select.mjs https://came-in-staging.<subdomain>.workers.dev
 import { chromium } from "playwright";
 const base = (process.argv[2] || "").replace(/\/$/, "");
@@ -21,6 +22,15 @@ for (const vw of [390, 1280]) {
   await page.keyboard.press("Escape");
   await page.waitForSelector(".loc-row input", { state: "detached" });
   ok((await page.locator(".loc-row .loc-name").first().textContent()).trim() === name, `${vw}: Esc closes it, name unchanged`);
+  // Double-click: the second click lands on whatever replaced Rename (Cancel at 1280) and must do nothing.
+  await page.locator(".loc-row button", { hasText: "Rename" }).first().dblclick();
+  await page.waitForTimeout(100);
+  const d = await page.evaluate(() => { const el = document.activeElement; return { open: !!document.querySelector(".loc-row input"), input: el?.tagName === "INPUT", s: el?.selectionStart, e: el?.selectionEnd }; });
+  ok(d.open && d.input && d.s === 0 && d.e === name.length, `${vw}: after a double-click Rename is open (${d.open}), focused (${d.input}), name selected (${d.s}–${d.e})`);
+  await page.waitForTimeout(450);
+  await page.locator(".loc-row button", { hasText: "Cancel" }).first().click();
+  await page.waitForSelector(".loc-row input", { state: "detached", timeout: 2000 }).catch(() => {});
+  ok(!(await page.locator(".loc-row input").count()) && (await page.locator(".loc-row .loc-name").first().textContent()).trim() === name, `${vw}: a normal Cancel right after closes it, name unchanged`);
 }
 await browser.close();
 process.exit(bad ? 1 : 0);

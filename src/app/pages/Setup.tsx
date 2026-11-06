@@ -37,6 +37,10 @@ function selectOnOpen(el: HTMLInputElement | null) {
   el.select();
 }
 
+/** A double-click on Rename lands its second click on whatever replaced the button. For this long after Rename opens,
+ *  that click does nothing: Save and Cancel ignore it, and it can't move focus or the selection out of the name. */
+export const RENAME_SETTLE_MS = 400;
+
 export function Setup({ sample }: { sample: boolean }): JSX.Element {
   const [wall, setWall] = useState<WallData | null>(null);
   const [data, setData] = useState<SetupData | null>(null);
@@ -236,6 +240,8 @@ export function Setup({ sample }: { sample: boolean }): JSX.Element {
 function LocationsSetting({ sample, shopName, samplePrice }: { sample: boolean; shopName: string; samplePrice?: string | null }): JSX.Element {
   const [locs, setLocs] = useState<Locations | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const renameOpenedAt = useRef(0);
+  const settling = () => performance.now() - renameOpenedAt.current < RENAME_SETTLE_MS;
   const [draft, setDraft] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [removing, setRemoving] = useState<{ id: string; name: string } | null>(null);
@@ -291,7 +297,7 @@ function LocationsSetting({ sample, shopName, samplePrice }: { sample: boolean; 
       <p>Each location has its own card, staff screen and counts.</p>
       <div class="loc-list">
         {mine.map((l, i) => (
-          <div class="loc-row" key={l.id}>
+          <div class="loc-row" key={l.id} onMouseDown={renaming === l.id ? (e) => { if (settling()) e.preventDefault(); } : undefined}>
             {renaming === l.id ? (
               <>
                 <div class="loc-edit">
@@ -305,10 +311,10 @@ function LocationsSetting({ sample, shopName, samplePrice }: { sample: boolean; 
                     </div>
                   )}
                 </div>
-                <button class="btn sm" onClick={() => void save(l.id)}>
+                <button class="btn sm" onClick={() => { if (!settling()) void save(l.id); }}>
                   Save
                 </button>
-                <button class="btn quiet sm" onClick={() => setRenaming(null)}>
+                <button class="btn quiet sm" onClick={() => { if (!settling()) setRenaming(null); }}>
                   Cancel
                 </button>
               </>
@@ -319,7 +325,7 @@ function LocationsSetting({ sample, shopName, samplePrice }: { sample: boolean; 
                   <a class="btn quiet sm" href={i === 0 ? "/card" : `/card?l=${l.id}`}>
                     Print its card
                   </a>
-                  <button class="btn quiet sm" onClick={() => { setRenaming(l.id); setDraft(l.name); setErr(null); }}>
+                  <button class="btn quiet sm" onClick={() => { renameOpenedAt.current = performance.now(); setRenaming(l.id); setDraft(l.name); setErr(null); }}>
                     Rename
                   </button>
                   {i > 0 && !l.hasTaps && (

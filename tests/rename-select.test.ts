@@ -8,3 +8,13 @@ describe("Setup's Rename opens its input focused and selected", () => {
     expect(setupSrc).toMatch(/function selectOnOpen\(el: HTMLInputElement \| null\) \{[\s\S]*?el\.focus\(\);\s*el\.select\(\);/);
   });
 });
+
+describe("A double-click on Rename is harmless (Playner, PR 23)", () => {
+  it("for 400ms after Rename opens, Save and Cancel ignore clicks and a press in the row can't move focus", () => {
+    expect(setupSrc).toContain("export const RENAME_SETTLE_MS = 400;");
+    expect(setupSrc).toContain("renameOpenedAt.current = performance.now(); setRenaming(l.id);");
+    expect(setupSrc).toContain('onClick={() => { if (!settling()) void save(l.id); }}');
+    expect(setupSrc).toContain('onClick={() => { if (!settling()) setRenaming(null); }}');
+    expect(setupSrc).toMatch(/class="loc-row" key=\{l\.id\} onMouseDown=\{renaming === l\.id \? \(e\) => \{ if \(settling\(\)\) e\.preventDefault\(\); \}/);
+  });
+});
