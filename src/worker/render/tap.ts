@@ -9,8 +9,8 @@ export interface TapTile {
   name: string; // "Tuesday's sourdough post"
   imageUrl: string | null;
   text: string; // first line, for text tiles
-  badge: string; // "TUE", "OCT 28", "SENT TODAY"
-  badgeShort: string; // on a tile under 180px: "NEW", "LIVE"
+  badge: string; // "TUE", "WED · OCT 28", "SENT TODAY"
+  badgeShort: string; // on a tile under 180px: "NEW", "LIVE", "WED 28"
   live: boolean;
 }
 

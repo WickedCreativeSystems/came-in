@@ -49,9 +49,9 @@ describe("a post's name in sentences (plan 1.7)", () => {
 });
 
 describe("day badges and captions (plan 3.4, 3.9)", () => {
-  it("TUE within 6 days, OCT 28 when older, TODAY · LIVE on a live story", () => {
+  it("TUE within 6 days, WED · OCT 28 when older, TODAY · LIVE on a live story", () => {
     expect(dayBadge(new Date(TUESDAY), NOW, TZ, false)).toBe("TUE");
-    expect(dayBadge(new Date(OLD), NOW, TZ, false)).toBe("OCT 28");
+    expect(dayBadge(new Date(OLD), NOW, TZ, false)).toBe("WED · OCT 28");
     expect(dayBadge(new Date(TUESDAY), NOW, TZ, true, "wall")).toBe("TODAY · LIVE");
     expect(dayBadge(new Date(TUESDAY), NOW, TZ, true, "tap")).toBe("TODAY");
   });

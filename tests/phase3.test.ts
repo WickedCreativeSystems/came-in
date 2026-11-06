@@ -43,7 +43,7 @@ describe("This week's words (P11, plan 1.7 and 3.7)", () => {
     expect(s.patterns.length).toBeLessThanOrEqual(4);
     expect(s.patterns).toContain("Photos brought 4 people. Videos brought 1. Text-only posts brought 0.");
     expect(s.patterns).toContain("Stories brought 1 person.");
-    expect(s.patterns.some((p) => /^Posts sent on Monday brought the most people: 3\.$/.test(p))).toBe(true);
+    expect(s.patterns.some((p) => /^Posts sent on Mondays brought the most people: 3\.$/.test(p))).toBe(true);
     expect(s.patterns.some((p) => /^Posts sent in the evening brought 3 people; mornings 2\.$/.test(p))).toBe(true);
   });
 
@@ -576,7 +576,7 @@ describe("the stranger fixes (EaseBot, Nov 4)", () => {
     expect(dayBadgeShort(new Date("2026-11-03T18:10:00Z"), now, tz, false)).toBe("TUE");
     expect(dayBadge(new Date("2026-11-04T14:14:00Z"), now, tz, true)).toBe("TODAY · LIVE");
     expect(dayBadge(new Date("2026-11-03T18:10:00Z"), now, tz, false)).toBe("TUE");
-    expect(dayBadge(new Date("2026-10-27T12:55:00Z"), now, tz, false)).toBe("OCT 27");
+    expect(dayBadge(new Date("2026-10-27T12:55:00Z"), now, tz, false)).toBe("TUE · OCT 27");
   });
 
   it("the sample's wall heading and This week are one number", async () => {
