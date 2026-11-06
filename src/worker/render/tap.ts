@@ -34,7 +34,8 @@ body{min-height:100dvh;display:flex;flex-direction:column}
 html,.th{scrollbar-width:none}html::-webkit-scrollbar,.th::-webkit-scrollbar{display:none}
 .hd{display:flex;align-items:center;gap:10px;padding:18px 16px 10px}
 .nm{font-family:var(--fd);font-weight:700;font-size:22px;line-height:1;letter-spacing:.005em}
-.hn{font-size:13px;color:var(--ink-2);line-height:1.3;margin-top:3px}
+.hd>div{min-width:0}
+.hn{font-size:13px;color:var(--ink-2);line-height:1.3;margin-top:3px;overflow-wrap:anywhere}
 .ask{padding:0 16px 12px}
 .ask h1{margin:0;font-family:var(--fd);font-weight:700;font-size:28px;line-height:1;letter-spacing:-.005em}
 .ask p{margin:4px 0 0;font-size:14px;color:var(--ink-2);line-height:1.4}

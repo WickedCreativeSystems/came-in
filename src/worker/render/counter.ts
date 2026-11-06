@@ -23,8 +23,9 @@ body{min-height:100dvh;display:flex;flex-direction:column}
 html{scrollbar-width:none}html::-webkit-scrollbar{display:none}
 .hd{display:flex;align-items:center;gap:10px;padding:18px 16px 10px}
 .nm{font-family:var(--fd);font-weight:700;font-size:22px;line-height:1;letter-spacing:.005em}
-.hn{font-size:13px;color:var(--ink-2);line-height:1.3;margin-top:3px}
-.mk{margin-left:auto}
+.hd>div{min-width:0}
+.hn{font-size:13px;color:var(--ink-2);line-height:1.3;margin-top:3px;overflow-wrap:anywhere}
+.mk{margin-left:auto;min-width:0;overflow-wrap:anywhere;text-align:right}
 .ask{padding:0 16px 12px}
 .ask h1{margin:0;font-family:var(--fd);font-weight:700;font-size:24px;line-height:1;letter-spacing:-.005em}
 .grid{display:grid;grid-template-columns:repeat(3,minmax(160px,1fr));gap:8px;padding:0 16px 12px;align-content:start}

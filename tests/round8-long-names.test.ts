@@ -3,6 +3,8 @@
 import { describe, it, expect } from "vitest";
 import weekSrc from "../src/app/pages/Week.tsx?raw";
 import { BASE_CSS } from "../src/worker/render/html";
+import tapSrc from "../src/worker/render/tap.ts?raw";
+import counterSrc from "../src/worker/render/counter.ts?raw";
 
 declare const __APP_CSS__: string;
 declare const __TOKENS_CSS__: string;
@@ -30,6 +32,8 @@ describe("A post: Where they came in", () => {
   it("the name truncates on one line and the count never shrinks", () => {
     expect(__APP_CSS__).toContain(".receipt li > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }");
     expect(__APP_CSS__).toContain(".receipt .num { flex: none; }");
+    // and the page's one column can't be widened by it
+    expect(__APP_CSS__).toContain(".post-grid { grid-template-columns: minmax(0, 1fr); gap: var(--s5); }");
   });
 });
 
@@ -37,5 +41,12 @@ describe("every other line with a name", () => {
   it("a long word breaks inside the line, in the app and on the pages the Worker draws (tap page, staff screen)", () => {
     expect(__TOKENS_CSS__).toMatch(/body \{[^}]*overflow-wrap: break-word; \}/);
     expect(BASE_CSS).toMatch(/body\{[^}]*overflow-wrap:break-word\}/);
+  });
+  it("the tap page's and staff screen's header lines break a long name instead of widening the header", () => {
+    for (const src of [tapSrc, counterSrc]) {
+      expect(src).toContain(".hd>div{min-width:0}");
+      expect(src).toContain(".hn{font-size:13px;color:var(--ink-2);line-height:1.3;margin-top:3px;overflow-wrap:anywhere}");
+    }
+    expect(counterSrc).toContain(".mk{margin-left:auto;min-width:0;overflow-wrap:anywhere;text-align:right}");
   });
 });

@@ -281,7 +281,7 @@ nav.bottombar { display: none; }
 /* A post (plan 3.9) */
 .post-page .back { margin: 0 0 var(--s4) -10px; }
 .post-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: var(--s6); align-items: start; }
-@media (max-width: 860px) { .post-grid { grid-template-columns: 1fr; gap: var(--s5); } }
+@media (max-width: 860px) { .post-grid { grid-template-columns: minmax(0, 1fr); gap: var(--s5); } }
 .post-photo img, .post-photo .text-only { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--r-tile); background: var(--paper-2); }
 .post-photo .text-only.big { display: flex; padding: 32px; }
 .post-photo .text-only.big .first { font-family: var(--font-display); font-weight: 700; font-size: 34px; line-height: 1.02; }
