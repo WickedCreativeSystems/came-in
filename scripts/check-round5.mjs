@@ -130,6 +130,13 @@ for (const [name, vp] of [["phone", { width: 390, height: 800 }], ["small phone"
   const done = f.locator("button:has-text('Done'), #dn").first();
   await done.waitFor();
   await done.click();
+  // In the sample Done leads to the review ask; Not now closes the sheet.
+  const nn = f.locator("#nn");
+  if (await nn.waitFor({ timeout: 1500 }).then(() => true).catch(() => false)) {
+    await page.waitForTimeout(500);
+    ok(await page.locator(".ring").count() === 0, "phone: still no banner on the review screen");
+    await nn.click();
+  }
   const t0 = Date.now();
   await page.waitForSelector(".ring", { timeout: 3000 });
   ok(Date.now() - t0 < 1500, "phone: the ring plays when the sheet has closed");
@@ -143,8 +150,6 @@ for (const [name, vp] of [["phone", { width: 390, height: 800 }], ["small phone"
   ok(v.top >= v.hd && v.bottom <= v.vh, `phone: the banner is in view (${Math.round(v.top)}..${Math.round(v.bottom)})`);
   ok(v.sounds > before, "phone: the sound plays with it");
   await page.screenshot({ path: shot("held-ring-phone") });
-  await page.waitForTimeout(7300);
-  ok(await page.locator(".ring.in").count() === 0 || true, "phone: (8 s clock not asserted in the browser)");
   await ctx.close();
 }
 await browser.close();
