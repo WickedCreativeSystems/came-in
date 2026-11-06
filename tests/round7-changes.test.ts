@@ -94,6 +94,8 @@ describe("3.11 the two-location card", () => {
     expect(card).toMatch(/\.card \.loc\{font-family:var\(--ft\);font-size:calc\(12 \* var\(--u\)\);line-height:1\.2;font-weight:600;[^}]*margin:calc\(3 \* var\(--u\)\) 0 calc\(22 \* var\(--u\)\)\}/);
     expect(card).toContain(".card .hn.tight{margin-bottom:0}");
     expect(card).toContain(".card.two .sub{margin-bottom:calc(9 * var(--u))}");
+    // The stack grows by 8.4 units, taken from the bottom padding (28 to 19.6), so the mark keeps its place under the QR.
+    expect(card).toContain(".card.two{padding-bottom:calc(19.6 * var(--u))}");
     expect(card).toContain('class="card${d.locationName ? " two" : ""}"');
     // A one-location card keeps its 18 units.
     expect(card).toMatch(/\.card \.sub\{[^}]*margin:0 0 calc\(18 \* var\(--u\)\)/);

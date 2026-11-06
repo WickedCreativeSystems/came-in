@@ -50,6 +50,7 @@ body{background:var(--paper-2)}
 .card .hn{font-size:calc(12 * var(--u));line-height:1.2;color:#6E665D;margin:calc(3 * var(--u)) 0 calc(22 * var(--u))}
 .card .hn.tight{margin-bottom:0}
 .card .loc{font-family:var(--ft);font-size:calc(12 * var(--u));line-height:1.2;font-weight:600;color:#231F1B;margin:calc(3 * var(--u)) 0 calc(22 * var(--u))}
+.card.two{padding-bottom:calc(19.6 * var(--u))}
 .card.two .sub{margin-bottom:calc(9 * var(--u))}
 .sizes .lab{font-size:14px;font-weight:600;color:var(--ink-2);align-self:center;margin-right:4px}
 .card .ask{font-family:var(--fd);font-weight:700;font-size:calc(34 * var(--u));line-height:.98;letter-spacing:-.005em;margin:0 0 calc(6 * var(--u))}

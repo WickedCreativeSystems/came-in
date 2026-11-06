@@ -59,7 +59,7 @@ for (const size of ["a6", "a5", "4x6"]) {
   ok(/^600 12 .*Libre Franklin/.test(two.locFont), `${size} two locations: name is ${two.locFont}`);
   ok(Math.abs(two.gap - 9) < 1.2, `${size} two locations: ${two.gap.toFixed(1)} units above the QR`);
   ok(Math.abs(two.markGap - one.markGap) < 1, `${size} two locations: mark ${two.markGap.toFixed(1)} units under the QR (one location ${one.markGap.toFixed(1)})`);
-  ok(Math.abs(two.markUnder - 19.6) < 1.5 || size !== "a6", `${size} two locations: ${two.markUnder.toFixed(1)} units under the mark`);
+  ok(Math.abs(two.markUnder - 19.6) < 1.5, `${size} two locations: ${two.markUnder.toFixed(1)} units under the mark`);
   ok(!two.over && two.markBottom <= two.cardH, `${size} two locations: nothing overflows`);
   if (size === "a6") ok(Math.abs(two.qrTop - 250.4) < 1.5, `a6 two locations: QR frame top ${two.qrTop.toFixed(1)} (look.md 250.4)`);
   await page.close();
