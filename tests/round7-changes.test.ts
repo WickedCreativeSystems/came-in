@@ -7,6 +7,8 @@ import sheetsSrc from "../src/app/ui/Sheets.tsx?raw";
 import { againNote } from "../src/app/lib/lines";
 import { ratioLine } from "../src/shared/week";
 
+declare const __APP_CSS__: string;
+
 afterEach(() => vi.restoreAllMocks());
 
 const ago = (h: number) => new Date(Date.now() - h * 3600000).toISOString();
@@ -103,3 +105,20 @@ describe("3.11 the two-location card", () => {
     expect(card).toMatch(/\.card \.sub\{[^}]*margin:0 0 calc\(18 \* var\(--u\)\)/);
   });
 });
+
+describe("3.11 and look.md: a long location name on a chip never widens the page", () => {
+  it("the card page's Card for row scrolls inside itself; each chip is at most 220px and ends in an ellipsis", async () => {
+    const card = (await import("../src/worker/render/card.ts?raw")).default as string;
+    expect(card).toContain(".sizes.locs{display:flex;max-width:100%;overflow-x:auto;scrollbar-width:none}");
+    expect(card).toContain(".sizes.locs a{flex:none;box-sizing:border-box;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}");
+    expect(card).toContain(".locs-wrap{position:relative;max-width:100%;min-width:0}");
+    // On a phone the row is its own line, with the 24px fade where more chips wait.
+    expect(card).toMatch(/@media \(max-width:720px\)\{\.locs-wrap\{flex:1 0 100%\}\.locs-wrap::after\{[^}]*width:24px;background:linear-gradient\(to right,transparent,var\(--paper\)\)/);
+  });
+  it("the Wall's location chip is at most 220px including its sides, and its label ends in an ellipsis", async () => {
+    const css = __APP_CSS__;
+    expect(css).toMatch(/\.loc-chip \{[^}]*max-width: 220px; box-sizing: border-box; display: inline-flex;/);
+    expect(css).toMatch(/\.loc-chip span \{[^}]*min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;/);
+  });
+});
+

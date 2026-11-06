@@ -1,5 +1,6 @@
 import path from "node:path";
 import { generateKeyPairSync } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-plugin";
 import { defineConfig } from "vitest/config";
 
@@ -35,6 +36,8 @@ export default defineConfig({
       };
     }),
   ],
+  // The app's stylesheet as text, for tests that check a CSS rule (Vite empties a `?raw` CSS import in the Workers pool).
+  define: { __APP_CSS__: JSON.stringify(readFileSync(path.join(__dirname, "src/app/app.css"), "utf8")) },
   test: {
     include: ["tests/**/*.test.ts"],
     setupFiles: ["./tests/apply-migrations.ts"],

@@ -52,7 +52,12 @@ body{background:var(--paper-2)}
 .card .loc{font-family:var(--ft);font-size:calc(12 * var(--u));line-height:1.2;font-weight:600;color:#231F1B;margin:calc(3 * var(--u)) 0 calc(22 * var(--u));max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card.two{padding-bottom:calc(19.6 * var(--u))}
 .card.two .sub{margin-bottom:calc(9 * var(--u))}
-.sizes .lab{font-size:14px;font-weight:600;color:var(--ink-2);align-self:center;margin-right:4px}
+.locs-wrap{position:relative;max-width:100%;min-width:0}
+.sizes.locs{display:flex;max-width:100%;overflow-x:auto;scrollbar-width:none}
+.sizes.locs::-webkit-scrollbar{display:none}
+.sizes.locs a{flex:none;box-sizing:border-box;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:720px){.locs-wrap{flex:1 0 100%}.locs-wrap::after{content:"";position:absolute;top:0;right:0;bottom:0;width:24px;background:linear-gradient(to right,transparent,var(--paper));pointer-events:none}}
+.sizes .lab{flex:none;white-space:nowrap;font-size:14px;font-weight:600;color:var(--ink-2);align-self:center;margin-right:4px}
 .card .ask{font-family:var(--fd);font-weight:700;font-size:calc(34 * var(--u));line-height:.98;letter-spacing:-.005em;margin:0 0 calc(6 * var(--u))}
 .card .sub{font-size:calc(12 * var(--u));color:#6E665D;margin:0 0 calc(18 * var(--u));line-height:1.3;white-space:nowrap}
 .card .qr{width:calc(132 * var(--u));height:calc(132 * var(--u));border:1px solid #D8D3CA;border-radius:3px;padding:calc(6 * var(--u));background:#FFF;flex:none}
@@ -77,7 +82,7 @@ export function renderCard(d: CardData): string {
   const sizes = (Object.keys(CARD_SIZES) as CardSize[])
     .map((k) => `<a href="${esc(d.sizeHref(k))}"${k === d.size ? ' aria-current="page"' : ""}>${CARD_SIZES[k].label}</a>`)
     .join("");
-  const body = `<div class="bar"><h1>Your card</h1>${d.locationSwitches?.length ? `<nav class="sizes locs" aria-label="Card for"><span class="lab">Card for</span>${d.locationSwitches.map((l) => `<a href="${esc(l.href)}"${l.current ? ' aria-current="page"' : ""}>${esc(l.label)}</a>`).join("")}</nav>` : ""}<nav class="sizes" aria-label="Paper size">${sizes}</nav>
+  const body = `<div class="bar"><h1>Your card</h1>${d.locationSwitches?.length ? `<div class="locs-wrap"><nav class="sizes locs" aria-label="Card for"><span class="lab">Card for</span>${d.locationSwitches.map((l) => `<a href="${esc(l.href)}"${l.current ? ' aria-current="page"' : ""}>${esc(l.label)}</a>`).join("")}</nav></div>` : ""}<nav class="sizes" aria-label="Paper size">${sizes}</nav>
 <button class="btn primary" id="print">Print</button><button class="btn" id="pdf">Save as PDF</button><a class="btn quiet" href="${esc(d.backUrl)}">Back</a><p class="how">Your name and picture come from your Buffer channel, so there's nothing to set up. Put it by the till.</p></div>
 <main class="stage"><div class="card${d.locationName ? " two" : ""}">
 <span class="punch" aria-hidden="true"></span>
