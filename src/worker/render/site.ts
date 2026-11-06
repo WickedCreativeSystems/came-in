@@ -63,7 +63,7 @@ export function renderLanding(opts: { error?: "denied" | "exchange" | "signedout
 <div class="cap">Connect Buffer takes you to Buffer to sign in. Came In only reads your posts and channels.</div>
 <div class="cap free">Free for one location. <a href="/pricing">Pricing</a></div></section>
 <section class="loop" aria-label="How it works">
-<figure><img src="/landing/card.jpg" alt="The printed card on a shop counter: Saw us online? Tap the post that brought you in." width="800" height="600" loading="lazy"><figcaption>The card on your counter.</figcaption></figure>
+<figure><img src="/landing/card.jpg" alt="The printed card on a shop counter: Saw us online? Scan, then tap the post that brought you in." width="800" height="600" loading="lazy"><figcaption>The card on your counter.</figcaption></figure>
 <figure><img src="/landing/tap.jpg" alt="A phone showing the shop's posts as tiles to tap." width="800" height="600" loading="lazy"><figcaption>A customer taps the post they saw.</figcaption></figure>
 <figure><img src="/landing/bell.jpg" alt="The shop's wall with the bell banner: Someone just came in because of Tuesday's sourdough post." width="800" height="600" loading="lazy"><figcaption>Your phone rings.</figcaption></figure>
 </section>
