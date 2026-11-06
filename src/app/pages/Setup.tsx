@@ -1,11 +1,12 @@
 // Setup (plan 3.8; P10). Every section saves and reloads; the checklist's
 // chips open their sections by hash.
 import type { JSX } from "preact";
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import type { WallData, ChannelRow, Theme } from "@shared/types";
 import { serviceName } from "@shared/marks";
 import { api, ApiError } from "../lib/api";
 import { applyTheme } from "../lib/theme";
+import { scrollIntoRoom } from "../lib/scroll";
 import { deviceId } from "../lib/device";
 import { ringMyPhone, initialPhoneState, thisPhoneRings, isIOS, type PhoneState } from "../lib/push";
 import { HeaderSkeleton, TilesSkeleton } from "../ui/Skeleton";
@@ -533,7 +534,17 @@ function RingMyPhone({ sample, pushKey, onDone }: { sample: boolean; pushKey: st
     if (sample) return;
     void thisPhoneRings().then((yes) => yes && setState((s) => (s === "idle" ? "ok" : s)));
   }, []);
+  // The result and Now try a tap sit below the button, so on a phone they start behind the bottom bar:
+  // after a tap, bring them into view (EaseBot, round 6, task 6 phone).
+  const result = useRef<HTMLDivElement>(null);
+  const pressed = useRef(false);
+  useEffect(() => {
+    if (state !== "ok" || !pressed.current) return;
+    const id = requestAnimationFrame(() => scrollIntoRoom(result.current));
+    return () => cancelAnimationFrame(id);
+  }, [state]);
   async function go() {
+    pressed.current = true;
     if (sample) {
       setState("ok");
       await api("/api/sample/phone", { method: "POST" }).catch(() => undefined);
@@ -558,12 +569,16 @@ function RingMyPhone({ sample, pushKey, onDone }: { sample: boolean; pushKey: st
           Ring my phone
         </button>
       )}
-      {state === "ok" && <p class="small has-hint">{sample ? "This browser will ring. In your own shop, open Came In on your phone and tap Ring my phone there, and your phone rings." : "Your phone will ring."}</p>}
-      {state === "ok" && sample && (
-        <a class="btn now-try" href="/sample?try=1">
-          <Icon name="phone" size={18} />
-          Now try a tap
-        </a>
+      {state === "ok" && (
+        <div ref={result}>
+          <p class="small has-hint">{sample ? "This browser will ring. In your own shop, open Came In on your phone and tap Ring my phone there, and your phone rings." : "Your phone will ring."}</p>
+          {sample && (
+            <a class="btn now-try" href="/sample?try=1">
+              <Icon name="phone" size={18} />
+              Now try a tap
+            </a>
+          )}
+        </div>
       )}
       {state === "ok" && !sample && <p class="caption muted sound-hint">If it only buzzes, open your phone's notification settings for Came In and turn sound on.</p>}
       {state === "denied" && <p class="small">Notifications are blocked for Came In on this device. Allow them in this browser's or phone's settings, then tap Ring my phone again.</p>}

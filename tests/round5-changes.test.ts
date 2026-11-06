@@ -38,6 +38,11 @@ describe("source: the screens use them", () => {
     expect(setup).toContain("Now try a tap");
     expect(setup).toContain('href="/sample?try=1"');
   });
+  it("3.10 the Ring my phone result is scrolled clear of the bottom bar after a press", () => {
+    expect(setupSrc).toContain("scrollIntoRoom(result.current)");
+    expect(setupSrc).toContain("pressed.current = true");
+    expect(setupSrc).toMatch(/<div ref=\{result\}>[\s\S]*Now try a tap/);
+  });
   it("3.10 a tap in the sheet holds the ring until the sheet closes", () => {
     const wall = wallSrc;
     expect(wall).toContain("held.current.push(m)");
