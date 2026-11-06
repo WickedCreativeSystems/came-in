@@ -1,5 +1,6 @@
 // Came In: the Worker. Routes, the tap, the owner API, images and the crons.
 import { Hono, type Context } from "hono";
+import { htmlForEdge } from "./compress";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import QRCode from "qrcode";
 import type { Env } from "./env";
@@ -1248,7 +1249,8 @@ async function scheduled(controller: ScheduledController, env: Env): Promise<voi
 }
 
 export default {
-  fetch: app.fetch,
+  // Every HTML page leaves with no-transform and is gzipped here (compress.ts), so the zone adds no beacon.
+  fetch: async (req: Request, env: Env, ctx: ExecutionContext) => htmlForEdge(req, await app.fetch(req, env, ctx)),
   scheduled: (controller: ScheduledController, env: Env, ctx: ExecutionContext) => {
     ctx.waitUntil(scheduled(controller, env));
   },
