@@ -558,7 +558,13 @@ function RingMyPhone({ sample, pushKey, onDone }: { sample: boolean; pushKey: st
           Ring my phone
         </button>
       )}
-      {state === "ok" && <p class={`small${sample ? "" : " has-hint"}`}>{sample ? "This browser will ring. In your own shop, this button makes your phone ring." : "Your phone will ring."}</p>}
+      {state === "ok" && <p class={`small${sample ? "" : " has-hint"}`}>{sample ? "This browser will ring. In your own shop, open Came In on your phone and tap Ring my phone there, and your phone rings." : "Your phone will ring."}</p>}
+      {state === "ok" && sample && (
+        <a class="btn now-try" href="/sample?try=1">
+          <Icon name="phone" size={18} />
+          Now try a tap
+        </a>
+      )}
       {state === "ok" && !sample && <p class="caption muted sound-hint">If it only buzzes, open your phone's notification settings for Came In and turn sound on.</p>}
       {state === "denied" && <p class="small">Notifications are blocked for Came In on this device. Allow them in this browser's or phone's settings, then tap Ring my phone again.</p>}
       {state === "ios" && (

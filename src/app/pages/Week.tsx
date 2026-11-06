@@ -1,6 +1,6 @@
 // This week (plan 3.7; P11, P12, P14).
 import type { JSX } from "preact";
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import type { WallData, WallTile } from "@shared/types";
 import { api, ApiError } from "../lib/api";
 import { applyTheme } from "../lib/theme";
@@ -10,7 +10,7 @@ import { Header } from "../ui/Header";
 import { Tile } from "../ui/Tile";
 import { LocationTabs } from "../ui/LocationTabs";
 import { readTab, saveTab, locQuery } from "../lib/locationTab";
-import { PostAgainSheet, PostThisSheet, Sheet, outcomeLine, resultLine, type Channel, type Outcome } from "../ui/Sheets";
+import { PostAgainSheet, PostThisSheet, QueueLine, Sheet, outcomeLine, resultLine, type Channel, type Outcome } from "../ui/Sheets";
 
 type Range = "today" | "this" | "last" | "month";
 
@@ -36,6 +36,10 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
   const [error, setError] = useState(false);
   const [again, setAgain] = useState<string | null>(null);
   const [lines, setLines] = useState<Record<string, string>>({});
+  // The line Post it again leaves under its tile: one at a time, it stays until the page is left (plan 3.9).
+  const [queued, setQueued] = useState<{ id: string; text: string; failed: boolean; n: number } | null>(null);
+  const grid = useRef<HTMLDivElement>(null);
+  const [cols, setCols] = useState(2);
   const [share, setShare] = useState<null | { story: string | null; square: string | null; storyUrl: string | null; squareUrl: string | null; busy: boolean }>(null);
   const [postThis, setPostThis] = useState(false);
   const [postLine, setPostLine] = useState<string | null>(null);
@@ -64,6 +68,17 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
       .then(setData)
       .catch(() => setError(true));
   }, [range, loc]);
+
+  // How many tiles sit in a row now, so the line goes under the row that holds its tile.
+  useEffect(() => {
+    const el = grid.current;
+    if (!el) return;
+    const count = () => setCols(Math.max(1, getComputedStyle(el).gridTemplateColumns.split(" ").filter(Boolean).length));
+    count();
+    const ro = new ResizeObserver(count);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [!!data, !!wall]);
 
   if (!wall)
     return (
@@ -178,8 +193,11 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
               </>
             )}
             {postLine && <p class={`small outcome${postLine === outcomeLine("failed") ? " failed" : ""}`}>{postLine}</p>}
-            <div class="wall week-wall">
-              {data.tiles.filter((t) => t.weekPeople > 0).map((t, i) => (
+            <div class="wall week-wall" ref={grid}>
+              {data.tiles.filter((t) => t.weekPeople > 0).flatMap((t, i, all) => {
+                const rowEnd = Math.min(all.length - 1, (Math.floor(i / cols) + 1) * cols - 1);
+                const line = queued && i === rowEnd && all.slice(Math.floor(i / cols) * cols, rowEnd + 1).some((x) => x.id === queued.id);
+                return [(
                 <div class="week-tile" key={t.id}>
                   <Tile tile={{ ...t, count: t.weekPeople }} index={i} now={now} tz={wall.shop.timezone} flash={false} href={`${base}/post/${t.id}`} />
                   {t.byLocation && t.byLocation.length > 0 && <p class="caption muted by-loc">{t.byLocation.map((x) => `${x.label} ${x.n}`).join(" · ")}</p>}
@@ -227,7 +245,10 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
                   </div>
                   {lines[t.id] && <p class={`small outcome${lines[t.id] === outcomeLine("failed") ? " failed" : ""}`}>{lines[t.id]}</p>}
                 </div>
-              ))}
+                ),
+                ...(line && queued ? [<div class="queue-row" key={`q-${queued.n}`}><QueueLine text={queued.text} failed={queued.failed} /></div>] : []),
+                ];
+              })}
             </div>
             {(() => {
               const nobody = data.tiles.filter((t) => t.weekPeople === 0).length;
@@ -252,7 +273,8 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
           sample={sample}
           onClose={() => setAgain(null)}
           onDone={(r) => {
-            setLines((l) => ({ ...l, [again]: resultLine(r, true) }));
+            const text = resultLine(r, data.tiles.find((x) => x.id === again)?.name);
+            setQueued((q) => ({ id: again, text, failed: text === outcomeLine("failed"), n: (q?.n ?? 0) + 1 }));
             setAgain(null);
           }}
         />

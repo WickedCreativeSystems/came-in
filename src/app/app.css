@@ -170,9 +170,9 @@ nav.bottombar { display: none; }
   .with-phone nav.bottombar { bottom: 0; }
   .with-phone .fab { bottom: 72px; }
   .shop-name { font-size: 22px; }
-  /* "4 came in": the number keeps its word; only "today" goes (look.md section 4). */
-  .today .lbl { font-weight: 600; font-size: 14px; white-space: nowrap; }
-  .today .lbl-day { display: none; }
+  /* "4 came in today": the number keeps both words, stacked on two short lines (look.md section 4, round five). */
+  .today .lbl { font-weight: 600; font-size: 13px; line-height: 1.05; white-space: nowrap; text-align: left; }
+  .today .lbl-day { display: block; }
   .shop { flex: 1 1 auto; min-width: 0; }
   .shop-text { flex: 1 1 auto; min-width: 0; }
   .shop-handle { max-width: none; }
@@ -402,3 +402,13 @@ p.small.has-hint { margin-bottom: 0; }
 /* Words that differ by screen: a phone shows no code, so no line there mentions scanning (plan 3.4). */
 .on-phone { display: none; }
 @media (max-width: 720px) { .on-desk { display: none; } .on-phone { display: inline; } }
+
+/* Round five: the line Post it again leaves (look.md): a paper strip with a bar, under the tile's row or the post page's buttons */
+.queue-line { display: block; margin: 12px 0 0; padding: 12px; background: var(--paper-2); border: 1px solid var(--rule); border-left: 3px solid var(--ink); border-radius: 3px; color: var(--ink); animation: queue-in 260ms var(--ease-settle, cubic-bezier(.2, .7, .2, 1)) both; }
+.queue-line.failed { color: var(--stamp); border-left-color: var(--stamp); }
+.queue-row { grid-column: 1 / -1; margin-top: -4px; }
+.queue-row .queue-line { margin-top: 0; }
+@media (max-width: 720px) { .queue-row { margin-top: 0; } }
+@keyframes queue-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .queue-line { animation: none; } }
+.now-try { margin-top: 12px; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
