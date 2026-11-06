@@ -200,7 +200,7 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
                 return [(
                 <div class="week-tile" key={t.id}>
                   <Tile tile={{ ...t, count: t.weekPeople }} index={i} now={now} tz={wall.shop.timezone} flash={false} href={`${base}/post/${t.id}`} />
-                  {t.byLocation && t.byLocation.length > 0 && <p class="caption muted by-loc">{t.byLocation.map((x) => `${x.label} ${x.n}`).join(" · ")}</p>}
+                  {t.byLocation && t.byLocation.length > 0 && <p class="caption muted by-loc">{t.byLocation.map((x, k) => <>{k > 0 && " · "}<span class="by-loc-item" key={x.label}><span class="nm">{x.label}</span><span class="n">{"\u00a0"}{x.n}</span></span></>)}</p>}
                   <div class="tile-actions">
                     <button class="tile-action" aria-label="Post it again" onClick={() => setAgain(t.id)}>
                       <span class="long">Post it again</span>

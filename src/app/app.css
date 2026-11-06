@@ -181,7 +181,7 @@ nav.bottombar { display: none; }
   .try { grid-template-columns: auto 1fr; gap: 12px; padding: 12px; }
   .try .qr { width: 74px; height: 74px; }
   .try .btn { grid-column: 1 / -1; }
-  .wall { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .wall { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
   .ring { padding: 12px; }
   .ring .thumb { display: none; }
   .ring .bell { width: 32px; height: 32px; }
@@ -245,6 +245,9 @@ nav.bottombar { display: none; }
 .ratio { margin: var(--s3) 0; line-height: 1.4; }
 .receipt { list-style: none; padding: 0; margin: var(--s4) 0; max-width: 420px; }
 .receipt li { display: flex; align-items: baseline; height: 32px; gap: 8px; }
+.receipt li > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.receipt .leader { min-width: 16px; }
+.receipt .num { flex: none; }
 .receipt .leader { flex: 1; border-bottom: 1px dotted var(--rule-2); transform: translateY(-4px); }
 .receipt .num { font-family: var(--font-display); font-weight: 700; font-size: 18px; }
 .week-actions { margin: var(--s4) 0 var(--s5); }
@@ -356,7 +359,12 @@ p.small.has-hint b { font-weight: 600; }
 }
 .which-loc { display: grid; gap: 8px; max-width: 420px; }
 .which-btn { height: 56px; width: 100%; font-weight: 600; }
-.by-loc { margin: 6px 0 0; }
+/* Plan section 0, look.md "A long location name never widens a screen": a name truncates inside its item, the count stays whole, at most two lines. */
+.week-tile { min-width: 0; }
+.by-loc { margin: 6px 0 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.by-loc-item { display: inline-flex; max-width: 100%; vertical-align: top; }
+.by-loc-item .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.by-loc-item .n { flex: none; white-space: pre; }
 
 .add-loc .add-form { max-width: 480px; }
 .add-loc .field { margin: 0 0 16px; }
