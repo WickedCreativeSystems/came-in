@@ -29,6 +29,14 @@ interface SetupData {
 
 const MAX = 60;
 
+/** Rename opens its input focused with the name selected, so typing replaces it (look.md, Setup LOCATIONS). Once per opening. */
+function selectOnOpen(el: HTMLInputElement | null) {
+  if (!el || el.dataset.opened) return;
+  el.dataset.opened = "1";
+  el.focus();
+  el.select();
+}
+
 export function Setup({ sample }: { sample: boolean }): JSX.Element {
   const [wall, setWall] = useState<WallData | null>(null);
   const [data, setData] = useState<SetupData | null>(null);
@@ -290,7 +298,7 @@ function LocationsSetting({ sample, shopName, samplePrice }: { sample: boolean; 
                   <label class="sr" for={`rn-${l.id}`}>
                     Name
                   </label>
-                  <input id={`rn-${l.id}`} class={`input${err ? " error" : ""}`} value={draft} maxLength={24} autofocus onInput={(e) => { setDraft((e.target as HTMLInputElement).value); setErr(null); }} onKeyDown={(e) => { if (e.key === "Enter") void save(l.id); if (e.key === "Escape") setRenaming(null); }} />
+                  <input id={`rn-${l.id}`} class={`input${err ? " error" : ""}`} value={draft} maxLength={24} ref={selectOnOpen} onInput={(e) => { setDraft((e.target as HTMLInputElement).value); setErr(null); }} onKeyDown={(e) => { if (e.key === "Enter") void save(l.id); if (e.key === "Escape") setRenaming(null); }} />
                   {err && (
                     <div class="input-error" role="alert">
                       {err}
