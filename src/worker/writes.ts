@@ -69,13 +69,19 @@ export function refusalFor(service: string, media: "image" | "video" | "none", v
   return null;
 }
 
-/** Post it again's channels with their reasons; a video's source is checked now. */
-export async function againTargets(env: Env, shopId: string, tileId: string, channels: { id: string; name: string; service: string }[]): Promise<{ id: string; name: string; service: string; refusal: Refusal }[] | null> {
+/**
+ * Post it again's channels with their reasons; a video's source is checked now. `original` marks the channels the
+ * post first went out on (plan 3.9, round 7): only those start switched on. A channel the shop has since
+ * disconnected or turned off is not in `channels`, so it is not in the list.
+ */
+export async function againTargets(env: Env, shopId: string, tileId: string, channels: { id: string; name: string; service: string }[]): Promise<{ id: string; name: string; service: string; refusal: Refusal; original: boolean }[] | null> {
   const media = await tileMedia(env, shopId, tileId);
   if (!media) return null;
   const kind = media.imagePost ? "image" : media.videoSource ? "video" : "none";
   const videoGone = kind === "video" && !(await headOk(media.videoSource!));
-  return channels.map((c) => ({ ...c, refusal: refusalFor(c.service, kind, videoGone) }));
+  const { results } = await env.DB.prepare(`SELECT DISTINCT channel_id FROM posts WHERE tile_id = ?1 AND shop_id = ?2`).bind(tileId, shopId).all<{ channel_id: string }>();
+  const own = new Set(results.map((r) => r.channel_id));
+  return channels.map((c) => ({ ...c, refusal: refusalFor(c.service, kind, videoGone), original: own.has(c.id) }));
 }
 
 async function headOk(url: string): Promise<boolean> {

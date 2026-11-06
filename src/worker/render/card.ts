@@ -48,8 +48,9 @@ body{background:var(--paper-2)}
 .card .av{width:calc(48 * var(--u))!important;height:calc(48 * var(--u))!important;font-size:calc(22 * var(--u))!important;margin:0 0 calc(10 * var(--u));-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .card .nm{font-family:var(--fd);font-weight:700;font-size:calc(28 * var(--u));line-height:1;letter-spacing:.005em}
 .card .hn{font-size:calc(12 * var(--u));line-height:1.2;color:#6E665D;margin:calc(3 * var(--u)) 0 calc(22 * var(--u))}
-.card .hn.tight{margin-bottom:calc(2 * var(--u))}
-.card .loc{font-size:calc(12 * var(--u));line-height:1.2;font-weight:600;color:#231F1B;margin:0 0 calc(22 * var(--u))}
+.card .hn.tight{margin-bottom:0}
+.card .loc{font-family:var(--ft);font-size:calc(12 * var(--u));line-height:1.2;font-weight:600;color:#231F1B;margin:calc(3 * var(--u)) 0 calc(22 * var(--u))}
+.card.two .sub{margin-bottom:calc(9 * var(--u))}
 .sizes .lab{font-size:14px;font-weight:600;color:var(--ink-2);align-self:center;margin-right:4px}
 .card .ask{font-family:var(--fd);font-weight:700;font-size:calc(34 * var(--u));line-height:.98;letter-spacing:-.005em;margin:0 0 calc(6 * var(--u))}
 .card .sub{font-size:calc(12 * var(--u));color:#6E665D;margin:0 0 calc(18 * var(--u));line-height:1.3;white-space:nowrap}
@@ -77,7 +78,7 @@ export function renderCard(d: CardData): string {
     .join("");
   const body = `<div class="bar"><h1>Your card</h1>${d.locationSwitches?.length ? `<nav class="sizes locs" aria-label="Card for"><span class="lab">Card for</span>${d.locationSwitches.map((l) => `<a href="${esc(l.href)}"${l.current ? ' aria-current="page"' : ""}>${esc(l.label)}</a>`).join("")}</nav>` : ""}<nav class="sizes" aria-label="Paper size">${sizes}</nav>
 <button class="btn primary" id="print">Print</button><button class="btn" id="pdf">Save as PDF</button><a class="btn quiet" href="${esc(d.backUrl)}">Back</a><p class="how">Your name and picture come from your Buffer channel, so there's nothing to set up. Put it by the till.</p></div>
-<main class="stage"><div class="card">
+<main class="stage"><div class="card${d.locationName ? " two" : ""}">
 <span class="punch" aria-hidden="true"></span>
 ${avatarHtml(d.shop.name, d.shop.avatarUrl, 48)}
 <div class="nm">${esc(d.shop.name)}</div>

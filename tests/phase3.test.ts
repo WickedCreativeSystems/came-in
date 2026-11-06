@@ -43,7 +43,7 @@ describe("This week's words (P11, plan 1.7 and 3.7)", () => {
     expect(s.patterns.length).toBeLessThanOrEqual(4);
     expect(s.patterns).toContain("Photos brought 4 people. Videos brought 1. Text-only posts brought 0.");
     expect(s.patterns).toContain("Stories brought 1 person.");
-    expect(s.patterns.some((p) => /^Your best day was Monday: 3 people\.$/.test(p))).toBe(true);
+    expect(s.patterns.some((p) => /^Posts sent on Monday brought the most people: 3\.$/.test(p))).toBe(true);
     expect(s.patterns.some((p) => /^Posts sent in the evening brought 3 people; mornings 2\.$/.test(p))).toBe(true);
   });
 
@@ -59,6 +59,9 @@ describe("This week's words (P11, plan 1.7 and 3.7)", () => {
     expect(ratioLine(12, 3)).toBe("At your counter, 1 in 4 new customers who told us came because of a post.");
     expect(ratioLine(8 + 4, 9)).toBe("At your counter, 3 in 4 new customers who told us came because of a post.");
     expect(ratioLine(10, 0)).toBeNull();
+    expect(ratioLine(10, 10)).toBe("At your counter, every new customer who told us came because of a post.");
+    expect(ratioLine(14, 14)).toBe("At your counter, every new customer who told us came because of a post.");
+    expect(ratioLine(9, 9)).toBeNull();
     // Card taps never count toward the ratio.
     const s = summarize([...Array(10)].map(() => tap("a", "post", "card")), tiles(), TZ, "this");
     expect(s.ratio).toBeNull();

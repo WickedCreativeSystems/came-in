@@ -49,6 +49,8 @@ function gcd(a: number, b: number): number {
  */
 export function ratioLine(counterAll: number, counterPost: number): string | null {
   if (counterAll < 10 || counterPost === 0) return null;
+  // Every counter answer names a post: the fraction would read "1 in 1" (plan 1.7, round 7).
+  if (counterPost === counterAll) return "At your counter, every new customer who told us came because of a post.";
   if (counterPost * 2 > counterAll) {
     const g = gcd(counterPost, counterAll);
     return `At your counter, ${counterPost / g} in ${counterAll / g} new customers who told us came because of a post.`;
@@ -96,14 +98,14 @@ export function summarize(taps: WeekTap[], tiles: WeekTile[], tz: string, range:
       const textOnly = postTaps.filter((t) => tileOf(t).kind === "text" || tileOf(t).kind === "link").length;
       if (photos || videos || textOnly) lines.push({ text: `Photos brought ${people(photos)}. Videos brought ${videos}. Text-only posts brought ${textOnly}.`, weight: Math.max(photos, videos, textOnly) });
     }
-    // Best day: the weekday the posts that brought people in were sent.
+    // Best day: the weekday the posts that brought people in were sent (plan 1.7, round 7: counted like the time-of-day line).
     const days = new Map<string, number>();
     for (const t of postTaps) {
       const d = weekdayName(new Date(tileOf(t).firstSentAt), tz);
       days.set(d, (days.get(d) ?? 0) + 1);
     }
     const best = [...days.entries()].sort((a, b) => b[1] - a[1])[0];
-    if (best && best[1] > 0) lines.push({ text: `Your best day was ${best[0]}: ${people(best[1])}.`, weight: best[1] });
+    if (best && best[1] > 0) lines.push({ text: `Posts sent on ${best[0]} brought the most people: ${best[1]}.`, weight: best[1] });
     // Time of day the posts were sent, in shop time.
     const buckets = new Map<TimeBucket, number>();
     for (const t of postTaps) {

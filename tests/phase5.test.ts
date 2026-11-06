@@ -299,7 +299,7 @@ describe("round four (EaseBot, Nov 5)", () => {
     const tiles = [mk("ev", 0), mk("mo", 15), mk("mi", 18), mk("ni", 5)]; // 18:30, 09:30, 12:30, 23:30 in Chicago (UTC-6 in Nov)
     const taps = (id: string, n: number) => Array.from({ length: n }, () => ({ tileId: id, answer: "post" as const, source: "card", at: "2026-11-05T18:00:00Z" }));
     const s = summarize([...taps("ev", 5), ...taps("mo", 3), ...taps("mi", 2), ...taps("ni", 1)], tiles, "America/Chicago", "this");
-    const line = s.patterns.find((p) => p.startsWith("Posts sent"));
+    const line = s.patterns.find((p) => p.startsWith("Posts sent in"));
     expect(line).toBe("Posts sent in the evening brought 5 people; mornings 3; other times 3.");
   });
 

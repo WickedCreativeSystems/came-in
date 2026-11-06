@@ -295,6 +295,7 @@ nav.bottombar { display: none; }
 
 .sheet-post { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
 .sheet-post img { width: 48px; height: 48px; object-fit: cover; border-radius: var(--r); flex: none; }
+.sheet-note { color: var(--ink); font-weight: 400; margin: 12px 0; }
 
 .other-posts { margin: 24px 0 0; font-size: 13px; color: var(--ink-2); }
 .receipt-h { margin: 24px 0 4px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; color: var(--ink-2); }
