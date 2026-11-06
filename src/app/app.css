@@ -181,7 +181,7 @@ nav.bottombar { display: none; }
   .try { grid-template-columns: auto 1fr; gap: 12px; padding: 12px; }
   .try .qr { width: 74px; height: 74px; }
   .try .btn { grid-column: 1 / -1; }
-  .wall { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .wall { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
   .ring { padding: 12px; }
   .ring .thumb { display: none; }
   .ring .bell { width: 32px; height: 32px; }
@@ -245,6 +245,9 @@ nav.bottombar { display: none; }
 .ratio { margin: var(--s3) 0; line-height: 1.4; }
 .receipt { list-style: none; padding: 0; margin: var(--s4) 0; max-width: 420px; }
 .receipt li { display: flex; align-items: baseline; height: 32px; gap: 8px; }
+.receipt li > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.receipt .leader { min-width: 16px; }
+.receipt .num { flex: none; }
 .receipt .leader { flex: 1; border-bottom: 1px dotted var(--rule-2); transform: translateY(-4px); }
 .receipt .num { font-family: var(--font-display); font-weight: 700; font-size: 18px; }
 .week-actions { margin: var(--s4) 0 var(--s5); }
@@ -278,7 +281,7 @@ nav.bottombar { display: none; }
 /* A post (plan 3.9) */
 .post-page .back { margin: 0 0 var(--s4) -10px; }
 .post-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: var(--s6); align-items: start; }
-@media (max-width: 860px) { .post-grid { grid-template-columns: 1fr; gap: var(--s5); } }
+@media (max-width: 860px) { .post-grid { grid-template-columns: minmax(0, 1fr); gap: var(--s5); } }
 .post-photo img, .post-photo .text-only { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--r-tile); background: var(--paper-2); }
 .post-photo .text-only.big { display: flex; padding: 32px; }
 .post-photo .text-only.big .first { font-family: var(--font-display); font-weight: 700; font-size: 34px; line-height: 1.02; }
@@ -332,7 +335,8 @@ p.small.has-hint b { font-weight: 600; }
 .loc-row { display: flex; align-items: center; gap: 12px; min-height: 56px; border-bottom: 1px solid var(--rule); }
 .loc-row:last-child { border-bottom: 0; }
 .loc-row .current::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); margin-right: 6px; vertical-align: middle; }
-.loc-row .loc-name { flex: 1 1 auto; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Setup is an "other line" (plan section 0): a long one-word name breaks inside the line, never cut. */
+.loc-row .loc-name { flex: 1 1 auto; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
 
 .sk-h { display: flex; align-items: center; gap: 12px; height: 64px; padding: 0 16px; border-bottom: 1px solid var(--rule); }
 .sk-av { width: 36px; height: 36px; border-radius: 50%; background: var(--paper-3); flex: none; }
@@ -356,7 +360,12 @@ p.small.has-hint b { font-weight: 600; }
 }
 .which-loc { display: grid; gap: 8px; max-width: 420px; }
 .which-btn { height: 56px; width: 100%; font-weight: 600; }
-.by-loc { margin: 6px 0 0; }
+/* Plan section 0, look.md "A long location name never widens a screen": a name truncates inside its item, the count stays whole, at most two lines. */
+.week-tile { min-width: 0; }
+.by-loc { margin: 6px 0 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.by-loc-item { display: inline-flex; max-width: 100%; vertical-align: top; }
+.by-loc-item .nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.by-loc-item .n { flex: none; white-space: pre; }
 
 .add-loc .add-form { max-width: 480px; }
 .add-loc .field { margin: 0 0 16px; }
@@ -373,6 +382,12 @@ p.small.has-hint b { font-weight: 600; }
 .loc-edit { flex: 1 1 auto; min-width: 0; padding: 8px 0; }
 .loc-rule { height: 1px; background: var(--rule); margin: 12px 0; }
 .btn.stamp { color: var(--stamp); border-color: var(--stamp); }
+/* Wider than a phone, a name that breaks onto a second line keeps its first line level with the buttons: both sit where
+   centring put them in the 56px row (the name's line is 1.45em, the buttons 36px), and the row grows downward. */
+@media (min-width: 721px) {
+  .loc-row .loc-name { align-self: flex-start; margin-block: calc((56px - 1.45em) / 2); }
+  .loc-row .loc-actions { align-self: flex-start; margin-block: 10px; }
+}
 @media (max-width: 720px) { .loc-row { flex-wrap: wrap; align-items: flex-start; padding: 12px 0; } .loc-actions { justify-content: flex-start; width: 100%; } }
 
 /* Setup's Locations buttons are quiet: 36px, no fill (look.md "Locations"). */

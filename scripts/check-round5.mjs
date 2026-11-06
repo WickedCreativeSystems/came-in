@@ -43,7 +43,7 @@ for (const [name, vp] of [["phone", { width: 390, height: 800 }], ["small phone"
   await page.goto(base + "/sample/week");
   await page.waitForSelector(".week-tile");
   const tiles = await page.locator(".week-tile").count();
-  await again(page, ".week-tile >> nth=0 >> button[aria-label='Post it again']");
+  await again(page, ".week-tile >> nth=0 >> .tile-action >> nth=0");
   let r = await page.evaluate(() => {
     const q = document.querySelector(".queue-line").getBoundingClientRect();
     const tile = document.querySelector(".week-tile").getBoundingClientRect();
@@ -59,8 +59,8 @@ for (const [name, vp] of [["phone", { width: 390, height: 800 }], ["small phone"
   // a tile in a lower row: the page scrolls to the line, and a second line replaces the first
   if (tiles > 4) {
     const last = tiles - 1;
-    await page.locator(`.week-tile >> nth=${last} >> button[aria-label='Post it again']`).scrollIntoViewIfNeeded();
-    await again(page, `.week-tile >> nth=${last} >> button[aria-label='Post it again']`);
+    await page.locator(`.week-tile >> nth=${last} >> .tile-action >> nth=0`).scrollIntoViewIfNeeded();
+    await again(page, `.week-tile >> nth=${last} >> .tile-action >> nth=0`);
     r = await page.evaluate(() => {
       const q = document.querySelector(".queue-line").getBoundingClientRect();
       const bar = innerWidth <= 720 ? document.querySelector("nav.bottombar").getBoundingClientRect().height : 0;
