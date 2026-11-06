@@ -46,7 +46,7 @@ export function resultLine(r: SheetResult, postName?: string): string {
 }
 
 /** The post's name at the start of a sentence: its first letter up, the rest as the owner wrote it ("The sourdough post"). */
-function sentenceStart(name: string): string {
+export function sentenceStart(name: string): string {
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 

@@ -412,3 +412,4 @@ p.small.has-hint { margin-bottom: 0; }
 @keyframes queue-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .queue-line { animation: none; } }
 .now-try { margin-top: 12px; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+.queue-line b { font-weight: 600; }

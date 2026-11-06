@@ -37,7 +37,7 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
   const [again, setAgain] = useState<string | null>(null);
   const [lines, setLines] = useState<Record<string, string>>({});
   // The line Post it again leaves under its tile: one at a time, it stays until the page is left (plan 3.9).
-  const [queued, setQueued] = useState<{ id: string; text: string; failed: boolean; n: number } | null>(null);
+  const [queued, setQueued] = useState<{ id: string; text: string; failed: boolean; n: number; name?: string } | null>(null);
   const grid = useRef<HTMLDivElement>(null);
   const [cols, setCols] = useState(2);
   const [share, setShare] = useState<null | { story: string | null; square: string | null; storyUrl: string | null; squareUrl: string | null; busy: boolean }>(null);
@@ -246,7 +246,7 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
                   {lines[t.id] && <p class={`small outcome${lines[t.id] === outcomeLine("failed") ? " failed" : ""}`}>{lines[t.id]}</p>}
                 </div>
                 ),
-                ...(line && queued ? [<div class="queue-row" key={`q-${queued.n}`}><QueueLine text={queued.text} failed={queued.failed} /></div>] : []),
+                ...(line && queued ? [<div class="queue-row" key={`q-${queued.n}`}><QueueLine text={queued.text} name={queued.name} failed={queued.failed} /></div>] : []),
                 ];
               })}
             </div>
@@ -273,8 +273,9 @@ export function Week({ sample }: { sample: boolean }): JSX.Element {
           sample={sample}
           onClose={() => setAgain(null)}
           onDone={(r) => {
-            const text = resultLine(r, data.tiles.find((x) => x.id === again)?.name);
-            setQueued((q) => ({ id: again, text, failed: text === outcomeLine("failed"), n: (q?.n ?? 0) + 1 }));
+            const name = data.tiles.find((x) => x.id === again)?.name;
+            const text = resultLine(r, name);
+            setQueued((q) => ({ id: again, text, name, failed: text === outcomeLine("failed"), n: (q?.n ?? 0) + 1 }));
             setAgain(null);
           }}
         />

@@ -68,6 +68,7 @@ for (const [name, vp] of [["phone", { width: 390, height: 800 }], ["small phone"
     });
     ok(r.n === 1, `${name}: a second confirmation replaces the first`);
     ok(r.bottom <= r.floor - 15 && r.top >= 56, `${name}: the lower line is scrolled into view (bottom ${Math.round(r.bottom)} of ${Math.round(r.floor)})`);
+    ok(Math.abs(r.floor - r.bottom - 16) <= 2 || r.floor - r.bottom > 16 && r.top > 100, `${name}: the scroll stops at the 16px mark, not past it (${Math.round(r.floor - r.bottom)}px)`);
     await page.waitForTimeout(3000);
     ok(await page.locator(".queue-line").count() === 1, `${name}: the line stays`);
   }
@@ -87,6 +88,8 @@ for (const [name, vp] of [["phone", { width: 390, height: 800 }], ["small phone"
     const bar = innerWidth <= 720 ? document.querySelector("nav.bottombar").getBoundingClientRect().height : 0;
     return { text: document.querySelector(".queue-line").innerText, gap: q.top - btns.bottom, bottom: q.bottom, floor: innerHeight - bar };
   });
+  const wt = await page.evaluate(() => ({ b: getComputedStyle(document.querySelector(".queue-line b")).fontWeight, rest: getComputedStyle(document.querySelector(".queue-line")).fontWeight }));
+  ok(wt.b === "600" && wt.rest !== "600", `${name}: the post's name is weight 600 in the line (${wt.b}, rest ${wt.rest})`);
   ok(LINE.test(r.text), `${name}: post page line reads "${r.text}"`);
   ok(r.gap >= 0 && r.gap <= 24 && r.bottom <= r.floor - 15, `${name}: it sits under the buttons (gap ${Math.round(r.gap)}) and in view`);
 
@@ -96,6 +99,8 @@ for (const [name, vp] of [["phone", { width: 390, height: 800 }], ["small phone"
   await page.waitForSelector("a:has-text('Now try a tap')");
   const body = await page.locator("body").innerText();
   ok(body.includes("This browser will ring. In your own shop, open Came In on your phone and tap Ring my phone there, and your phone rings."), `${name}: Ring my phone result words`);
+  const gap = await page.evaluate(() => { const b = document.querySelector("a.now-try").getBoundingClientRect(); const p = [...document.querySelectorAll("p.small")].find((x) => x.innerText.startsWith("This browser will ring")).getBoundingClientRect(); return b.top - p.bottom; });
+  ok(Math.abs(gap - 12) <= 1, `${name}: Now try a tap is 12px under the result line (${Math.round(gap)}px)`);
   await page.screenshot({ path: shot(`now-try-${name.replace(" ", "-")}`) });
   await page.click("a:has-text('Now try a tap')");
   await page.waitForSelector(".try, .wall");

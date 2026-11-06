@@ -1,7 +1,7 @@
 // The sheets of plan 3.7 and 3.9: Post it again, Post this, and the share images.
 import { tileLabel } from "@shared/names";
 import { scrollIntoRoom } from "../lib/scroll";
-import { outcomeLine, resultLine, type Outcome, type SheetResult } from "../lib/lines";
+import { outcomeLine, resultLine, sentenceStart, type Outcome, type SheetResult } from "../lib/lines";
 
 export { outcomeLine, resultLine };
 export type { Outcome, SheetResult };
@@ -30,15 +30,24 @@ function blocked(c: Channel): boolean {
  * on its left edge. It arrives over 260ms, scrolls into view if it is not fully on screen, and stays until the page
  * is left. Mount it with a new key for each confirmation, so a second one replaces the first.
  */
-export function QueueLine({ text, failed }: { text: string; failed?: boolean }): JSX.Element {
+export function QueueLine({ text, failed, name }: { text: string; failed?: boolean; name?: string }): JSX.Element {
   const box = useRef<HTMLParagraphElement>(null);
+  // The post's name stands out in the line (weight 600), when the line is about the post.
+  const lead = name && text.startsWith(sentenceStart(name)) ? sentenceStart(name) : "";
   useEffect(() => {
     const t = requestAnimationFrame(() => scrollIntoRoom(box.current));
     return () => cancelAnimationFrame(t);
   }, []);
   return (
     <p class={`queue-line small${failed ? " failed" : ""}`} role="status" ref={box}>
-      {text}
+      {lead ? (
+        <>
+          <b>{lead}</b>
+          {text.slice(lead.length)}
+        </>
+      ) : (
+        text
+      )}
     </p>
   );
 }

@@ -8,7 +8,10 @@ export function scrollIntoRoom(el: HTMLElement | null): void {
   const phone = innerWidth <= 720;
   const bar = phone ? document.querySelector("nav.bottombar")?.getBoundingClientRect().height ?? 0 : 0;
   const fab = phone ? (document.querySelector(".fab")?.getBoundingClientRect().height ?? 0) : 0;
-  const r = el.getBoundingClientRect();
+  // Measure where the line will rest: it may still be rising (translateY) when this runs.
+  const rise = new DOMMatrix(getComputedStyle(el).transform).m42;
+  const box = el.getBoundingClientRect();
+  const r = { top: box.top - rise, bottom: box.bottom - rise, right: box.right };
   const floor = innerHeight - bar - 16;
   let delta = 0;
   if (r.bottom > floor) delta = r.bottom - floor;

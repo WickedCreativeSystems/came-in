@@ -49,7 +49,7 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
   const [nickErr, setNickErr] = useState<string | null>(null);
   const [loc, setLoc] = useState<string | null | undefined>(undefined);
   const [again, setAgain] = useState(false);
-  const [line, setLine] = useState<{ text: string; n: number } | null>(null);
+  const [line, setLine] = useState<{ text: string; name: string; n: number } | null>(null);
   const [ideaLine, setIdeaLine] = useState<string | null>(null);
   const [ideaBusy, setIdeaBusy] = useState(false);
   const base = sample ? "/sample" : "";
@@ -223,7 +223,7 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
                   {t.hidden ? "Show on the card" : "Hide from the card"}
                 </button>
               </div>
-              {line && <QueueLine key={line.n} text={line.text} failed={line.text === outcomeLine("failed")} />}
+              {line && <QueueLine key={line.n} text={line.text} name={line.name} failed={line.text === outcomeLine("failed")} />}
               {ideaLine && <p class={`small outcome${ideaLine === outcomeLine("failed") ? " failed" : ""}`}>{ideaLine}</p>}
               {data.noteLeft && (
                 <p class="caption status-lines">
@@ -244,7 +244,7 @@ export function Post({ sample, tileId }: { sample: boolean; tileId: string }): J
           sample={apiBase.includes("/sample")}
           onClose={() => setAgain(false)}
           onDone={(r) => {
-            setLine((l) => ({ text: resultLine(r, data.tile.name), n: (l?.n ?? 0) + 1 }));
+            setLine((l) => ({ text: resultLine(r, data.tile.name), name: data.tile.name, n: (l?.n ?? 0) + 1 }));
             setAgain(false);
           }}
         />

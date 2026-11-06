@@ -47,6 +47,7 @@ describe("source: the screens use them", () => {
     const week = weekSrc;
     const post = postSrc;
     expect(week).toContain("QueueLine");
+    expect(sheetsSrc).toContain("<b>{lead}</b>");
     expect(post).toContain("QueueLine");
     expect(sheetsSrc).not.toMatch(/QueueLine[\s\S]{0,600}setTimeout/);
   });
