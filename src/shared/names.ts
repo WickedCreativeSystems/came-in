@@ -78,13 +78,16 @@ export function dayBadge(sentAt: Date, now: Date, tz: string, live: boolean, whe
   // Every post sent today says SENT TODAY, not the weekday (plain TODAY was read as visits today).
   if (shopDaysBetween(sentAt, now, tz) === 0) return "SENT TODAY";
   const recent = Math.abs(shopDaysBetween(sentAt, now, tz)) <= 6;
-  return recent ? weekdayAbbrev(sentAt, tz) : shortDate(sentAt, tz).toUpperCase();
+  // Older than 6 days: the weekday first, so This week's day line can be added up from the tiles (plan 3.4, round 8).
+  return recent ? weekdayAbbrev(sentAt, tz) : `${weekdayAbbrev(sentAt, tz)} · ${shortDate(sentAt, tz).toUpperCase()}`;
 }
 
-/** The same badge on a tile narrower than 180px: NEW for a post sent today, LIVE (brass) for a live story. */
+/** The same badge on a tile narrower than 180px: NEW for a post sent today, LIVE (brass) for a live story, FRI 23 for an older post. */
 export function dayBadgeShort(sentAt: Date, now: Date, tz: string, live: boolean): string {
   if (live) return "LIVE";
   if (shopDaysBetween(sentAt, now, tz) === 0) return "NEW";
+  // Older than 6 days: "FRI 23", the weekday and the day of the month ("FRI · OCT 23" doesn't fit; look.md Day badge).
+  if (Math.abs(shopDaysBetween(sentAt, now, tz)) > 6) return `${weekdayAbbrev(sentAt, tz)} ${shortDate(sentAt, tz).split(" ")[1]}`;
   return dayBadge(sentAt, now, tz, false);
 }
 

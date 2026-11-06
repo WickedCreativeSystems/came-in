@@ -105,7 +105,7 @@ export function summarize(taps: WeekTap[], tiles: WeekTile[], tz: string, range:
       days.set(d, (days.get(d) ?? 0) + 1);
     }
     const best = [...days.entries()].sort((a, b) => b[1] - a[1])[0];
-    if (best && best[1] > 0) lines.push({ text: `Posts sent on ${best[0]} brought the most people: ${best[1]}.`, weight: best[1] });
+    if (best && best[1] > 0) lines.push({ text: `Posts sent on ${best[0]}s brought the most people: ${best[1]}.`, weight: best[1] });
     // Time of day the posts were sent, in shop time.
     const buckets = new Map<TimeBucket, number>();
     for (const t of postTaps) {
